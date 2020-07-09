@@ -56,6 +56,7 @@
 #include "cairo-dock-dock-visibility.h"
 #include "cairo-dock-dock-manager.h"
 
+
 // public (manager, config, data)
 CairoDocksParam myDocksParam;
 GldiManager myDocksMgr;
@@ -791,6 +792,8 @@ static void _set_dock_orientation (CairoDock *pDock, CairoDockPositionType iScre
 		case CAIRO_DOCK_NB_POSITIONS :
 		break;
 	}
+	
+	gldi_container_set_anchor ( &(pDock->container), iScreenBorder);
 	_synchronize_sub_docks_orientation (pDock, FALSE);
 }
 
@@ -1177,6 +1180,14 @@ void gldi_dock_set_visibility (CairoDock *pDock, CairoDockVisibility iVisibility
 		_stop_polling_screen_edge ();
 	else if (!bIsPolling && bShouldPoll)
 		_start_polling_screen_edge ();
+		
+	//\_______________ layer shell additions
+	GldiContainerLayer layer = CAIRO_DOCK_LAYER_BOTTOM;
+	if (iVisibility == CAIRO_DOCK_VISI_KEEP_ABOVE || iVisibility == CAIRO_DOCK_VISI_RESERVE)
+	{
+		layer = CAIRO_DOCK_LAYER_TOP;
+	}
+	gldi_container_set_layer ( &(pDock->container), layer);
 }
 
 
@@ -1942,6 +1953,9 @@ static void init_object (GldiObject *obj, gpointer attr)
 		cd_warning ("a dock with the name '%s' is already registered", dattr->cDockName);
 		return;
 	}
+
+	//\__________________ init layer-shell (if enabled); needs to happen before window is mapped
+	gldi_container_init_layer (&(pDock->container));
 	
 	//\__________________ init internals
 	gldi_dock_init_internals (pDock);
