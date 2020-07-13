@@ -519,73 +519,94 @@ void gldi_menu_init (GtkWidget *pMenu, Icon *pIcon)
 				"deactivate",
 				G_CALLBACK (_on_menu_deactivated),
 				NULL);
+			
+			// set transient for (parent relationship?)
+			gtk_window_set_transient_for (GTK_WINDOW (pWindow), GTK_WINDOW (pContainer->pWidget));
 		}
 	}
 }
 
-static void _place_menu_on_icon (GtkMenu *menu, gint *x, gint *y, gboolean *push_in, G_GNUC_UNUSED gpointer data)
+
+static void _menu_realized_cb (GtkWidget *widget, gpointer user_data)
 {
-	*push_in = FALSE;
-	GldiMenuParams *pParams = g_object_get_data (G_OBJECT(menu), "gldi-params");
+	GldiMenuParams *pParams = (GldiMenuParams*)user_data;
 	g_return_if_fail (pParams != NULL);
-
-	Icon *pIcon = pParams->pIcon;
-	GldiContainer *pContainer = (pIcon ? cairo_dock_get_icon_container (pIcon) : NULL);
-	int x0 = pContainer->iWindowPositionX + pIcon->fDrawX;
-	int y0 = pContainer->iWindowPositionY + pIcon->fDrawY;
-	if (pContainer->bDirectionUp)
-		y0 += pIcon->fHeight * pIcon->fScale - pIcon->image.iHeight;  // the icon might not be maximised yet
-
+	
 	int w, h;  // taille menu
 	GtkRequisition requisition;
-	gtk_widget_get_preferred_size (GTK_WIDGET (menu), NULL, &requisition);  // retrieve the natural size; Note: before gtk3.10 we used the minimum size but it's now incorrect; the natural size works for prior versions too.
+	gtk_widget_get_preferred_size (widget, NULL, &requisition);  // retrieve the natural size; Note: before gtk3.10 we used the minimum size but it's now incorrect; the natural size works for prior versions too.
 	w = requisition.width;
 	h = requisition.height;
+	
+	Icon *pIcon = pParams->pIcon;
+	GldiContainer *pContainer = (pIcon ? cairo_dock_get_icon_container (pIcon) : NULL);
+	if (! (pIcon && pContainer) ) return;
+	CairoDock* pDock = (CairoDock*)pContainer;
 
-	/// TODO: use iMarginPosition...
-	double fAlign = pParams->fAlign;
-	int r = pParams->iRadius;
-	int ah = pParams->iArrowHeight;
-	int w_, h_;
-	int iAimedX, iAimedY;
-	int Hs = (pContainer->bIsHorizontal ? gldi_desktop_get_height() : gldi_desktop_get_width());
-	if (pContainer->bIsHorizontal)
+	int W = cairo_dock_get_screen_width (pDock->iNumScreen);
+	int H = cairo_dock_get_screen_height (pDock->iNumScreen);
+	
+	int dockX = pContainer->iWindowPositionX;
+	int dockY = pContainer->iWindowPositionY;
+	
+	if (pContainer->bIsHorizontal && dockX == 0)
 	{
-		iAimedX = x0 + pIcon->image.iWidth/2;
-		w_ = w - 2 * r;
-		h_ = h - 2 * r - ah;
-		*x = MAX (0, iAimedX - fAlign * w_ - r);
-		if (y0 > Hs/2)  // pContainer->bDirectionUp
-		{
-			*y = y0 - h;
-			iAimedY = y0;
-		}
-		else
-		{
-			*y = y0 + pIcon->fHeight * pIcon->fScale;
-			iAimedY = y0 + pIcon->image.iHeight;
-		}
+		gint dockW, dockH;
+		gtk_window_get_size (GTK_WINDOW (pContainer->pWidget), &dockW, &dockH);
+		dockX = (W - dockW) / 2;
+		if (dockX < 0) dockX = 0;
 	}
-	else
+	if (!pContainer->bIsHorizontal && dockY == 0)
 	{
-		iAimedY = x0 + pIcon->image.iWidth/2;
-		w_ = w - 2 * r - ah;
-		h_ = h - 2 * r;
-		*y = MIN (iAimedY - fAlign * h_ - r, gldi_desktop_get_height() - h);
-		if (y0 > Hs/2)  // pContainer->bDirectionUp
-		{
-			*x = y0 - w;
-			iAimedX = y0;
-		}
-		else
-		{
-			*x = y0 + pIcon->image.iHeight;
-			iAimedX = y0 + pIcon->image.iHeight;
-		}
+		gint dockW, dockH;
+		gtk_window_get_size (GTK_WINDOW (pContainer->pWidget), &dockW, &dockH);
+		dockY = (H - dockH) / 2;
+		if (dockY < 0) dockY = 0;
 	}
-	pParams->iAimedX = iAimedX;
-	pParams->iAimedY = iAimedY;
+	
+	switch (pParams->iMarginPosition)
+	{
+		case 0:
+			// bottom
+			pParams->iAimedX = w / 2;
+			pParams->iAimedY = h;
+			break;
+		case 1:
+			// top
+			pParams->iAimedX = w / 2;
+			pParams->iAimedY = 0;
+			break;
+		case 2:
+			// right
+			pParams->iAimedX = w;
+			pParams->iAimedY = h / 2;
+			break;
+		case 3:
+			// left
+			pParams->iAimedX = 0;
+			pParams->iAimedY = h / 2;
+			break;
+			
+	}
+	if (pParams->iMarginPosition == 0 || pParams->iMarginPosition == 1)
+	{
+		int x0 = dockX + pIcon->fDrawX + pIcon->fWidth * pIcon->fScale / 2.0;
+		if (x0 < w / 2) pParams->iAimedX = x0;
+		else if (W - x0 < w / 2) pParams->iAimedX += w / 2 - (W - x0);
+	}
+	else 
+	{
+		int y0 = dockY + pIcon->fDrawY + pIcon->fHeight * pIcon->fScale / 2.0;
+		if (y0 < h / 2) pParams->iAimedY = y0;
+		else if (H - y0 < h / 2) pParams->iAimedY += h / 2 + (H - y0);
+	}
+	
+	gint menuX, menuY;
+	gtk_window_get_position (GTK_WINDOW (gtk_widget_get_toplevel (widget)), &menuX, &menuY);
+	pParams->iAimedX += menuX;
+	pParams->iAimedY += menuY;
 }
+
 
 static void _init_menu_item (GtkWidget *pMenuItem)
 {
@@ -615,7 +636,8 @@ static void _init_menu_item (GtkWidget *pMenuItem)
 		gtk_container_forall (GTK_CONTAINER (pSubMenu), (GtkCallback) _init_menu_item, NULL);
 }
 
-static void _popup_menu (GtkWidget *menu, guint32 time)
+
+static void _popup_menu (GtkWidget *menu, G_GNUC_UNUSED guint32 time)
 {
 	GldiMenuParams *pParams = g_object_get_data (G_OBJECT(menu), "gldi-params");
 	g_return_if_fail (pParams != NULL);
@@ -640,16 +662,59 @@ static void _popup_menu (GtkWidget *menu, guint32 time)
 		// ensure margin position is still correct
 		_set_margin_position (menu, pParams);
 	}
-
+	
+	g_signal_connect (GTK_WIDGET (menu), "realize",
+		G_CALLBACK (_menu_realized_cb), pParams);
 	gtk_widget_show_all (GTK_WIDGET (menu));
-
-	gtk_menu_popup (GTK_MENU (menu),
-		NULL,
-		NULL,
-		pIcon != NULL && pContainer != NULL ? _place_menu_on_icon : NULL,
-		NULL,
-		0,
-		time);
+	
+	if (pContainer && pIcon)
+	{
+		GdkRectangle rect;
+		rect.x = pIcon->fDrawX;
+		rect.y = pIcon->fDrawY;
+		rect.width = pIcon->fWidth * pIcon->fScale;
+		rect.height = pIcon->fHeight * pIcon->fScale;
+		
+		GdkGravity rect_anchor;
+		GdkGravity menu_anchor;
+		if (pContainer->bDirectionUp)
+		{
+			if (pContainer->bIsHorizontal)
+			{
+				rect_anchor = GDK_GRAVITY_NORTH;
+				menu_anchor = GDK_GRAVITY_SOUTH;
+				pParams->iMarginPosition = 0;
+			}
+			else
+			{
+				rect_anchor = GDK_GRAVITY_EAST;
+				menu_anchor = GDK_GRAVITY_WEST;
+				pParams->iMarginPosition = 4;
+			}
+		}
+		else
+		{
+			if (pContainer->bIsHorizontal)
+			{
+				rect_anchor = GDK_GRAVITY_SOUTH;
+				menu_anchor = GDK_GRAVITY_NORTH;
+				pParams->iMarginPosition = 1;
+			}
+			else
+			{
+				rect_anchor = GDK_GRAVITY_WEST;
+				menu_anchor = GDK_GRAVITY_EAST;
+				pParams->iMarginPosition = 3;
+			}
+		}
+		
+		gtk_menu_popup_at_rect (GTK_MENU (menu), gtk_widget_get_window (pContainer->pWidget),
+			&rect, rect_anchor, menu_anchor, NULL);
+	}
+	else
+	{
+		gtk_menu_popup_at_pointer (GTK_MENU (menu), NULL);
+	}
 }
 static gboolean _popup_menu_delayed (GtkWidget *menu)
 {
