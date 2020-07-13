@@ -47,6 +47,11 @@
 #ifdef HAVE_GTK_LAYER_SHELL
 #include <gtk-layer-shell.h>
 static gboolean s_bHave_Layer_Shell = FALSE;
+
+#if (GTK_MAJOR_VERSION == 3 && GTK_MINOR_VERSION == 22)
+#include "gdk-move-to-rect-hack.h"
+#endif
+
 #endif
 
 
@@ -228,13 +233,36 @@ void _set_layer_shell_layer (GldiContainer *pContainer, GldiContainerLayer iLaye
 		GTK_LAYER_SHELL_LAYER_TOP : GTK_LAYER_SHELL_LAYER_BOTTOM);
 }
 
+static void sublayer_realize_cb (GtkWidget *widget, gpointer unused)
+{
+	// A dummy call to gdk_window_move_to_rect() causes the gtk-layer-shell
+	// internals related to this window to be initialized properly (note:
+	// this is important if the parent is a "proper" layer-shell window).
+	// This _has_ to happen before the GtkWindow is mapped first, but also
+	// has to happen after some initial setup. Doing this as a response to
+	// a "realize" signal seems to be a good way, but there should be some
+	// less hacky solution for this as well. Maybe I'm missing something here?
+	GdkRectangle rect = {0, 0, 1, 1};
+	gdk_window_move_to_rect (gtk_widget_get_window (widget),
+		&rect, GDK_GRAVITY_SOUTH, GDK_GRAVITY_NORTH_WEST, GDK_ANCHOR_SLIDE, 0, 0);
+}
+
+
 void _layer_shell_init_for_window (GldiContainer *pContainer)
 {
 	GtkWindow* window = GTK_WINDOW (pContainer->pWidget);
-	gtk_layer_init_for_window (window);
-	gtk_layer_set_namespace (window, "cairo-dock");
-//	gtk_layer_set_layer (window, GTK_LAYER_SHELL_LAYER_TOP);
-//	gtk_layer_auto_exclusive_zone_enable (window);
+	if (gtk_window_get_transient_for (window))
+	{
+		// subdock or other surface with a parent
+		// we need to call gdk_move_to_rect(), but specifically
+		// (1) before the window is mapped, but (2) during it is realized
+		g_signal_connect (window, "realize", G_CALLBACK (sublayer_realize_cb), NULL);
+	}
+	else
+	{
+		gtk_layer_init_for_window (window);
+		gtk_layer_set_namespace (window, "cairo-dock");
+	}
 }
 #endif
 

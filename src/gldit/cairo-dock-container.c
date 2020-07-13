@@ -511,7 +511,7 @@ static void init_object (GldiObject *obj, gpointer attr)
 	pContainer->bDirectionUp = TRUE;
 	
 	// create a window
-	GtkWidget* pWindow = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+	GtkWidget* pWindow = gtk_window_new (cattr->bIsPopup ? GTK_WINDOW_POPUP : GTK_WINDOW_TOPLEVEL);
 	pContainer->pWidget = pWindow;
 	gtk_window_set_default_size (GTK_WINDOW (pWindow), 1, 1);  // this should prevent having grey rectangles during the loading, when the window is mapped and rendered by the WM but not yet by us.
 	gtk_window_resize (GTK_WINDOW (pWindow), 1, 1);

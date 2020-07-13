@@ -63,6 +63,7 @@ struct _GldiContainersParam{
 
 struct _GldiContainerAttr {
 	gboolean bNoOpengl;
+	gboolean bIsPopup;
 };
 
 /// signals
