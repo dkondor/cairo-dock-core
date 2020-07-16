@@ -607,6 +607,69 @@ static void _menu_realized_cb (GtkWidget *widget, gpointer user_data)
 	pParams->iAimedY += menuY;
 }
 
+static void _place_menu_on_icon (GtkMenu *menu, gint *x, gint *y, gboolean *push_in, G_GNUC_UNUSED gpointer data)
+{
+	*push_in = FALSE;
+	GldiMenuParams *pParams = g_object_get_data (G_OBJECT(menu), "gldi-params");
+	g_return_if_fail (pParams != NULL);
+
+	Icon *pIcon = pParams->pIcon;
+	GldiContainer *pContainer = (pIcon ? cairo_dock_get_icon_container (pIcon) : NULL);
+	int x0 = pContainer->iWindowPositionX + pIcon->fDrawX;
+	int y0 = pContainer->iWindowPositionY + pIcon->fDrawY;
+	if (pContainer->bDirectionUp)
+		y0 += pIcon->fHeight * pIcon->fScale - pIcon->image.iHeight;  // the icon might not be maximised yet
+
+	int w, h;  // taille menu
+	GtkRequisition requisition;
+	gtk_widget_get_preferred_size (GTK_WIDGET (menu), NULL, &requisition);  // retrieve the natural size; Note: before gtk3.10 we used the minimum size but it's now incorrect; the natural size works for prior versions too.
+	w = requisition.width;
+	h = requisition.height;
+
+	/// TODO: use iMarginPosition...
+	double fAlign = pParams->fAlign;
+	int r = pParams->iRadius;
+	int ah = pParams->iArrowHeight;
+	int w_, h_;
+	int iAimedX, iAimedY;
+	int Hs = (pContainer->bIsHorizontal ? gldi_desktop_get_height() : gldi_desktop_get_width());
+	if (pContainer->bIsHorizontal)
+	{
+		iAimedX = x0 + pIcon->image.iWidth/2;
+		w_ = w - 2 * r;
+		h_ = h - 2 * r - ah;
+		*x = MAX (0, iAimedX - fAlign * w_ - r);
+		if (y0 > Hs/2)  // pContainer->bDirectionUp
+		{
+			*y = y0 - h;
+			iAimedY = y0;
+		}
+		else
+		{
+			*y = y0 + pIcon->fHeight * pIcon->fScale;
+			iAimedY = y0 + pIcon->image.iHeight;
+		}
+	}
+	else
+	{
+		iAimedY = x0 + pIcon->image.iWidth/2;
+		w_ = w - 2 * r - ah;
+		h_ = h - 2 * r;
+		*y = MIN (iAimedY - fAlign * h_ - r, gldi_desktop_get_height() - h);
+		if (y0 > Hs/2)  // pContainer->bDirectionUp
+		{
+			*x = y0 - w;
+			iAimedX = y0;
+		}
+		else
+		{
+			*x = y0 + pIcon->image.iHeight;
+			iAimedX = y0 + pIcon->image.iHeight;
+		}
+	}
+	pParams->iAimedX = iAimedX;
+	pParams->iAimedY = iAimedY;
+}
 
 static void _init_menu_item (GtkWidget *pMenuItem)
 {
@@ -637,7 +700,7 @@ static void _init_menu_item (GtkWidget *pMenuItem)
 }
 
 
-static void _popup_menu (GtkWidget *menu, G_GNUC_UNUSED guint32 time)
+static void _popup_menu (GtkWidget *menu, guint32 time)
 {
 	GldiMenuParams *pParams = g_object_get_data (G_OBJECT(menu), "gldi-params");
 	g_return_if_fail (pParams != NULL);
@@ -663,57 +726,72 @@ static void _popup_menu (GtkWidget *menu, G_GNUC_UNUSED guint32 time)
 		_set_margin_position (menu, pParams);
 	}
 	
-	g_signal_connect (GTK_WIDGET (menu), "realize",
-		G_CALLBACK (_menu_realized_cb), pParams);
+	if (gldi_container_is_wayland_backend ())
+		g_signal_connect (GTK_WIDGET (menu), "realize",
+			G_CALLBACK (_menu_realized_cb), pParams);
+	
 	gtk_widget_show_all (GTK_WIDGET (menu));
 	
-	if (pContainer && pIcon)
+	if (gldi_container_is_wayland_backend ())
 	{
-		GdkRectangle rect;
-		rect.x = pIcon->fDrawX;
-		rect.y = pIcon->fDrawY;
-		rect.width = pIcon->fWidth * pIcon->fScale;
-		rect.height = pIcon->fHeight * pIcon->fScale;
-		
-		GdkGravity rect_anchor;
-		GdkGravity menu_anchor;
-		if (pContainer->bDirectionUp)
+		if (pContainer && pIcon)
 		{
-			if (pContainer->bIsHorizontal)
+			GdkRectangle rect;
+			rect.x = pIcon->fDrawX;
+			rect.y = pIcon->fDrawY;
+			rect.width = pIcon->fWidth * pIcon->fScale;
+			rect.height = pIcon->fHeight * pIcon->fScale;
+			
+			GdkGravity rect_anchor;
+			GdkGravity menu_anchor;
+			if (pContainer->bDirectionUp)
 			{
-				rect_anchor = GDK_GRAVITY_NORTH;
-				menu_anchor = GDK_GRAVITY_SOUTH;
-				pParams->iMarginPosition = 0;
+				if (pContainer->bIsHorizontal)
+				{
+					rect_anchor = GDK_GRAVITY_NORTH;
+					menu_anchor = GDK_GRAVITY_SOUTH;
+					pParams->iMarginPosition = 0;
+				}
+				else
+				{
+					rect_anchor = GDK_GRAVITY_EAST;
+					menu_anchor = GDK_GRAVITY_WEST;
+					pParams->iMarginPosition = 4;
+				}
 			}
 			else
 			{
-				rect_anchor = GDK_GRAVITY_EAST;
-				menu_anchor = GDK_GRAVITY_WEST;
-				pParams->iMarginPosition = 4;
+				if (pContainer->bIsHorizontal)
+				{
+					rect_anchor = GDK_GRAVITY_SOUTH;
+					menu_anchor = GDK_GRAVITY_NORTH;
+					pParams->iMarginPosition = 1;
+				}
+				else
+				{
+					rect_anchor = GDK_GRAVITY_WEST;
+					menu_anchor = GDK_GRAVITY_EAST;
+					pParams->iMarginPosition = 3;
+				}
 			}
+			
+			gtk_menu_popup_at_rect (GTK_MENU (menu), gtk_widget_get_window (pContainer->pWidget),
+				&rect, rect_anchor, menu_anchor, NULL);
 		}
 		else
 		{
-			if (pContainer->bIsHorizontal)
-			{
-				rect_anchor = GDK_GRAVITY_SOUTH;
-				menu_anchor = GDK_GRAVITY_NORTH;
-				pParams->iMarginPosition = 1;
-			}
-			else
-			{
-				rect_anchor = GDK_GRAVITY_WEST;
-				menu_anchor = GDK_GRAVITY_EAST;
-				pParams->iMarginPosition = 3;
-			}
+			gtk_menu_popup_at_pointer (GTK_MENU (menu), NULL);
 		}
-		
-		gtk_menu_popup_at_rect (GTK_MENU (menu), gtk_widget_get_window (pContainer->pWidget),
-			&rect, rect_anchor, menu_anchor, NULL);
 	}
 	else
 	{
-		gtk_menu_popup_at_pointer (GTK_MENU (menu), NULL);
+		gtk_menu_popup (GTK_MENU (menu),
+			NULL,
+			NULL,
+			pIcon != NULL && pContainer != NULL ? _place_menu_on_icon : NULL,
+			NULL,
+			0,
+			time);
 	}
 }
 static gboolean _popup_menu_delayed (GtkWidget *menu)

@@ -328,6 +328,12 @@ void gldi_container_set_layer (GldiContainer *pContainer, GldiContainerLayer iLa
 		s_backend.set_layer (pContainer, iLayer);
 }
 
+gboolean gldi_container_is_wayland_backend ()
+{
+	if (s_backend.is_wayland)
+		return s_backend.is_wayland ();
+	return FALSE;
+}
 
 void gldi_container_manager_register_backend (GldiContainerManagerBackend *pBackend)
 {

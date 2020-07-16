@@ -196,6 +196,7 @@ struct _GldiContainerManagerBackend {
 	void (*set_anchor) (GldiContainer *pContainer, CairoDockPositionType iScreenBorder);
 	/// Set on which layer should this container appear
 	void (*set_layer) (GldiContainer *pContainer, GldiContainerLayer iLayer);
+	gboolean (*is_wayland) ();
 };
 
 
@@ -291,6 +292,10 @@ void gldi_container_init_layer (GldiContainer *pContainer);
 void gldi_container_set_anchor (GldiContainer *pContainer, CairoDockPositionType iScreenBorder);
 /// Set on which layer should this container appear
 void gldi_container_set_layer (GldiContainer *pContainer, GldiContainerLayer iLayer);
+/// determine if the display server is Wayland; this can be used by e.g. positioning
+/// code that needs to work differently under Wayland; ideally, code that needs to
+/// depend on this could be moved to the backends, but for now, that seems too complicated
+gboolean gldi_container_is_wayland_backend ();
 
 void gldi_container_manager_register_backend (GldiContainerManagerBackend *pBackend);
 

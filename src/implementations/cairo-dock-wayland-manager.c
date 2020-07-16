@@ -266,6 +266,7 @@ void _layer_shell_init_for_window (GldiContainer *pContainer)
 }
 #endif
 
+static gboolean _is_wayland() { return TRUE; }
 
 static void init (void)
 {
@@ -284,18 +285,19 @@ static void init (void)
 	}
 	while (s_bInitializing);
 	
+	GldiContainerManagerBackend cmb;
+	memset (&cmb, 0, sizeof (GldiContainerManagerBackend));	
 #ifdef HAVE_GTK_LAYER_SHELL
 	if (s_bHave_Layer_Shell)
 	{
-		GldiContainerManagerBackend cmb;
-		memset (&cmb, 0, sizeof (GldiContainerManagerBackend));
 		cmb.reserve_space = _layer_shell_reserve_space;
 		cmb.set_anchor = _set_layer_shell_anchor;
 		cmb.set_layer = _set_layer_shell_layer;
 		cmb.init_layer = _layer_shell_init_for_window;
-		gldi_container_manager_register_backend (&cmb);
 	}
 #endif
+	cmb.is_wayland = _is_wayland;
+	gldi_container_manager_register_backend (&cmb);
 	
 	gldi_register_egl_backend ();
 }

@@ -1051,37 +1051,63 @@ void cairo_dock_show_subdock (Icon *pPointedIcon, CairoDock *pParentDock)
 	
 	if (pSubDock->container.bIsHorizontal)
 	{
-		gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
-			iNewWidth,
-			iNewHeight);
-		GdkRectangle rect;
-		rect.x = pPointedIcon->fDrawX;
-		rect.y = pPointedIcon->fDrawY;
-		rect.width = pPointedIcon->fWidth * pPointedIcon->fScale;
-		rect.height = pPointedIcon->fHeight * pPointedIcon->fScale;
-		gdk_window_move_to_rect (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
-			&rect, pParentDock->container.bDirectionUp ? GDK_GRAVITY_NORTH : GDK_GRAVITY_SOUTH,
-			pParentDock->container.bDirectionUp ? GDK_GRAVITY_SOUTH : GDK_GRAVITY_NORTH, GDK_ANCHOR_SLIDE, 0, 0);
+		if (gldi_container_is_wayland_backend ())
+		{
+			// wayland does not have abolute positionins -- move_to_rect() positions
+			// a child window relative to an area in the parent
+			gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
+				iNewWidth,
+				iNewHeight);
+			GdkRectangle rect;
+			rect.x = pPointedIcon->fDrawX;
+			rect.y = pPointedIcon->fDrawY;
+			rect.width = pPointedIcon->fWidth * pPointedIcon->fScale;
+			rect.height = pPointedIcon->fHeight * pPointedIcon->fScale;
+			gdk_window_move_to_rect (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
+				&rect, pParentDock->container.bDirectionUp ? GDK_GRAVITY_NORTH : GDK_GRAVITY_SOUTH,
+				pParentDock->container.bDirectionUp ? GDK_GRAVITY_SOUTH : GDK_GRAVITY_NORTH, GDK_ANCHOR_SLIDE, 0, 0);
+		}
+		else
+		{
+			gdk_window_move_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
+				iNewPositionX,
+				iNewPositionY,
+				iNewWidth,
+				iNewHeight);
+		}
 	}
 	else
 	{
-		gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
-			iNewHeight,
-			iNewWidth);
-		GdkRectangle rect;
-		rect.x = pPointedIcon->fDrawX;
-		rect.y = pPointedIcon->fDrawY;
-		rect.width = pPointedIcon->fWidth * pPointedIcon->fScale;
-		rect.height = pPointedIcon->fHeight * pPointedIcon->fScale;
-		gdk_window_move_to_rect (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
-			&rect, pParentDock->container.bDirectionUp ? GDK_GRAVITY_EAST : GDK_GRAVITY_WEST,
-			pParentDock->container.bDirectionUp ? GDK_GRAVITY_WEST : GDK_GRAVITY_EAST, GDK_ANCHOR_SLIDE, 0, 0);
+		if (gldi_container_is_wayland_backend ())
+		{
+			gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
+				iNewHeight,
+				iNewWidth);
+			GdkRectangle rect;
+			rect.x = pPointedIcon->fDrawX;
+			rect.y = pPointedIcon->fDrawY;
+			rect.width = pPointedIcon->fWidth * pPointedIcon->fScale;
+			rect.height = pPointedIcon->fHeight * pPointedIcon->fScale;
+			gdk_window_move_to_rect (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
+				&rect, pParentDock->container.bDirectionUp ? GDK_GRAVITY_EAST : GDK_GRAVITY_WEST,
+				pParentDock->container.bDirectionUp ? GDK_GRAVITY_WEST : GDK_GRAVITY_EAST, GDK_ANCHOR_SLIDE, 0, 0);
+		}
+		else
+		{
+			gdk_window_move_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
+				iNewPositionY,
+				iNewPositionX,
+				iNewHeight,
+				iNewWidth);
+		}
 		/* in this case, the sub-dock is over the label, so this one is drawn
 		 * with a low transparency, so we trigger the redraw.
 		 */
 		gtk_widget_queue_draw (pParentDock->container.pWidget);
 	}
 	
+	// note: when using gkt-layer-shell (the parent dock is layer surface),
+	// showing the window has to happen after (relative) positioning
 	gtk_window_present (GTK_WINDOW (pSubDock->container.pWidget));
 		
 	// animate it
