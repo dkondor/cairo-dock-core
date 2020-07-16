@@ -347,17 +347,33 @@ static void _set_margin_position (GtkWidget *pMenu, GldiMenuParams *pParams)
 	
 	// define where the menu will point
 	int iMarginPosition;  // b, t, r, l
-	int y0 = pContainer->iWindowPositionY + pIcon->fDrawY;
-	if (pContainer->bDirectionUp)
-		y0 += pIcon->fHeight * pIcon->fScale - pIcon->image.iHeight;  // the icon might not be maximised yet
-	int Hs = (pContainer->bIsHorizontal ? gldi_desktop_get_height() : gldi_desktop_get_width());
-	if (pContainer->bIsHorizontal)
+	if (gldi_container_is_wayland_backend ())
 	{
-		iMarginPosition = (y0 > Hs/2 ? 0 : 1);
+		if (pContainer->bIsHorizontal)
+		{
+			if (pContainer->bDirectionUp) iMarginPosition = 0;
+			else iMarginPosition = 1;
+		}
+		else
+		{
+			if (pContainer->bDirectionUp) iMarginPosition = 3;
+			else iMarginPosition = 2;
+		}
 	}
 	else
 	{
-		iMarginPosition = (y0 > Hs/2 ? 2 : 3);
+		int y0 = pContainer->iWindowPositionY + pIcon->fDrawY;
+		if (pContainer->bDirectionUp)
+			y0 += pIcon->fHeight * pIcon->fScale - pIcon->image.iHeight;  // the icon might not be maximised yet
+		int Hs = (pContainer->bIsHorizontal ? gldi_desktop_get_height() : gldi_desktop_get_width());
+		if (pContainer->bIsHorizontal)
+		{
+			iMarginPosition = (y0 > Hs/2 ? 0 : 1);
+		}
+		else
+		{
+			iMarginPosition = (y0 > Hs/2 ? 2 : 3);
+		}
 	}
 	
 	// store the result, and allocate some space to draw the arrow
@@ -744,35 +760,25 @@ static void _popup_menu (GtkWidget *menu, guint32 time)
 			
 			GdkGravity rect_anchor;
 			GdkGravity menu_anchor;
-			if (pContainer->bDirectionUp)
+			// note: this should have been set already
+			switch (pParams->iMarginPosition)
 			{
-				if (pContainer->bIsHorizontal)
-				{
+				case 0: // bottom
 					rect_anchor = GDK_GRAVITY_NORTH;
 					menu_anchor = GDK_GRAVITY_SOUTH;
-					pParams->iMarginPosition = 0;
-				}
-				else
-				{
-					rect_anchor = GDK_GRAVITY_EAST;
-					menu_anchor = GDK_GRAVITY_WEST;
-					pParams->iMarginPosition = 4;
-				}
-			}
-			else
-			{
-				if (pContainer->bIsHorizontal)
-				{
+					break;
+				case 1: // top
 					rect_anchor = GDK_GRAVITY_SOUTH;
 					menu_anchor = GDK_GRAVITY_NORTH;
-					pParams->iMarginPosition = 1;
-				}
-				else
-				{
+					break;
+				case 2: // right
 					rect_anchor = GDK_GRAVITY_WEST;
 					menu_anchor = GDK_GRAVITY_EAST;
-					pParams->iMarginPosition = 3;
-				}
+					break;
+				case 3: // left
+					rect_anchor = GDK_GRAVITY_EAST;
+					menu_anchor = GDK_GRAVITY_WEST;
+					break;
 			}
 			
 			gtk_menu_popup_at_rect (GTK_MENU (menu), gtk_widget_get_window (pContainer->pWidget),
