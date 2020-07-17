@@ -1094,13 +1094,13 @@ void cairo_dock_show_subdock (Icon *pPointedIcon, CairoDock *pParentDock)
 				iNewHeight,
 				iNewWidth);
 			GdkRectangle rect;
-			rect.x = pPointedIcon->fDrawX;
-			rect.y = pPointedIcon->fDrawY;
-			rect.width = pPointedIcon->fWidth * pPointedIcon->fScale;
-			rect.height = pPointedIcon->fHeight * pPointedIcon->fScale;
+			rect.x = pPointedIcon->fDrawY;
+			rect.y = pPointedIcon->fDrawX;
+			rect.width = pPointedIcon->fHeight * pPointedIcon->fScale;
+			rect.height = pPointedIcon->fWidth * pPointedIcon->fScale;
 			gdk_window_move_to_rect (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
-				&rect, pParentDock->container.bDirectionUp ? GDK_GRAVITY_EAST : GDK_GRAVITY_WEST,
-				pParentDock->container.bDirectionUp ? GDK_GRAVITY_WEST : GDK_GRAVITY_EAST, GDK_ANCHOR_SLIDE, 0, 0);
+				&rect, pParentDock->container.bDirectionUp ? GDK_GRAVITY_WEST : GDK_GRAVITY_EAST,
+				pParentDock->container.bDirectionUp ? GDK_GRAVITY_EAST : GDK_GRAVITY_WEST, GDK_ANCHOR_SLIDE, 0, 0);
 		}
 		else
 		{

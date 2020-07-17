@@ -364,8 +364,8 @@ static void _set_margin_position (GtkWidget *pMenu, GldiMenuParams *pParams)
 		}
 		else
 		{
-			if (pContainer->bDirectionUp) iMarginPosition = 3;
-			else iMarginPosition = 2;
+			if (pContainer->bDirectionUp) iMarginPosition = 2;
+			else iMarginPosition = 3;
 		}
 	}
 	else
@@ -618,11 +618,11 @@ static void _menu_realized_cb (GtkWidget *widget, gpointer user_data)
 		if (x0 < w / 2) pParams->iAimedX = x0;
 		else if (W - x0 < w / 2) pParams->iAimedX += w / 2 - (W - x0);
 	}
-	else 
+	else
 	{
-		int y0 = dockY + pIcon->fDrawY + pIcon->fHeight * pIcon->fScale / 2.0;
+		int y0 = dockY + pIcon->fDrawX + pIcon->fWidth * pIcon->fScale / 2.0;
 		if (y0 < h / 2) pParams->iAimedY = y0;
-		else if (H - y0 < h / 2) pParams->iAimedY += h / 2 + (H - y0);
+		else if (y0 > H - h / 2) pParams->iAimedY += y0 - (H - h / 2);
 	}
 	
 	gint menuX, menuY;
@@ -770,10 +770,10 @@ static void _popup_menu (GtkWidget *menu, guint32 time)
 		if (pContainer && pIcon)
 		{
 			GdkRectangle rect;
-			rect.x = pIcon->fDrawX;
-			rect.y = pIcon->fDrawY;
-			rect.width = pIcon->fWidth * pIcon->fScale;
-			rect.height = pIcon->fHeight * pIcon->fScale;
+			rect.x = pContainer->bIsHorizontal ? pIcon->fDrawX : pIcon->fDrawY;
+			rect.y = pContainer->bIsHorizontal ? pIcon->fDrawY : pIcon->fDrawX;
+			rect.width = (pContainer->bIsHorizontal ? pIcon->fWidth : pIcon->fHeight) * pIcon->fScale;
+			rect.height = (pContainer->bIsHorizontal ? pIcon->fHeight : pIcon->fWidth) * pIcon->fScale;
 			
 			GdkGravity rect_anchor;
 			GdkGravity menu_anchor;
@@ -788,11 +788,11 @@ static void _popup_menu (GtkWidget *menu, guint32 time)
 					rect_anchor = GDK_GRAVITY_SOUTH;
 					menu_anchor = GDK_GRAVITY_NORTH;
 					break;
-				case 2: // right
+				case 3: // right
 					rect_anchor = GDK_GRAVITY_WEST;
 					menu_anchor = GDK_GRAVITY_EAST;
 					break;
-				case 3: // left
+				case 2: // left
 					rect_anchor = GDK_GRAVITY_EAST;
 					menu_anchor = GDK_GRAVITY_WEST;
 					break;
