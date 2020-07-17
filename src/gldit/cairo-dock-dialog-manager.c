@@ -41,6 +41,10 @@
 #define _MANAGER_DEF_
 #include "cairo-dock-dialog-manager.h"
 
+#if (GTK_MAJOR_VERSION == 3 && GTK_MINOR_VERSION == 22)
+#include "gdk-move-to-rect-hack.h"
+#endif
+
 // public (manager, config, data)
 CairoDialogsParam myDialogsParam;
 GldiManager myDialogsMgr;
@@ -620,6 +624,48 @@ static void _set_dialog_orientation (CairoDialog *pDialog, GldiContainer *pConta
 	}
 }
 
+static void _dialog_calculate_rect (CairoDialog* pDialog, GdkRectangle* rect, GdkGravity* rect_anchor, GdkGravity* dialog_anchor)
+{
+	Icon* pPointedIcon = pDialog->pIcon;
+	GldiContainer *pContainer = (pPointedIcon ? cairo_dock_get_icon_container (pPointedIcon) : NULL);
+	if (! (pPointedIcon && pContainer) ) return;
+
+	if (pContainer->bIsHorizontal)
+	{
+		rect->x = pPointedIcon->fDrawX;
+		rect->y = pPointedIcon->fDrawY;
+		rect->width = pPointedIcon->fWidth * pPointedIcon->fScale;
+		rect->height = pPointedIcon->fHeight * pPointedIcon->fScale;
+		if (pContainer->bDirectionUp)
+		{
+			*rect_anchor = GDK_GRAVITY_NORTH;
+			*dialog_anchor = GDK_GRAVITY_SOUTH;
+		}
+		else
+		{
+			*rect_anchor = GDK_GRAVITY_SOUTH;
+			*dialog_anchor = GDK_GRAVITY_NORTH;
+		}
+	}
+	else
+	{
+		rect->x = pPointedIcon->fDrawY;
+		rect->y = pPointedIcon->fDrawX;
+		rect->width = pPointedIcon->fHeight * pPointedIcon->fScale;
+		rect->height = pPointedIcon->fWidth * pPointedIcon->fScale;
+		if (pContainer->bDirectionUp)
+		{
+			*rect_anchor = GDK_GRAVITY_WEST;
+			*dialog_anchor = GDK_GRAVITY_EAST;
+		}
+		else
+		{
+			*rect_anchor = GDK_GRAVITY_EAST;
+			*dialog_anchor = GDK_GRAVITY_WEST;
+		}
+	}
+}
+
 static void _place_dialog (CairoDialog *pDialog, GldiContainer *pContainer)
 {
 	//g_print ("%s (%x;%d, %s)\n", __func__, pDialog->pIcon, pContainer, pDialog->pIcon?pDialog->pIcon->cParentDockName:"none");
@@ -673,9 +719,25 @@ static void _place_dialog (CairoDialog *pDialog, GldiContainer *pContainer)
 	pDialog->bPositionForced = FALSE;
 	///gtk_window_set_gravity (GTK_WINDOW (pDialog->container.pWidget), iGravity);
 	//g_print (" => move to (%d;%d) %dx%d\n", pDialog->iComputedPositionX, pDialog->iComputedPositionY, pDialog->iComputedWidth, pDialog->iComputedHeight);
-	gtk_window_move (GTK_WINDOW (pDialog->container.pWidget),
-		pDialog->iComputedPositionX,
-		pDialog->iComputedPositionY);
+	if (gldi_container_is_wayland_backend ())
+	{
+		Icon* pPointedIcon = pDialog->pIcon;
+		if (pPointedIcon && pContainer)
+		{
+			GdkWindow* gdk_window = gldi_container_get_gdk_window (CAIRO_CONTAINER (pDialog));
+			GdkRectangle rect;
+			GdkGravity rect_anchor, dialog_anchor;
+			_dialog_calculate_rect (pDialog, &rect, &rect_anchor, &dialog_anchor);
+			gdk_window_move_to_rect (gdk_window, &rect,
+				rect_anchor, dialog_anchor, GDK_ANCHOR_SLIDE, 0, 0);
+		}
+	}
+	else
+	{
+		gtk_window_move (GTK_WINDOW (pDialog->container.pWidget),
+			pDialog->iComputedPositionX,
+			pDialog->iComputedPositionY);
+	}
 }
 
 void _refresh_all_dialogs (gboolean bReplace)
@@ -1052,6 +1114,10 @@ static void init_object (GldiObject *obj, gpointer attr)
 	pDialog->pIcon = pAttribute->pIcon;
 	_set_dialog_orientation (pDialog, pAttribute->pContainer);  // renseigne aussi bDirectionUp, bIsHorizontal, et iHeight.
 	
+	// set parent
+	gtk_window_set_transient_for (GTK_WINDOW (pDialog->container.pWidget), GTK_WINDOW (pAttribute->pContainer->pWidget));
+	gldi_container_init_layer (&(pDialog->container));
+	
 	gldi_dialog_init_internals (pDialog, pAttribute);
 	
 	//\________________ Interactive dialogs are set modal, to be fixed.
@@ -1077,8 +1143,12 @@ static void init_object (GldiObject *obj, gpointer attr)
 	if (pDialog->iNbButtons != 0 && (s_pButtonOkSurface == NULL || s_pButtonCancelSurface == NULL))
 		_load_dialog_buttons (myDialogsParam.cButtonOkImage, myDialogsParam.cButtonCancelImage);
 	
+	// hack-ish solution: on Wayland, we need to hide and re-show the dialog for _place_dialog() to work
+	if (gldi_container_is_wayland_backend ()) gtk_widget_hide (pDialog->container.pWidget);
+	
 	//\________________ on le place parmi les autres.
 	_place_dialog (pDialog, pContainer);  // renseigne aussi bDirectionUp, bIsHorizontal, et iHeight.
+	if (gldi_container_is_wayland_backend ()) gtk_widget_show_all (pDialog->container.pWidget);
 	
 	//\________________ On connecte les signaux utiles.
 	g_signal_connect (G_OBJECT (pDialog->container.pWidget),
