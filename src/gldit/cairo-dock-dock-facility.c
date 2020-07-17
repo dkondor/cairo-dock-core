@@ -1047,11 +1047,21 @@ void cairo_dock_show_subdock (Icon *pPointedIcon, CairoDock *pParentDock)
 	int iNewWidth = pSubDock->iMaxDockWidth;
 	int iNewHeight = pSubDock->iMaxDockHeight;
 	int iNewPositionX, iNewPositionY;
-	cairo_dock_get_window_position_at_balance (pSubDock, iNewWidth, iNewHeight, &iNewPositionX, &iNewPositionY);
+	
+	// new positioning code should work on both X11 and Wayland, but, by default, it is used
+	// only on Wayland, unless it is specifically requested in the cmake configuration
+	gboolean use_new_positioning = FALSE;
+	#if (CAIRO_DOCK_USE_NEW_POSITIONING_ON_X11 == 1)
+		use_new_positioning = TRUE;
+	#else
+		use_new_positioning = gldi_container_is_wayland_backend ();
+	#endif
+	if (!use_new_positioning) cairo_dock_get_window_position_at_balance (
+			pSubDock, iNewWidth, iNewHeight, &iNewPositionX, &iNewPositionY);
 	
 	if (pSubDock->container.bIsHorizontal)
 	{
-		if (gldi_container_is_wayland_backend ())
+		if (use_new_positioning)
 		{
 			// wayland does not have abolute positionins -- move_to_rect() positions
 			// a child window relative to an area in the parent
@@ -1078,7 +1088,7 @@ void cairo_dock_show_subdock (Icon *pPointedIcon, CairoDock *pParentDock)
 	}
 	else
 	{
-		if (gldi_container_is_wayland_backend ())
+		if (use_new_positioning)
 		{
 			gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
 				iNewHeight,

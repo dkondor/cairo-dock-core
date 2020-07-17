@@ -347,7 +347,15 @@ static void _set_margin_position (GtkWidget *pMenu, GldiMenuParams *pParams)
 	
 	// define where the menu will point
 	int iMarginPosition;  // b, t, r, l
-	if (gldi_container_is_wayland_backend ())
+	// new positioning code should work on both X11 and Wayland, but, by default, it is used
+	// only on Wayland, unless it is specifically requested in the cmake configuration
+	gboolean use_new_positioning = FALSE;
+	#if (CAIRO_DOCK_USE_NEW_POSITIONING_ON_X11 == 1)
+		use_new_positioning = TRUE;
+	#else
+		use_new_positioning = gldi_container_is_wayland_backend ();
+	#endif
+	if (use_new_positioning)
 	{
 		if (pContainer->bIsHorizontal)
 		{
@@ -742,13 +750,22 @@ static void _popup_menu (GtkWidget *menu, guint32 time)
 		_set_margin_position (menu, pParams);
 	}
 	
-	if (gldi_container_is_wayland_backend ())
+	// new positioning code should work on both X11 and Wayland, but, by default, it is used
+	// only on Wayland, unless it is specifically requested in the cmake configuration
+	gboolean use_new_positioning = FALSE;
+	#if (CAIRO_DOCK_USE_NEW_POSITIONING_ON_X11 == 1)
+		use_new_positioning = TRUE;
+	#else
+		use_new_positioning = gldi_container_is_wayland_backend ();
+	#endif
+	
+	if (use_new_positioning)
 		g_signal_connect (GTK_WIDGET (menu), "realize",
 			G_CALLBACK (_menu_realized_cb), pParams);
 	
 	gtk_widget_show_all (GTK_WIDGET (menu));
 	
-	if (gldi_container_is_wayland_backend ())
+	if (use_new_positioning)
 	{
 		if (pContainer && pIcon)
 		{
