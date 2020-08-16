@@ -604,7 +604,7 @@ CairoDialog *gldi_dialog_show (const gchar *cText, Icon *pIcon, GldiContainer *p
 		attr.cButtonsImage = cDefaultActionButtons;
 	attr.pIcon = pIcon;
 	attr.pContainer = pContainer;
-	attr.cattr.bIsPopup = TRUE;
+	attr.cattr.bIsPopup = FALSE;
 	
 	return gldi_dialog_new (&attr);
 }
