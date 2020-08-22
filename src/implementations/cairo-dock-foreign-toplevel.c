@@ -26,6 +26,7 @@
 #include <gdk/gdkwayland.h>
 #include "wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
 #include "cairo-dock-windows-manager.h"
+#include "cairo-dock-desktop-manager.h"
 #define _MANAGER_DEF_
 #include "cairo-dock-X-manager.h"
 #include "cairo-dock-utils.h"
@@ -221,7 +222,9 @@ static void _new_toplevel ( G_GNUC_UNUSED void *data, G_GNUC_UNUSED struct zwlr_
 	actor->bIsMaximized = bIsMaximized;
 	actor->bIsFullScreen = bIsFullScreen;
 	actor->bDemandsAttention = bDemandsAttention;
-	// hack required for minimize on click to work -- it messes up hiding the dock though
+	// hack required for minimize on click to work -- "pretend" that the window is in the middle of the screen
+	actor->windowGeometry.x = cairo_dock_get_screen_width (0) / 2;
+	actor->windowGeometry.y = cairo_dock_get_screen_height (0) / 2;
 	actor->windowGeometry.width = 1;
 	actor->windowGeometry.height = 1;
 	
@@ -244,22 +247,11 @@ static struct zwlr_foreign_toplevel_manager_v1_listener gldi_toplevel_manager = 
 
 static struct zwlr_foreign_toplevel_manager_v1* s_ptoplevel_manager = NULL;
 
-gboolean gldi_zwlr_foreign_toplevel_manager_try_bind (struct wl_registry *registry, uint32_t id, const char *interface, uint32_t version)
-{
-	if (!strcmp(interface, zwlr_foreign_toplevel_manager_v1_interface.name))
-    {
-		if (version > 1u) version = 1u;
-        s_ptoplevel_manager = wl_registry_bind (registry, id, &zwlr_foreign_toplevel_manager_v1_interface, version);
-		if (s_ptoplevel_manager) return TRUE;
-		else cd_message ("Could not bind foreign-toplevel-manager!");
-    }
-    return FALSE;
-}
-
-void gldi_zwlr_foreign_toplevel_manager_init ()
+static void gldi_zwlr_foreign_toplevel_manager_init ()
 {
 	if (!s_ptoplevel_manager) return;
 	
+	zwlr_foreign_toplevel_manager_v1_add_listener(s_ptoplevel_manager, &gldi_toplevel_manager, NULL);
 	// register window manager
 	GldiWindowManagerBackend wmb;
 	memset (&wmb, 0, sizeof (GldiWindowManagerBackend));
@@ -302,7 +294,22 @@ void gldi_zwlr_foreign_toplevel_manager_init ()
 	// parent object
 	gldi_object_set_manager (GLDI_OBJECT (&myWFTObjectMgr), &myWindowObjectMgr);
 	
-	zwlr_foreign_toplevel_manager_v1_add_listener(s_ptoplevel_manager, &gldi_toplevel_manager, NULL);
+}
+
+gboolean gldi_zwlr_foreign_toplevel_manager_try_bind (struct wl_registry *registry, uint32_t id, const char *interface, uint32_t version)
+{
+	if (!strcmp(interface, zwlr_foreign_toplevel_manager_v1_interface.name))
+    {
+		if (version > 1u) version = 1u;
+        s_ptoplevel_manager = wl_registry_bind (registry, id, &zwlr_foreign_toplevel_manager_v1_interface, version);
+		if (s_ptoplevel_manager)
+		{
+			gldi_zwlr_foreign_toplevel_manager_init ();
+			return TRUE;
+		}
+		else cd_message ("Could not bind foreign-toplevel-manager!");
+    }
+    return FALSE;
 }
 
 
