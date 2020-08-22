@@ -867,6 +867,10 @@ double cairo_dock_get_current_dock_width_linear (CairoDock *pDock)
 
 void cairo_dock_check_if_mouse_inside_linear (CairoDock *pDock)
 {
+	/// no global mouse position on Wayland, this is managed by the
+	/// leave / enter notification
+	if (gldi_container_is_wayland_backend ()) return;
+
 	CairoDockMousePositionType iMousePositionType;
 	int iWidth = pDock->container.iWidth;
 	///int iHeight = (pDock->fMagnitudeMax != 0 ? pDock->container.iHeight : pDock->iMinDockHeight);
