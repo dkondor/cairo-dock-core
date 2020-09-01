@@ -464,11 +464,13 @@ static gboolean _move_resize_dock (CairoDock *pDock)
 
 	if (pDock->container.bIsHorizontal)
 	{
-		gdk_window_move_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock)),
-			iNewPositionX,
-			iNewPositionY,
-			iNewWidth,
-			iNewHeight);
+		if (gldi_container_is_wayland_backend ())
+			gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock)), iNewWidth, iNewHeight);
+		else gdk_window_move_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock)),
+				iNewPositionX,
+				iNewPositionY,
+				iNewWidth,
+				iNewHeight);
 		/* When we have two gdk_window_move_resize in a row, Compiz will
 		 * disturbed and it will block the draw of the dock. It seems Compiz
 		 * sends too much 'configure' compare to Metacity. 
@@ -476,11 +478,13 @@ static gboolean _move_resize_dock (CairoDock *pDock)
 	}
 	else
 	{
-		gdk_window_move_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock)),
-			iNewPositionY,
-			iNewPositionX,
-			iNewHeight,
-			iNewWidth);
+		if (gldi_container_is_wayland_backend ())
+			gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock)), iNewHeight, iNewWidth);
+		else gdk_window_move_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock)),
+				iNewPositionY,
+				iNewPositionX,
+				iNewHeight,
+				iNewWidth);		
 	}
 	pDock->iSidMoveResize = 0;
 	return FALSE;
