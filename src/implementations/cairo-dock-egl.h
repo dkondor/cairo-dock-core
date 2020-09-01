@@ -39,5 +39,7 @@ EGLDisplay* egl_get_display_wayland(GdkDisplay* dsp);
 void egl_init_surface_X11 (GldiContainer *pContainer, EGLDisplay* dpy, EGLConfig conf);
 void egl_init_surface_wayland (GldiContainer *pContainer, EGLDisplay* dpy, EGLConfig conf);
 
+void egl_window_resize_wayland (GldiContainer* pContainer, int iWidth, int iHeight);
+
 G_END_DECLS
 #endif

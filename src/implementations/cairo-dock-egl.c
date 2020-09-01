@@ -30,6 +30,7 @@ static gboolean s_eglX11 = FALSE;
 #endif
 #ifdef HAVE_WAYLAND
 #include <gdk/gdkwayland.h>
+#include <wayland-egl.h>
 static gboolean s_eglWayland = FALSE;
 #endif
 
@@ -240,6 +241,13 @@ static void _container_finish (GldiContainer *pContainer)
 		eglDestroySurface (dpy, pContainer->eglSurface);
 		pContainer->eglSurface = 0;
 	}
+	#ifdef HAVE_WAYLAND
+	if (pContainer->eglwindow)
+	{
+		wl_egl_window_destroy (pContainer->eglwindow);
+		pContainer->eglwindow = NULL;
+	}
+	#endif
 }
 
 void gldi_register_egl_backend (void)
@@ -255,6 +263,7 @@ void gldi_register_egl_backend (void)
 	gmb.container_end_draw = _container_end_draw;
 	gmb.container_init = _container_init;
 	gmb.container_finish = _container_finish;
+	if (s_eglWayland) gmb.container_resized = egl_window_resize_wayland;
 	gldi_gl_manager_register_backend (&gmb);
 }
 

@@ -27,6 +27,9 @@
 #endif
 #ifdef HAVE_EGL
 #include <EGL/egl.h>  // EGLContext, EGLSurface
+#ifdef HAVE_WAYLAND
+#include <wayland-egl.h> // wl_egl_window
+#endif
 #endif
 #include "cairo-dock-struct.h"
 #include "cairo-dock-manager.h"
@@ -163,7 +166,14 @@ struct _GldiContainer {
 	GldiContainerInterface iface;
 	
 	gboolean bIgnoreNextReleaseEvent;
-	gpointer reserved[4];
+	
+	#if defined(HAVE_EGL) && defined(HAVE_WAYLAND)
+	struct wl_egl_window* eglwindow;
+	#else
+	void* unused2;
+	#endif
+	
+	gpointer reserved[3];
 };
 
 
