@@ -20,6 +20,9 @@
 #ifndef __CAIRO_DOCK_EGL__
 #define  __CAIRO_DOCK_EGL__
 
+#include <gdk/gdk.h>
+#include <gtk/gtk.h>
+
 #include "cairo-dock-struct.h"
 G_BEGIN_DECLS
 
@@ -29,6 +32,12 @@ G_BEGIN_DECLS
 
 void gldi_register_egl_backend (void);
 
+/* backend-specific code to get the proper EGLDisplay */
+EGLDisplay* egl_get_display_x11(GdkDisplay* dsp);
+EGLDisplay* egl_get_display_wayland(GdkDisplay* dsp);
+
+void egl_init_surface_X11 (GldiContainer *pContainer, EGLDisplay* dpy, EGLConfig conf);
+void egl_init_surface_wayland (GldiContainer *pContainer, EGLDisplay* dpy, EGLConfig conf);
 
 G_END_DECLS
 #endif

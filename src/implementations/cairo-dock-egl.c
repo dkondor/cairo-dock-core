@@ -22,14 +22,21 @@
 
 #include <EGL/egl.h>
 
+#include <gdk/gdk.h>
+
 #ifdef HAVE_X11
 #include <gdk/gdkx.h>  // GDK_WINDOW_XID
-#define _gldi_container_get_Xid(pContainer) GDK_WINDOW_XID (gldi_container_get_gdk_window(pContainer))
+static gboolean s_eglX11 = FALSE;
+#endif
+#ifdef HAVE_WAYLAND
+#include <gdk/gdkwayland.h>
+static gboolean s_eglWayland = FALSE;
 #endif
 
 #include "cairo-dock-log.h"
 #include "cairo-dock-utils.h"  // cairo_dock_string_contains
 #include "cairo-dock-opengl.h"
+#include "cairo-dock-egl.h"
 
 // dependencies
 extern CairoDockGLConfig g_openglConfig;
@@ -47,16 +54,42 @@ static gboolean _check_client_egl_extension (const char *extName)
 	return cairo_dock_string_contains (eglExtensions, extName, " ");
 }
 
+static void _check_backend ()
+{
+	GdkDisplay *dsp = gdk_display_get_default ();  // let's GDK do the guess
+#ifdef HAVE_WAYLAND
+#ifdef GDK_WINDOWING_WAYLAND
+	if (GDK_IS_WAYLAND_DISPLAY(dsp))
+		s_eglWayland = TRUE;
+#endif
+#endif
+#ifdef HAVE_X11
+#ifdef GDK_WINDOWING_X11
+	if (GDK_IS_X11_DISPLAY(dsp))
+		s_eglX11 = TRUE;
+#endif
+#endif
+}
+
 static gboolean _initialize_opengl_backend (gboolean bForceOpenGL)
 {
 	gboolean bStencilBufferAvailable = TRUE, bAlphaAvailable = TRUE;
 	
 	// open a connection (= Display) to the graphic server
-	EGLNativeDisplayType display_id = EGL_DEFAULT_DISPLAY;  // XDisplay*, wl_display*, etc; Note: we could pass our X Display instead of making a new connection...
-	EGLDisplay *dpy = s_eglDisplay = eglGetDisplay (display_id);
+	// EGLNativeDisplayType display_id = EGL_DEFAULT_DISPLAY;  // XDisplay*, wl_display*, etc; Note: we could pass our X Display instead of making a new connection...
+	EGLDisplay *dpy = NULL;
+	GdkDisplay *dsp = gdk_display_get_default ();  // let's GDK do the guess
+#ifdef HAVE_WAYLAND
+	if (s_eglWayland)
+		dpy = s_eglDisplay = egl_get_display_wayland(dsp);
+#endif
+#ifdef HAVE_X11
+	if (s_eglX11)
+		dpy = s_eglDisplay = egl_get_display_x11(dsp);
+#endif
 	
 	int major, minor;
-	if (! eglInitialize (dpy, &major, &minor))
+	if (! (dpy && eglInitialize (dpy, &major, &minor)))
 	{
 		cd_warning ("Can't initialise EGL display, OpenGL will not be available");
 		return FALSE;
@@ -164,13 +197,10 @@ static void _init_surface (G_GNUC_UNUSED GtkWidget *pWidget, GldiContainer *pCon
 {
 	// create an EGL surface for this window
 	EGLDisplay *dpy = s_eglDisplay;
-	EGLNativeWindowType native_window=0; // Window, wl_egl_window*, etc
-	#ifdef HAVE_X11
-	native_window = _gldi_container_get_Xid (pContainer);
-	#endif
-	pContainer->eglSurface = eglCreateWindowSurface (dpy, s_eglConfig, native_window, NULL);
-	
+	if (s_eglX11) egl_init_surface_X11 (pContainer, dpy, s_eglConfig);
+	if (s_eglWayland) egl_init_surface_wayland (pContainer, dpy, s_eglConfig);
 }
+
 static void _container_init (GldiContainer *pContainer)
 {
 	cairo_dock_set_default_rgba_visual (pContainer->pWidget);
@@ -214,6 +244,9 @@ static void _container_finish (GldiContainer *pContainer)
 
 void gldi_register_egl_backend (void)
 {
+	// this fills out s_eglX11 and e_eglWayland values used in
+	// _initialize_opengl_backend() and _container_init
+	_check_backend ();
 	GldiGLManagerBackend gmb;
 	memset (&gmb, 0, sizeof (GldiGLManagerBackend));
 	gmb.init = _initialize_opengl_backend;
