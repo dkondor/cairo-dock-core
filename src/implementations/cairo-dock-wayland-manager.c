@@ -49,6 +49,8 @@
 #include <gtk-layer-shell.h>
 static gboolean s_bHave_Layer_Shell = FALSE;
 
+gboolean g_bDisableLayerShell = FALSE;
+
 #if (GTK_MAJOR_VERSION == 3 && GTK_MINOR_VERSION == 22)
 #include "gdk-move-to-rect-hack.h"
 #endif
@@ -167,7 +169,8 @@ static void _registry_global_cb (G_GNUC_UNUSED void *data, struct wl_registry *r
 #ifdef HAVE_GTK_LAYER_SHELL
 	else if (!strcmp (interface, "zwlr_layer_shell_v1"))
 	{
-		s_bHave_Layer_Shell = TRUE;
+		if (!g_bDisableLayerShell)
+			s_bHave_Layer_Shell = TRUE;
 	}
 #endif
 	s_bInitializing = TRUE;

@@ -98,6 +98,10 @@ extern CairoDockGLConfig g_openglConfig;
 extern gboolean g_bUseOpenGL;
 extern gboolean g_bEasterEggs;
 
+#ifdef HAVE_GTK_LAYER_SHELL
+extern gboolean g_bDisableLayerShell;
+#endif
+
 extern GldiModuleInstance *g_pCurrentModule;
 extern GtkWidget *cairo_dock_build_simple_gui_window (void);
 
@@ -420,6 +424,11 @@ int main (int argc, char** argv)
 		{"x11", 'X', G_OPTION_FLAG_IN_MAIN, G_OPTION_ARG_NONE,
 			&g_bForceX11,
 			_("Force using the X11 backend (disable any Wayland functionality)."), NULL},
+#ifdef HAVE_GTK_LAYER_SHELL
+		{"no-layer-shell", 0, G_OPTION_FLAG_IN_MAIN, G_OPTION_ARG_NONE,
+			&g_bDisableLayerShell,
+			_("For debugging purpose only. Disable gtk-layer-shell support."), NULL},
+#endif
 		{NULL, 0, 0, 0,
 			NULL,
 			NULL, NULL}
