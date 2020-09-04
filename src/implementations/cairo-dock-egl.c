@@ -202,6 +202,22 @@ static void _init_surface (G_GNUC_UNUSED GtkWidget *pWidget, GldiContainer *pCon
 	if (s_eglWayland) egl_init_surface_wayland (pContainer, dpy, s_eglConfig);
 }
 
+static void _destroy_surface (G_GNUC_UNUSED GtkWidget* pWidget, GldiContainer *pContainer) {
+	EGLDisplay *dpy = s_eglDisplay;
+	if (pContainer->eglSurface != 0)
+	{
+		eglDestroySurface (dpy, pContainer->eglSurface);
+		pContainer->eglSurface = 0;
+	}
+	#ifdef HAVE_WAYLAND
+	if (pContainer->eglwindow)
+	{
+		wl_egl_window_destroy (pContainer->eglwindow);
+		pContainer->eglwindow = NULL;
+	}
+	#endif
+}
+
 static void _container_init (GldiContainer *pContainer)
 {
 	cairo_dock_set_default_rgba_visual (pContainer->pWidget);
@@ -214,10 +230,23 @@ static void _container_init (GldiContainer *pContainer)
 	// handle the double buffer manually.
 	gtk_widget_set_double_buffered (pContainer->pWidget, FALSE);
 	
-	g_signal_connect (G_OBJECT (pContainer->pWidget),
-		"realize",
-		G_CALLBACK (_init_surface),
-		pContainer);
+	if (s_eglX11)
+		g_signal_connect (G_OBJECT (pContainer->pWidget),
+			"realize",
+			G_CALLBACK (_init_surface),
+			pContainer);
+	/// Note: on Wayland, we have to re-init the EGL surface each time the container's window is mapped
+	if (s_eglWayland)
+	{
+		g_signal_connect (G_OBJECT (pContainer->pWidget),
+			"map",
+			G_CALLBACK (_init_surface),
+			pContainer);
+		g_signal_connect (G_OBJECT (pContainer->pWidget),
+			"unmap",
+			G_CALLBACK (_destroy_surface),
+			pContainer);
+	}
 }
 
 static void _container_finish (GldiContainer *pContainer)
@@ -236,18 +265,7 @@ static void _container_finish (GldiContainer *pContainer)
 		eglDestroyContext (dpy, pContainer->glContext);
 		pContainer->glContext = 0;
 	}
-	if (pContainer->eglSurface != 0)
-	{
-		eglDestroySurface (dpy, pContainer->eglSurface);
-		pContainer->eglSurface = 0;
-	}
-	#ifdef HAVE_WAYLAND
-	if (pContainer->eglwindow)
-	{
-		wl_egl_window_destroy (pContainer->eglwindow);
-		pContainer->eglwindow = NULL;
-	}
-	#endif
+	_destroy_surface (NULL, pContainer);
 }
 
 void gldi_register_egl_backend (void)
