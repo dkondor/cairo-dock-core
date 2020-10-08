@@ -140,6 +140,11 @@ static void _set_thumbnail_area (GldiWindowActor *actor, GtkWidget* pContainerWi
 }
 
 
+// extra callback for when a new app is activated
+// this is useful for e.g. interactively selecting a window
+void (*s_activated_callback)(GldiWFTWindowActor* wactor, void* data) = NULL;
+void* s_activated_callback_data = NULL;
+
 
 // callbacks 
 static void _gldi_toplevel_title_cb (void *data, G_GNUC_UNUSED wfthandle *handle, const char *title)
@@ -207,6 +212,7 @@ static void _gldi_toplevel_state_cb (void *data, G_GNUC_UNUSED wfthandle *handle
 		{
 			s_pActiveWindow = actor;
 			gldi_object_notify (&myWindowObjectMgr, NOTIFICATION_WINDOW_ACTIVATED, actor);
+			if (s_activated_callback) s_activated_callback(wactor, s_activated_callback_data);
 		}
 		else if (wactor->init_done && wactor->parent)
 		{
@@ -220,6 +226,7 @@ static void _gldi_toplevel_state_cb (void *data, G_GNUC_UNUSED wfthandle *handle
 			{
 				s_pActiveWindow = pactor;
 				gldi_object_notify (&myWindowObjectMgr, NOTIFICATION_WINDOW_ACTIVATED, pactor);
+				if (s_activated_callback) s_activated_callback(pwactor, s_activated_callback_data);
 			}
 		}
 	}
@@ -348,13 +355,45 @@ static void _toplevel_manager_finished ( G_GNUC_UNUSED void *data, G_GNUC_UNUSED
 }
 
 
-
 static struct zwlr_foreign_toplevel_manager_v1_listener gldi_toplevel_manager = {
     .toplevel = _new_toplevel,
     .finished = _toplevel_manager_finished,
 };
 
 static struct zwlr_foreign_toplevel_manager_v1* s_ptoplevel_manager = NULL;
+
+
+// ask the user to pick a window
+struct wft_pick_window_response {
+	GldiWFTWindowActor* wactor;
+	GtkDialog* dialog;
+};
+
+static void _pick_window_cb(GldiWFTWindowActor* wactor, void* data)
+{
+	struct wft_pick_window_response* res = (struct wft_pick_window_response*)data;
+	res->wactor = wactor;
+	gtk_dialog_response(res->dialog, 0);
+}
+
+static GldiWindowActor* _pick_window()
+{
+	struct wft_pick_window_response res;
+	GtkWidget* dialog = gtk_message_dialog_new(NULL,
+		GTK_DIALOG_MODAL, GTK_MESSAGE_INFO, GTK_BUTTONS_CANCEL,
+		_("Select an open window by clicking on it or choosing it from the taskbar"));
+	s_activated_callback = _pick_window_cb;
+	s_activated_callback_data = &res;
+	res.dialog = GTK_DIALOG(dialog);
+	res.wactor = NULL;
+	gtk_dialog_run(GTK_DIALOG(dialog));
+	s_activated_callback = NULL;
+	s_activated_callback_data = NULL;
+	gtk_widget_destroy(dialog);
+	return (GldiWindowActor*)res.wactor;
+}
+
+
 
 static void gldi_zwlr_foreign_toplevel_manager_init ()
 {
@@ -386,7 +425,7 @@ static void gldi_zwlr_foreign_toplevel_manager_init ()
 	// wmb.set_sticky = _set_sticky;
 	wmb.can_minimize_maximize_close = _can_minimize_maximize_close;
 	// wmb.get_id = _get_id;
-	// wmb.pick_window = _pick_window;
+	wmb.pick_window = _pick_window;
 	gldi_windows_manager_register_backend (&wmb);
 	
 	
