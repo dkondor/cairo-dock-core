@@ -103,6 +103,7 @@ pkg_check_modules ("PACKAGE" REQUIRED "${packages_required_semicolon}")
 
 # check for EGL
 set (with_egl no)  # although EGL can be used with X (replacing GLX), it requires drivers that support DRI2, so most of the time GLX works better; so it's disabled by default for now; later, it will be required for Wayland, and we'll have to decide whether we compile with both, or whether we load one of them as a plug-in at run-time. It may depend on EGL having been built to support a given graphic target.
+enable_if_not_defined (enable-egl-support) # enabled by default
 if (enable-egl-support)
 	pkg_check_modules ("EGL" "egl")
 	if (EGL_FOUND)
@@ -203,6 +204,7 @@ endif()
 
 # check for gtk-layer-shell
 set (with_gtk_layer_shell no)
+enable_if_not_defined (enable-gtk-layer-shell) # enabled by default
 if (enable-gtk-layer-shell)
 	if (HAVE_WAYLAND)
 		pkg_check_modules ("GTKLAYERSHELL" "gtk-layer-shell-0")
