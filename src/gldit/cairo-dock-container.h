@@ -206,7 +206,10 @@ struct _GldiContainerManagerBackend {
 	void (*set_anchor) (GldiContainer *pContainer, CairoDockPositionType iScreenBorder);
 	/// Set on which layer should this container appear
 	void (*set_layer) (GldiContainer *pContainer, GldiContainerLayer iLayer);
+	/// return if we are running on Wayland (should not be necessary, code that depends on it should be moved to the backend instead)
 	gboolean (*is_wayland) ();
+	/// set input shape on a window (Wayland + EGL needs special treatment)
+	void (*set_input_shape) (GldiContainer *pContainer, cairo_region_t *pShape);
 };
 
 
@@ -373,8 +376,7 @@ GtkWidget *gldi_container_build_menu (GldiContainer *pContainer, Icon *icon);
 cairo_region_t *gldi_container_create_input_shape (GldiContainer *pContainer, int x, int y, int w, int h);
 
 // Note: if gdkwindow->shape == NULL, setting a NULL shape will do nothing
-#define gldi_container_set_input_shape(pContainer, pShape) \
-gtk_widget_input_shape_combine_region ((pContainer)->pWidget, pShape)
+void gldi_container_set_input_shape(GldiContainer *pContainer, cairo_region_t *pShape);
 
 
 void gldi_register_containers_manager (void);

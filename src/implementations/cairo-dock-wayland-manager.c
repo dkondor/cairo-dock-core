@@ -67,6 +67,7 @@ extern GldiContainer *g_pPrimaryContainer;
 
 // private
 static struct wl_display *s_pDisplay = NULL;
+static struct wl_compositor* s_pCompositor = NULL;
 
 // signals
 typedef enum {
@@ -155,6 +156,10 @@ static void _registry_global_cb (G_GNUC_UNUSED void *data, struct wl_registry *r
 	else if (gldi_zwlr_foreign_toplevel_manager_try_bind (registry, id, interface, version))
 	{
 		cd_debug("Found foreign-toplevel-manager");
+	}
+	else if (!strcmp (interface, wl_compositor_interface.name))
+	{
+		s_pCompositor = wl_registry_bind(registry, id, &wl_compositor_interface, 1);
 	}
 	else if (!strcmp (interface, "wl_output"))  // global object "wl_output" is now available, create a proxy for it
 	{
@@ -276,6 +281,47 @@ void _layer_shell_init_for_window (GldiContainer *pContainer)
 
 static gboolean _is_wayland() { return TRUE; }
 
+// Set the input shape directly for the container's wl_surface.
+// This is necessary for some reason on Wayland + EGL.
+// Note: gtk_widget_input_shape_combine_region() is already called
+// in cairo-dock-container.c, we only need to deal with the
+// Wayland-specific stuff here
+static void _set_input_shape(GldiContainer *pContainer, cairo_region_t *pShape)
+{
+	// note: we only do this if this container is using EGL
+	if (!pContainer->eglwindow) return;
+	if (!s_pCompositor)
+	{
+		cd_warning ("wayland-manager: No valid Wayland compositor interface available!\n");
+		return;
+	}
+	struct wl_surface *wls = gdk_wayland_window_get_wl_surface (
+		gldi_container_get_gdk_window (pContainer));
+	if (!wls)
+	{
+		cd_warning ("wayland-manager: cannot get wl_surface for container!\n");
+		return;	
+	}
+	
+	struct wl_region* r = NULL;
+	if (pShape)
+	{
+		r = wl_compositor_create_region(s_pCompositor);
+		int n = cairo_region_num_rectangles(pShape);
+		int i;
+		for (i = 0; i < n; i++)
+		{
+			cairo_rectangle_int_t rect;
+			cairo_region_get_rectangle (pShape, i, &rect);
+			wl_region_add (r, rect.x, rect.y, rect.width, rect.height);
+		}
+	}
+	wl_surface_set_input_region (wls, r);
+	wl_surface_commit (wls);
+	wl_display_roundtrip (s_pDisplay);
+	if (r) wl_region_destroy (r);
+}
+
 static void init (void)
 {
 	//\__________________ listen for Wayland events
@@ -304,6 +350,7 @@ static void init (void)
 	}
 #endif
 	cmb.is_wayland = _is_wayland;
+	cmb.set_input_shape = _set_input_shape;
 	gldi_container_manager_register_backend (&cmb);
 	
 	gldi_register_egl_backend ();
