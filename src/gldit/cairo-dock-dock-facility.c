@@ -1041,6 +1041,15 @@ void cairo_dock_show_subdock (Icon *pPointedIcon, CairoDock *pParentDock)
 	cd_debug ("we show the child dock");
 	CairoDock *pSubDock = pPointedIcon->pSubDock;
 	g_return_if_fail (pSubDock != NULL);
+	if (gldi_container_is_wayland_backend ())
+	{
+		// on Wayland, we cannot get the pointer position until as long
+		// as it is outside; need to set these to sane defaults so that
+		// leave / enter events will work properly
+		pSubDock->iMousePositionType = CAIRO_DOCK_MOUSE_OUTSIDE;
+		pSubDock->container.iMouseX = -1;
+		pSubDock->container.iMouseY = -1;
+	}
 	
 	if (gldi_container_is_visible (CAIRO_CONTAINER (pSubDock)))  // already visible.
 	{
