@@ -274,7 +274,8 @@ void _layer_shell_init_for_window (GldiContainer *pContainer)
 	else
 	{
 		gtk_layer_init_for_window (window);
-		gtk_layer_set_namespace (window, "cairo-dock");
+		gtk_layer_set_keyboard_interactivity (window, 1);
+		gtk_layer_set_namespace (window, "$unfocus");
 	}
 }
 #endif
