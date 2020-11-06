@@ -79,6 +79,38 @@ void cairo_dock_disable_containers_opacity (void)
 	s_bInitialOpacity0 = FALSE;
 }
 
+inline void gldi_display_get_pointer (int *xptr, int *yptr)
+{
+	#if GTK_CHECK_VERSION (3, 20, 0)
+	GdkSeat *pSeat = gdk_display_get_default_seat (gdk_display_get_default());
+	GdkDevice *pDevice = gdk_seat_get_pointer (pSeat);
+	#else
+	GdkDeviceManager *_dm = gdk_display_get_device_manager (gdk_display_get_default());
+	GdkDevice *pDevice = gdk_device_manager_get_client_pointer (_dm);
+	#endif
+	gdk_device_get_position (pDevice, NULL, xptr, yptr);
+} 
+
+inline void gldi_container_update_mouse_position (GldiContainer *pContainer)
+{
+	if (gldi_container_is_wayland_backend())
+	{
+		// this seems to not work at all on Wayland and other parts of
+		// the code will expect us not to mess with the positions
+		return;
+	}
+	#if GTK_CHECK_VERSION (3, 20, 0)
+	GdkSeat *pSeat = gdk_display_get_default_seat (gdk_display_get_default());
+	GdkDevice *pDevice = gdk_seat_get_pointer (pSeat);
+	#else
+	GdkDeviceManager *pManager = gdk_display_get_device_manager (gtk_widget_get_display (pContainer->pWidget));
+	GdkDevice *pDevice = gdk_device_manager_get_client_pointer (pManager);
+	#endif
+	if ((pContainer)->bIsHorizontal)
+		gdk_window_get_device_position (gldi_container_get_gdk_window (pContainer), pDevice, &pContainer->iMouseX, &pContainer->iMouseY, NULL);
+	else
+		gdk_window_get_device_position (gldi_container_get_gdk_window (pContainer), pDevice, &pContainer->iMouseY, &pContainer->iMouseX, NULL);
+}
 
 static gboolean _prevent_delete (G_GNUC_UNUSED GtkWidget *pWidget, G_GNUC_UNUSED GdkEvent *event, G_GNUC_UNUSED gpointer data)
 {
@@ -276,31 +308,6 @@ void gldi_container_notify_drop_data (GldiContainer *pContainer, gchar *cReceive
 	g_strfreev (cStringList);
 	g_string_free (sArg, TRUE);
 }
-
-void gldi_container_update_mouse_position(GldiContainer *pContainer) {
-	if (gldi_container_is_wayland_backend())
-	{
-		// this seems to not work at all on Wayland and other parts of
-		// the code will expect us not to mess with the positions
-		return;
-	}
-	GdkSeat *pSeat = gdk_display_get_default_seat (gtk_widget_get_display (pContainer->pWidget));
-	GdkDevice *pDevice = gdk_seat_get_pointer (pSeat);
-	gint tmpx, tmpy;
-	GdkWindow* pContainerWindow = gldi_container_get_gdk_window (pContainer);
-	gdk_window_get_device_position (pContainerWindow, pDevice, &tmpx, &tmpy, NULL);
-	if ((pContainer)->bIsHorizontal)
-	{
-		pContainer->iMouseX = tmpx;
-		pContainer->iMouseY = tmpy;
-	}
-	else
-	{
-		pContainer->iMouseX = tmpy;
-		pContainer->iMouseY = tmpx;
-	}
-}
-
 
 void gldi_container_reserve_space (GldiContainer *pContainer, int left, int right, int top, int bottom, int left_start_y, int left_end_y, int right_start_y, int right_end_y, int top_start_x, int top_end_x, int bottom_start_x, int bottom_end_x)
 {
