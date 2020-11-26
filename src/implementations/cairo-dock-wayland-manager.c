@@ -369,6 +369,7 @@ void _layer_shell_init_for_window (GldiContainer *pContainer)
 	else
 	{
 		gtk_layer_init_for_window (window);
+		gtk_layer_set_keyboard_interactivity (window, GTK_LAYER_SHELL_KEYBOARD_USER);
 		gtk_layer_set_namespace (window, "cairo-dock");
 	}
 }
