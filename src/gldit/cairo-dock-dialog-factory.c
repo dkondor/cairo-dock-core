@@ -113,6 +113,7 @@ static gboolean on_expose_dialog (G_GNUC_UNUSED GtkWidget *pWidget, cairo_t *pCa
 
 static gboolean on_expose_dialog_after (G_GNUC_UNUSED GtkWidget *pWidget, cairo_t *pCairoContext, CairoDialog *pDialog)
 {
+	// g_print ("%s (%f)\n", __func__, pDialog->fAppearanceCounter);
 	if (pDialog->fAppearanceCounter < 1.)  // modify the opacity after the interaction widget has been drawn by GTK.
 	{
 		double fAlpha = pDialog->fAppearanceCounter * pDialog->fAppearanceCounter;
@@ -651,7 +652,7 @@ CairoDialog *gldi_dialog_show (const gchar *cText, Icon *pIcon, GldiContainer *p
 		attr.cButtonsImage = cDefaultActionButtons;
 	attr.pIcon = pIcon;
 	attr.pContainer = pContainer;
-	attr.cattr.bIsPopup = TRUE;
+//	attr.cattr.bIsPopup = TRUE;
 	
 	return gldi_dialog_new (&attr);
 }
