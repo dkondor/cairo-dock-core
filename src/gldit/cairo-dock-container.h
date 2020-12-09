@@ -211,6 +211,8 @@ struct _GldiContainerManagerBackend {
 	gboolean (*is_wayland) ();
 	/// set input shape on a window (Wayland + EGL needs special treatment)
 	void (*set_input_shape) (GldiContainer *pContainer, cairo_region_t *pShape);
+	/// set the monitor (screen) this container should appear -- required on Wayland
+	void (*set_monitor) (GldiContainer *pContainer, int iNumScreen);
 };
 
 
@@ -304,6 +306,9 @@ void gldi_container_set_layer (GldiContainer *pContainer, GldiContainerLayer iLa
 /// code that needs to work differently under Wayland; ideally, code that needs to
 /// depend on this could be moved to the backends, but for now, that seems too complicated
 gboolean gldi_container_is_wayland_backend ();
+/// Move the dock to the given screen -- only used on Wayland, I don't quite understand
+/// how this works on X
+void gldi_container_set_screen (GldiContainer* pContainer, int iNumScreen);
 
 void gldi_container_manager_register_backend (GldiContainerManagerBackend *pBackend);
 
