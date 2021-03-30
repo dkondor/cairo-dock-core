@@ -40,6 +40,7 @@
 #include "cairo-dock-windows-manager.h"
 #include "cairo-dock-container.h"  // GldiContainerManagerBackend
 #include "cairo-dock-foreign-toplevel.h"
+#include "cairo-dock-plasma-window-manager.h"
 #include "cairo-dock-egl.h"
 #define _MANAGER_DEF_
 #include "cairo-dock-wayland-manager.h"
@@ -209,6 +210,7 @@ static void _refresh_monitors (GdkScreen *screen, gpointer user_data)
 
 
 static gboolean s_bInitializing = TRUE;  // each time a callback is called on startup, it will set this to TRUE, and we'll make a roundtrip to the server until no callback is called.
+static gboolean s_bWindowManagerFound = FALSE; // limit to only try to bind either wlr or plasma window maneger interface
 
 static void _registry_global_cb (G_GNUC_UNUSED void *data, struct wl_registry *registry, uint32_t id, const char *interface, uint32_t version)
 {
@@ -222,9 +224,15 @@ static void _registry_global_cb (G_GNUC_UNUSED void *data, struct wl_registry *r
 	{
 		s_pCompositor = wl_registry_bind(registry, id, &wl_compositor_interface, 1);
 	}
-	else if (gldi_zwlr_foreign_toplevel_manager_try_bind (registry, id, interface, version))
+	else if (!s_bWindowManagerFound && gldi_zwlr_foreign_toplevel_manager_try_bind (registry, id, interface, version))
 	{
 		cd_debug("Found foreign-toplevel-manager");
+		s_bWindowManagerFound = TRUE;
+	}
+	else if (!s_bWindowManagerFound && gldi_plasma_window_manager_try_bind (registry, id, interface, version))
+	{
+		cd_debug("Found plasma-window-manager");
+		s_bWindowManagerFound = TRUE;
 	}
 #ifdef HAVE_GTK_LAYER_SHELL
 	else if (!strcmp (interface, "zwlr_layer_shell_v1"))
