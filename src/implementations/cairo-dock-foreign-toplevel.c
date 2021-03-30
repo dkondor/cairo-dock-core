@@ -144,8 +144,8 @@ static void _set_thumbnail_area (GldiWindowActor *actor, GtkWidget* pContainerWi
 
 // extra callback for when a new app is activated
 // this is useful for e.g. interactively selecting a window
-void (*s_activated_callback)(GldiWFTWindowActor* wactor, void* data) = NULL;
-void* s_activated_callback_data = NULL;
+static void (*s_activated_callback)(GldiWFTWindowActor* wactor, void* data) = NULL;
+static void* s_activated_callback_data = NULL;
 
 // callbacks 
 static void _gldi_toplevel_title_cb (void *data, G_GNUC_UNUSED wfthandle *handle, const char *title)
@@ -305,7 +305,7 @@ static void _gldi_toplevel_parent_cb (void* data, G_GNUC_UNUSED wfthandle *handl
 	wactor->parent = parent;
 }
 
-struct zwlr_foreign_toplevel_handle_v1_listener gldi_toplevel_handle_interface = {
+static struct zwlr_foreign_toplevel_handle_v1_listener gldi_toplevel_handle_interface = {
     .title        = _gldi_toplevel_title_cb,
     .app_id       = _gldi_toplevel_appid_cb,
     .output_enter = _gldi_toplevel_output_enter_cb,
