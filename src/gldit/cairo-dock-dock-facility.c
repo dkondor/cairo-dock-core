@@ -737,7 +737,7 @@ Icon * cairo_dock_calculate_wave_with_position_linear (GList *pIconList, int x_a
 	}
 	
 	ic = pointed_ic;
-	while (ic != pIconList)
+	while (ic->prev && ic != pIconList)
 	{
 		icon = ic->data;
 		
