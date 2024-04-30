@@ -1,3 +1,5 @@
+Changes from this branch have been merged back to the [official repository](https://github.com/Cairo-Dock/cairo-dock-core) -- please switch to using code from there instead of this repository
+
 Cairo-Dock
 ==========
 
