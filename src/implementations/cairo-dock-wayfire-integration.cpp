@@ -37,6 +37,7 @@
 #include "cairo-dock-container.h"  // gldi_container_get_gdk_window
 #include "cairo-dock-class-manager.h"
 #include "cairo-dock-utils.h"  // cairo_dock_launch_command_sync
+#include "cairo-dock-wayland-manager.h" // gldi_wayland_release_keyboard
 
 static const char default_socket[] = "/tmp/wayfire-wayland-1.socket";
 
@@ -132,10 +133,21 @@ static gboolean _present_windows() {
 }
 
 /* Start scale including all views of the given class */
-static gboolean _present_class(const gchar *cClass) {
+static gboolean _present_class_real(gpointer data) {
+	gchar *cClass = (gchar*)data;
 	const gchar *cWmClass = cairo_dock_get_class_wm_class (cClass);
-	return _call_ipc({{"method", "scale_ipc_filter/activate_appid"}, {"data", {{"all_workspaces", true}, {"app_id", cWmClass}}}});
+	if (cWmClass) _call_ipc({{"method", "scale_ipc_filter/activate_appid"}, {"data", {{"all_workspaces", true}, {"app_id", cWmClass}}}});
+	return FALSE;
 }
+
+
+static gboolean _present_class(const gchar *cClass) {
+	gchar *data = g_strdup (cClass);
+	gldi_wayland_release_keyboard ();
+	g_idle_add_full (G_PRIORITY_DEFAULT_IDLE, _present_class_real, data, g_free);
+	return TRUE;
+}
+
 
 /* Start expo on the current output */
 static gboolean _present_desktops() {
