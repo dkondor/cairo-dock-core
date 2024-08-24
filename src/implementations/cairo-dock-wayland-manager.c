@@ -440,7 +440,7 @@ void gldi_wayland_grab_keyboard (GldiContainer *pContainer)
 #endif
 }
 
-void gldi_wayland_release_keyboard ( G_GNUC_UNUSED GldiContainer *pContainer)
+void gldi_wayland_release_keyboard ()
 {
 	GldiWindowActor *actor = gldi_windows_get_active ();
 	if (actor && !actor->bIsHidden) gldi_window_show (actor);
@@ -682,6 +682,6 @@ gboolean gldi_wayland_manager_have_layer_shell ()
 }
 
 void gldi_wayland_grab_keyboard ( G_GNUC_UNUSED GldiContainer *pContainer) { }
-void gldi_wayland_release_keyboard ( G_GNUC_UNUSED GldiContainer *pContainer) { }
+void gldi_wayland_release_keyboard () { }
 
 #endif

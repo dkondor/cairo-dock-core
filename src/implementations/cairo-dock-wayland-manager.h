@@ -64,8 +64,12 @@ GdkMonitor *const *gldi_wayland_get_monitors (int *iNumMonitors);
 /// these work quite differently from X11 and can result in a disorienting
 /// user experience. This way, these can be used only in situations where
 /// necessary and where their usefulness can be properly tested.
+/// Grabbing the keyboard works specifically on a container (which should
+/// get the keyboard focus). Ungrabbing for now works generically, by
+/// focusing the last active window (adjusting keyboard-interactivity
+/// might not give the expected results).
 void gldi_wayland_grab_keyboard (GldiContainer *pContainer);
-void gldi_wayland_release_keyboard (GldiContainer *pContainer);
+void gldi_wayland_release_keyboard ();
 
 G_END_DECLS
 #endif
