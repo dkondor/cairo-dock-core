@@ -607,7 +607,14 @@ static gboolean _on_leave_notify (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCros
 			gldi_icon_detach (s_pIconClicked);
 			cairo_dock_stop_icon_glide (pOriginDock);
 			
-			s_pFlyingContainer = gldi_flying_container_new (s_pIconClicked, pOriginDock);
+			static GtkTargetEntry icon_drag_targets[] = { { (gchar*)"cairo-dock/launcher", GTK_TARGET_SAME_APP, 0 } };
+			GtkTargetList *targets = gtk_target_list_new (icon_drag_targets, 1);
+			
+			GdkDragContext *context = gtk_drag_begin (pDock->container.pWidget, targets, GDK_ACTION_COPY, 1, pEvent);
+			GdkPixbuf *image = gdk_pixbuf_get_from_surface (s_pIconClicked->image.pSurface, 0, 0, s_pIconClicked->image.iWidth, s_pIconClicked->image.iHeight);
+			gtk_drag_set_icon_pixbuf (context, image, 0, 0);
+			
+			// s_pFlyingContainer = gldi_flying_container_new (s_pIconClicked, pOriginDock);
 			//g_print ("- s_pIconClicked <- NULL\n");
 			s_pIconClicked = NULL;
 			if (pDock->iRefCount > 0 || pDock->bAutoHide)  // pour garder le dock visible.
@@ -1254,7 +1261,7 @@ static gboolean s_bCouldDrop = FALSE;
 
 void _on_drag_data_received (G_GNUC_UNUSED GtkWidget *pWidget, GdkDragContext *dc, gint x, gint y, GtkSelectionData *selection_data, G_GNUC_UNUSED guint info, guint time, CairoDock *pDock)
 {
-	cd_debug ("%s (%dx%d, %d, %d)", __func__, x, y, time, pDock->container.bInside);
+	cd_warning ("%s (%dx%d, %d, %d)", __func__, x, y, time, pDock->container.bInside);
 	if (cairo_dock_is_hidden (pDock))  // X ne semble pas tenir compte de la zone d'input pour dropper les trucs...
 		return ;
 	//\_________________ On recupere l'URI.
@@ -1364,7 +1371,7 @@ void _on_drag_data_received (G_GNUC_UNUSED GtkWidget *pWidget, GdkDragContext *d
 
 static gboolean _on_drag_motion (GtkWidget *pWidget, GdkDragContext *dc, gint x, gint y, guint time, CairoDock *pDock)
 {
-	cd_debug ("%s (%d;%d, %d)", __func__, x, y, time);
+	cd_warning ("%s (%d;%d, %d)", __func__, x, y, time);
 	
 	//\_________________ Update the mouse position (will be needed later).
 	if (pDock->container.bIsHorizontal)
@@ -1455,7 +1462,7 @@ static gboolean _on_drag_motion (GtkWidget *pWidget, GdkDragContext *dc, gint x,
 
 void _on_drag_leave (GtkWidget *pWidget, G_GNUC_UNUSED GdkDragContext *dc, G_GNUC_UNUSED guint time, CairoDock *pDock)
 {
-	//g_print ("stop dragging 1\n");
+	g_print ("stop dragging 1\n");
 	Icon *icon = cairo_dock_get_pointed_icon (pDock->icons);
 	if ((icon && icon->pSubDock) || pDock->iRefCount > 0)  // on retarde l'evenement, car il arrive avant le leave-event, et donc le sous-dock se cache avant qu'on puisse y entrer.
 	{
