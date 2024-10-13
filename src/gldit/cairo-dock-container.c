@@ -233,8 +233,16 @@ void cairo_dock_allow_widget_to_receive_data (GtkWidget *pWidget, GCallback pCal
 		NULL,
 		0,
 		GDK_ACTION_COPY | GDK_ACTION_MOVE);  // le 'GDK_ACTION_MOVE' c'est pour KDE.
+	/*
 	gtk_drag_dest_add_uri_targets (pWidget);
 	gtk_drag_dest_add_text_targets (pWidget);
+	*/
+	
+	static GtkTargetEntry icon_drag_targets[] = { { (gchar*)"cairo-dock/launcher", GTK_TARGET_SAME_APP, 0 } };
+	GtkTargetList *targets = gtk_target_list_new (icon_drag_targets, 1);
+	gtk_target_list_add_text_targets (targets, 0);
+	gtk_target_list_add_uri_targets (targets, 0);
+	gtk_drag_dest_set_target_list (pWidget, targets);
 	
 	g_signal_connect (G_OBJECT (pWidget),
 		"drag_data_received",
