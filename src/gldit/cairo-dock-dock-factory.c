@@ -1488,6 +1488,11 @@ void _on_drag_leave (GtkWidget *pWidget, G_GNUC_UNUSED GdkDragContext *dc, G_GNU
 	_on_motion_notify (pWidget, NULL, pDock);
 }
 
+static void _on_drag_data_get (GtkWidget *widget, G_GNUC_UNUSED GdkDragContext *context, GtkSelectionData *data,
+		G_GNUC_UNUSED guint info, G_GNUC_UNUSED guint time, G_GNUC_UNUSED gpointer user_data)
+{
+	gtk_selection_data_set (data, gtk_selection_data_get_target (data), 8, "drag_example", 14);
+}
 
   ///////////////////////
  /// CONTAINER IFACE ///
@@ -2236,6 +2241,10 @@ void gldi_dock_init_internals (CairoDock *pDock)
 	g_signal_connect (G_OBJECT (pWindow),
 		"drag-leave",
 		G_CALLBACK (_on_drag_leave),
+		pDock);
+	g_signal_connect (G_OBJECT (pWindow),
+		"drag_data_get",
+		G_CALLBACK (_on_drag_data_get),
 		pDock);
 	/*g_signal_connect (G_OBJECT (pWindow),
 		"drag-drop",
