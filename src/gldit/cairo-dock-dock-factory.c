@@ -1511,8 +1511,15 @@ static void _on_drag_data_get (GtkWidget *widget, G_GNUC_UNUSED GdkDragContext *
 	gtk_selection_data_set (data, gtk_selection_data_get_target (data), 8, "drag_example", 14);
 }
 
-static void _on_drag_failed (GtkWidget *widget, G_GNUC_UNUSED GdkDragContext *context, GtkDragResult result, gpointer)
+static gboolean _on_drag_failed (G_GNUC_UNUSED GtkWidget *widget, G_GNUC_UNUSED GdkDragContext *context, GtkDragResult result, gpointer)
 {
+	if (!s_pDndIcon) return FALSE;
+	
+	//!! TODO: check if the result could be parsed (currently it is always GTK_DRAG_RESULT_ERROR)
+	// only handle the below cases, as these are likely when the user intentionally released the icon outside the dock
+//	if ( !(result == GTK_DRAG_RESULT_NO_TARGET || result == GTK_DRAG_RESULT_USER_CANCELLED) )
+//		return FALSE;
+	
 	// dnd ended outside of a dock, need to erase the icon involved
 	Icon *pIcon = s_pDndIcon;
 	s_pDndIcon = NULL;
@@ -1532,6 +1539,7 @@ static void _on_drag_failed (GtkWidget *widget, G_GNUC_UNUSED GdkDragContext *co
 	}
 	
 	//!! TODO: animation? (likely not possible with GTK DnD)
+	return TRUE;
 }
 
   ///////////////////////
