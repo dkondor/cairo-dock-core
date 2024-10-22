@@ -45,6 +45,7 @@
 #include "cairo-dock-application-facility.h"
 #include "cairo-dock-windows-manager.h"
 #include "cairo-dock-overlay.h"  // cairo_dock_print_overlay_on_icon
+#include "cairo-dock-desktop-file-db.h" // init and stop
 #define _MANAGER_DEF_
 #include "cairo-dock-applications-manager.h"
 
@@ -925,6 +926,7 @@ static void init (void)
 		NULL,  // window actor
 		NULL);  // appli-icon
 	
+	gldi_desktop_file_db_init (); // used by the class manager
 	cairo_dock_initialize_class_manager ();
 	
 	gldi_object_register_notification (&myWindowObjectMgr,
@@ -971,6 +973,13 @@ static void init (void)
 		NOTIFICATION_WINDOW_ACTIVATED,
 		(GldiNotificationFunc) _on_active_window_changed,
 		GLDI_RUN_FIRST, NULL);
+}
+
+static void _shutdown (void)
+{
+	/// TODO: remove notifications? (do not really matter, but they use memory which will give false positives with e.g. valgrind)
+	
+	gldi_desktop_file_db_stop ();
 }
 
 
@@ -1023,6 +1032,7 @@ void gldi_register_applications_manager (void)
 	myTaskbarMgr.reload         = (GldiManagerReloadFunc)reload;
 	myTaskbarMgr.get_config     = (GldiManagerGetConfigFunc)get_config;
 	myTaskbarMgr.reset_config   = (GldiManagerResetConfigFunc)reset_config;
+	myTaskbarMgr.shutdown       = (GldiManagerShutdownFunc)_shutdown;
 	// Config
 	memset (&myTaskbarParam, 0, sizeof (CairoTaskbarParam));
 	myTaskbarMgr.pConfig = (GldiManagerConfigPtr)&myTaskbarParam;
