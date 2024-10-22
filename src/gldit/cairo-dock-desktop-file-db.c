@@ -45,6 +45,7 @@ static gboolean update_pending = FALSE; // update of apps is already pending
 static gboolean more_work = FALSE; // more work to do for the worker thread (apps on the system have changed)
 static gboolean thread_running = FALSE; // worker thread is running (doing work updating the app DB; set to TRUE in _start_thread())
 static gboolean error = FALSE; // set if the worker cannot retrieve apps
+static gint shutdown_request = 0; // set by the main thread to stop the worker
 
 static void _desktop_db_free (desktop_db *db)
 {
@@ -115,6 +116,7 @@ static gpointer _thread_func (gpointer)
 	{
 		desktop_db *db = NULL;
 		GList *list = g_app_info_get_all ();
+		gboolean canceled = FALSE;
 		
 		if (list)
 		{
@@ -123,8 +125,23 @@ static gpointer _thread_func (gpointer)
 				g_free, g_free);
 			db->alt_class_table = g_hash_table_new_full (g_str_hash, g_str_equal,
 				g_free, NULL);
-			g_list_foreach (list, _process_app, db);
+			GList *tmp;
+			for (tmp = list; tmp != NULL; tmp = tmp->next)
+			{
+				_process_app (tmp->data, db);
+				if (g_atomic_int_get (&shutdown_request))
+				{
+					canceled = TRUE;
+					break;
+				}
+			}
 			g_list_free_full (list, g_object_unref);
+		}
+		
+		if (canceled)
+		{
+			_desktop_db_free (db);
+			break;
 		}
 		
 		gboolean exit = TRUE;
@@ -136,10 +153,12 @@ static gpointer _thread_func (gpointer)
 			if (more_work) exit = FALSE;
 		}
 		else error = TRUE;
+		
 		more_work = FALSE;
 		if (exit) thread_running = FALSE;
 		g_cond_signal (&cond);
 		g_mutex_unlock (&mutex);
+		
 		if (exit) break;
 	}
 	
@@ -192,6 +211,7 @@ void gldi_desktop_file_db_stop (void)
 	
 	if (thread)
 	{
+		g_atomic_int_set (&shutdown_request, 1);
 		g_thread_join (thread);
 		thread = NULL;
 	}
