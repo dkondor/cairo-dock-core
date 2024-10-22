@@ -53,6 +53,7 @@ typedef void (*GldiManagerUnloadFunc) (void);
 typedef void (* GldiManagerReloadFunc) (GldiManagerConfigPtr pPrevConfig, GldiManagerConfigPtr pNewConfig);
 typedef gboolean (* GldiManagerGetConfigFunc) (GKeyFile *pKeyFile, GldiManagerConfigPtr pConfig);
 typedef void (* GldiManagerResetConfigFunc) (GldiManagerConfigPtr pConfig);
+typedef void (* GldiManagerShutdownFunc) (void);
 /// Definition of a Manager.
 struct _GldiManager {
 	/// object
@@ -74,6 +75,8 @@ struct _GldiManager {
 	GldiManagerGetConfigFunc get_config;
 	/// function called when resetting the current theme, or a part of it.
 	GldiManagerResetConfigFunc reset_config;
+	/// function called when exiting Cairo-Dock, clean up any state set up in init
+	GldiManagerShutdownFunc shutdown;
 	//\_____________ Instance.
 	GldiManagerConfigPtr pConfig;
 	GldiManagerDataPtr pData;
@@ -104,6 +107,8 @@ void gldi_managers_get_config (const gchar *cConfFilePath, const gchar *cVersion
 void gldi_managers_load (void);
 
 void gldi_managers_unload (void);
+
+void gldi_managers_shutdown (void);
 
 void gldi_managers_foreach (GFunc callback, gpointer data);
 
