@@ -108,7 +108,6 @@ static gboolean _on_window_activated (G_GNUC_UNUSED gpointer data, GldiWindowAct
 }
 void cairo_dock_initialize_class_manager (void)
 {
-	gldi_desktop_file_db_init ();
 	if (s_hClassTable == NULL)
 		s_hClassTable = g_hash_table_new_full (g_str_hash,
 			g_str_equal,
@@ -683,7 +682,6 @@ void cairo_dock_reset_class_table (void)
 {
 	g_hash_table_remove_all (s_hClassTable);
 	g_hash_table_remove_all (s_hAltClass);
-	// gldi_desktop_file_db_stop (); -- TODO: call this when exiting, but not when loading a new theme !!
 }
 
 
