@@ -208,6 +208,21 @@ void gldi_managers_unload (void)
 	}
 }
 
+void gldi_managers_shutdown (void)
+{
+	cd_message ("%s()", __func__);
+	GldiManager *pManager;
+	GList *m;
+	for (m = s_pManagers; m != NULL; m = m->next)
+	{
+		pManager = m->data;
+		if (pManager->shutdown)
+			pManager->shutdown ();
+	}
+	
+	g_list_free (s_pManagers);
+	s_pManagers = NULL;
+}
 
 void gldi_managers_foreach (GFunc callback, gpointer data)
 {
