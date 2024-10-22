@@ -64,7 +64,6 @@ gboolean g_bDisableLayerShell = FALSE;
 
 // public (manager, config, data)
 GldiManager myWaylandMgr;
-GldiObjectManager myWaylandObjectMgr;
 
 // dependencies
 extern GldiContainer *g_pPrimaryContainer;
@@ -658,18 +657,6 @@ void gldi_register_wayland_manager (void)
 	gldi_object_install_notifications (&myWaylandMgr, NB_NOTIFICATIONS_WAYLAND_DESKTOP);
 	// register
 	gldi_object_init (GLDI_OBJECT(&myWaylandMgr), &myManagerObjectMgr, NULL);
-	
-	// Object Manager
-	memset (&myWaylandObjectMgr, 0, sizeof (GldiObjectManager));
-	myWaylandObjectMgr.cName   = "Wayland";
-	myWaylandObjectMgr.iObjectSize    = sizeof (GldiWaylandWindowActor);
-	// interface
-	///myWaylandObjectMgr.init_object    = init_object;
-	///myWaylandObjectMgr.reset_object   = reset_object;
-	// signals
-	gldi_object_install_notifications (&myWaylandObjectMgr, NB_NOTIFICATIONS_WAYLAND_MANAGER);
-	// parent object
-	gldi_object_set_manager (GLDI_OBJECT (&myWaylandObjectMgr), &myWindowObjectMgr);
 	
 	// get the properties of screens / monitors, set up signals
 	g_desktopGeometry.iNbScreens = 0;
