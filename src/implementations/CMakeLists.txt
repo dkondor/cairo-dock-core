@@ -65,6 +65,10 @@ if(WaylandScanner_FOUND)
 		impl_SRCS
 		PROTOCOL "proto/plasma-virtual-desktop.xml"
 		BASENAME "plasma-virtual-desktop")
+	ecm_add_wayland_client_protocol(
+		impl_SRCS
+		PROTOCOL "proto/ext-workspace-unstable-v1.xml"
+		BASENAME "ext-workspace")
 endif()
 
 add_library(implementations STATIC ${impl_SRCS})
