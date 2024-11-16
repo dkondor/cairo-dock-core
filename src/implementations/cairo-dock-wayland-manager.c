@@ -605,13 +605,13 @@ static void init (void)
 			gldi_wlr_foreign_toplevel_try_init (registry);
 	if (bCosmic)
 	{
-		if (!gldi_cosmic_workspaces_try_init (registry))
+		if (!gldi_cosmic_workspaces_try_init (registry, TRUE))
 			gldi_plasma_virtual_desktop_try_init (registry);
 	}
 	else
 	{
 		if (!gldi_plasma_virtual_desktop_try_init (registry))
-			gldi_cosmic_workspaces_try_init (registry);
+			gldi_cosmic_workspaces_try_init (registry, FALSE);
 	}
 #endif	
 	cmb.set_input_shape = _set_input_shape;

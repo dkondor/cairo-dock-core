@@ -36,7 +36,7 @@ struct wl_output *s_ws_output = NULL;
 
 
 typedef struct _CosmicWS {
-	struct zcosmic_workspace_handle_v1 *handle; // protocol object representing this desktop
+	void *handle; // protocol object representing this desktop
 	char *name; // can be NULL if no name was delivered
 	guint x, y; // x and y coordinates; (guint)-1 means invalid
 	guint pending_x, pending_y;
@@ -55,8 +55,9 @@ static unsigned int s_iPending = 0; // workspace with pending activation
 
 static gboolean s_bPendingAdded = FALSE; // workspace was added or removed, need to recalculate layout
 
-static struct zcosmic_workspace_manager_v1 *s_pWSManager = NULL;
-static struct zcosmic_workspace_group_handle_v1 *s_pWSGroup = NULL; // we support having only one workspace group for now
+static void *s_pWSManager = NULL;
+static void *s_pWSGroup = NULL; // we support having only one workspace group for now
+static gboolean s_bExtProto = FALSE; // set to true if we are using the ext- version of the protocol (which is currently a subset of the Cosmic one)
 
 static gboolean bValidX = FALSE; // if x coordinates are valid
 static gboolean bValidY = FALSE; // if y coordinates are valid
@@ -142,14 +143,14 @@ static void _update_current_desktop (void)
 	}
 }
 
-static void _name (void *data, struct zcosmic_workspace_handle_v1*, const char *name)
+static void _name (void *data, void*, const char *name)
 {
 	CosmicWS *desktop = (CosmicWS*)data;
 	g_free (desktop->pending_name);
 	desktop->pending_name = g_strdup ((gchar *)name);
 }
 
-static void _coordinates (void *data, struct zcosmic_workspace_handle_v1*, struct wl_array *coords)
+static void _coordinates (void *data, void*, struct wl_array *coords)
 {
 	CosmicWS *desktop = (CosmicWS*)data;
 	uint32_t *cdata = (uint32_t*)coords->data;
@@ -169,7 +170,7 @@ static void _coordinates (void *data, struct zcosmic_workspace_handle_v1*, struc
 	}
 }
 
-static void _state (void *data, struct zcosmic_workspace_handle_v1*, struct wl_array *state)
+static void _state (void *data, void*, struct wl_array *state)
 {
 	gboolean bActivated = FALSE;
 /*	gboolean bUrgent = FALSE; -- we do not care about these
@@ -178,6 +179,7 @@ static void _state (void *data, struct zcosmic_workspace_handle_v1*, struct wl_a
 	uint32_t* stdata = (uint32_t*)state->data;
 	for (i = 0; i*sizeof(uint32_t) < state->size; i++)
 	{
+		// note: ZCOSMIC_WORKSPACE_HANDLE_V1_STATE_ACTIVE == ZEXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE == 0
 		if (stdata[i] == ZCOSMIC_WORKSPACE_HANDLE_V1_STATE_ACTIVE)
 			bActivated = TRUE;
 /*		else if (stdata[i] == ZCOSMIC_WORKSPACE_HANDLE_V1_STATE_URGENT)
@@ -200,7 +202,7 @@ static void _state (void *data, struct zcosmic_workspace_handle_v1*, struct wl_a
 	}
 }
 
-static void _capabilities (void*, G_GNUC_UNUSED struct zcosmic_workspace_handle_v1* handle, G_GNUC_UNUSED struct wl_array* cap)
+static void _capabilities (void*, void*, G_GNUC_UNUSED struct wl_array* cap)
 {
 /*	uint32_t* capdata = (uint32_t*)cap->data;
 	cd_warning ("workspace capabilities: %p", handle);
@@ -220,7 +222,7 @@ static void _capabilities (void*, G_GNUC_UNUSED struct zcosmic_workspace_handle_
 	} */
 }
 
-static void _removed (void *data, struct zcosmic_workspace_handle_v1*)
+static void _removed (void *data, void*)
 {
 	CosmicWS *desktop = (CosmicWS*)data;
 	desktop->bRemoved = TRUE;
@@ -231,7 +233,8 @@ static void _free_workspace (CosmicWS *desktop)
 {
 	g_free (desktop->name);
 	g_free (desktop->pending_name);
-	zcosmic_workspace_handle_v1_destroy (desktop->handle);
+	if (s_bExtProto) zext_workspace_handle_v1_destroy (desktop->handle);
+	else zcosmic_workspace_handle_v1_destroy (desktop->handle);
 	g_free (desktop);
 }
 
@@ -242,14 +245,20 @@ static void _tiling_state (void*, struct zcosmic_workspace_handle_v1*, uint32_t)
 }
 
 static const struct zcosmic_workspace_handle_v1_listener desktop_listener = {
-	.name = _name,
-	.coordinates = _coordinates,
-	.state = _state,
-	.capabilities = _capabilities,
-	.remove = _removed,
+	.name = (void (*)(void *, struct zcosmic_workspace_handle_v1 *, const char *))_name,
+	.coordinates = (void (*)(void *, struct zcosmic_workspace_handle_v1 *, struct wl_array *))_coordinates,
+	.state = (void (*)(void *, struct zcosmic_workspace_handle_v1 *, struct wl_array *))_state,
+	.capabilities = (void (*)(void *, struct zcosmic_workspace_handle_v1 *, struct wl_array *))_capabilities,
+	.remove = (void (*)(void *, struct zcosmic_workspace_handle_v1 *))_removed,
 	.tiling_state = _tiling_state
 };
 
+static const struct zext_workspace_handle_v1_listener ext_desktop_listener = {
+	.name = (void (*)(void *, struct zext_workspace_handle_v1 *, const char *))_name,
+	.coordinates = (void (*)(void *, struct zext_workspace_handle_v1 *, struct wl_array *))_coordinates,
+	.state = (void (*)(void *, struct zext_workspace_handle_v1 *, struct wl_array *))_state,
+	.remove = (void (*)(void *, struct zext_workspace_handle_v1 *))_removed,
+};
 
 static void _group_capabilities (void*, G_GNUC_UNUSED struct zcosmic_workspace_group_handle_v1* handle, G_GNUC_UNUSED struct wl_array* cap)
 {
@@ -263,18 +272,17 @@ static void _group_capabilities (void*, G_GNUC_UNUSED struct zcosmic_workspace_g
 	} */
 }
 
-static void _output_enter (void*, struct zcosmic_workspace_group_handle_v1* handle, struct wl_output* output)
+static void _output_enter (void*, void* handle, struct wl_output* output)
 {
 	if (handle == s_pWSGroup) s_ws_output = output;
 }
 
-static void _output_leave (void*, struct zcosmic_workspace_group_handle_v1* handle, struct wl_output* output)
+static void _output_leave (void*, void* handle, struct wl_output* output)
 {
 	if (handle == s_pWSGroup && output == s_ws_output) s_ws_output = NULL;
 }
 
-static void _desktop_created (void*, struct zcosmic_workspace_group_handle_v1 *manager,
-	struct zcosmic_workspace_handle_v1 *new_workspace)
+static void _desktop_created (void*, void *manager, void *new_workspace)
 {
 	if (manager != s_pWSGroup)
 	{
@@ -297,11 +305,12 @@ static void _desktop_created (void*, struct zcosmic_workspace_group_handle_v1 *m
 	s_iNumDesktops++;
 	
 	desktop->handle = new_workspace;
-	zcosmic_workspace_handle_v1_add_listener (new_workspace, &desktop_listener, desktop);
+	if (s_bExtProto) zext_workspace_handle_v1_add_listener (new_workspace, &ext_desktop_listener, desktop);
+	else zcosmic_workspace_handle_v1_add_listener (new_workspace, &desktop_listener, desktop);
 	s_bPendingAdded = TRUE;
 }
 
-static void _group_removed (void*, struct zcosmic_workspace_group_handle_v1 *handle)
+static void _group_removed (void*, void *handle)
 {
 	if (handle == s_pWSGroup)
 	{
@@ -323,16 +332,24 @@ static void _group_removed (void*, struct zcosmic_workspace_group_handle_v1 *han
 		gldi_object_notify (&myDesktopMgr, NOTIFICATION_DESKTOP_GEOMETRY_CHANGED, FALSE);
 		s_pWSGroup = NULL;
 	}
-	zcosmic_workspace_group_handle_v1_destroy (handle);
+	if (s_bExtProto) zext_workspace_group_handle_v1_destroy (handle);
+	else zcosmic_workspace_group_handle_v1_destroy (handle);
 }
 
 
 static const struct zcosmic_workspace_group_handle_v1_listener group_listener = {
 	.capabilities = _group_capabilities,
-	.output_enter = _output_enter,
-	.output_leave = _output_leave,
-	.workspace = _desktop_created,
-	.remove = _group_removed
+	.output_enter = (void (*)(void *, struct zcosmic_workspace_group_handle_v1 *, struct wl_output *))_output_enter,
+	.output_leave = (void (*)(void *, struct zcosmic_workspace_group_handle_v1 *, struct wl_output *))_output_leave,
+	.workspace = (void (*)(void *, struct zcosmic_workspace_group_handle_v1 *, struct zcosmic_workspace_handle_v1 *))_desktop_created,
+	.remove = (void (*)(void *, struct zcosmic_workspace_group_handle_v1 *))_group_removed
+};
+
+static const struct zext_workspace_group_handle_v1_listener ext_group_listener = {
+	.output_enter = (void (*)(void *, struct zext_workspace_group_handle_v1 *, struct wl_output *))_output_enter,
+	.output_leave = (void (*)(void *, struct zext_workspace_group_handle_v1 *, struct wl_output *))_output_leave,
+	.workspace = (void (*)(void *, struct zext_workspace_group_handle_v1 *, struct zext_workspace_handle_v1 *))_desktop_created,
+	.remove = (void (*)(void *, struct zext_workspace_group_handle_v1 *))_group_removed
 };
 
 
@@ -351,7 +368,23 @@ static void _new_workspace_group (void*, struct zcosmic_workspace_manager_v1*, s
 	}
 }
 
-static void _done (void*, struct zcosmic_workspace_manager_v1*)
+static void _ext_new_workspace_group (void*, struct zext_workspace_manager_v1*, struct zext_workspace_group_handle_v1 *new_group)
+{
+	if (s_pWSGroup)
+	{
+		cd_warning ("cosmic-workspaces: multiple workspace groups are not supported!\n");
+		zext_workspace_group_handle_v1_add_listener (new_group, &ext_group_listener, NULL);
+		zext_workspace_group_handle_v1_destroy (new_group);
+	}
+	else
+	{
+		s_pWSGroup = new_group;
+		zext_workspace_group_handle_v1_add_listener (new_group, &ext_group_listener, NULL);
+	}
+}
+
+
+static void _done (void*, void*)
 {
 	gboolean bRemoved = FALSE; // if any workspace was removed
 	gboolean bCoords = FALSE; // any of the coordinates changed
@@ -417,11 +450,24 @@ static void _finished (void*, struct zcosmic_workspace_manager_v1 *handle)
 	zcosmic_workspace_manager_v1_destroy (handle);
 }
 
+static void _ext_finished (void*, struct zext_workspace_manager_v1 *handle)
+{
+	zext_workspace_manager_v1_destroy (handle);
+}
+
+
 static const struct zcosmic_workspace_manager_v1_listener manager_listener = {
 	.workspace_group = _new_workspace_group,
-	.done = _done,
+	.done = (void (*)(void *, struct zcosmic_workspace_manager_v1 *))_done,
 	.finished = _finished
 };
+
+static const struct zext_workspace_manager_v1_listener ext_manager_listener = {
+	.workspace_group = _ext_new_workspace_group,
+	.done = (void (*)(void *, struct zext_workspace_manager_v1 *))_done,
+	.finished = _ext_finished
+};
+
 
 
 static gchar** _get_desktops_names (void)
@@ -456,8 +502,20 @@ static gboolean _set_current_desktop (G_GNUC_UNUSED int iDesktopNumber, int iVie
 		unsigned int iReq = _get_ix ((guint)iViewportNumberX, (guint)iViewportNumberY);
 		if (iReq < s_iNumDesktops)
 		{
-			zcosmic_workspace_handle_v1_activate (desktops[iReq]->handle);
-			zcosmic_workspace_manager_v1_commit (s_pWSManager);
+			if (s_bExtProto)
+			{
+				if (s_iCurrent < s_iNumDesktops)
+					zext_workspace_handle_v1_deactivate (desktops[s_iCurrent]->handle);
+				zext_workspace_handle_v1_activate (desktops[iReq]->handle);
+				zext_workspace_manager_v1_commit (s_pWSManager);
+			}
+			else
+			{
+				if (s_iCurrent < s_iNumDesktops)
+					zcosmic_workspace_handle_v1_deactivate (desktops[s_iCurrent]->handle);
+				zcosmic_workspace_handle_v1_activate (desktops[iReq]->handle);
+				zcosmic_workspace_manager_v1_commit (s_pWSManager);
+			}
 			return TRUE; // we don't know if we succeeded
 		}
 	}
@@ -485,27 +543,46 @@ static void _remove_workspace (void)
 }
 */
 
-static uint32_t protocol_id, protocol_version;
-static gboolean protocol_found = FALSE;
+static uint32_t cosmic_protocol_id, cosmic_protocol_version;
+static gboolean cosmic_protocol_found = FALSE;
+
+static uint32_t ext_protocol_id, ext_protocol_version;
+static gboolean ext_protocol_found = FALSE;
+
 
 gboolean gldi_cosmic_workspaces_match_protocol (uint32_t id, const char *interface, uint32_t version)
 {
 	if (!strcmp(interface, zcosmic_workspace_manager_v1_interface.name))
 	{
-		protocol_found = TRUE;
-		protocol_id = id;
-		protocol_version = version;
-		if ((uint32_t)zcosmic_workspace_manager_v1_interface.version < protocol_version)
-			protocol_version = zcosmic_workspace_manager_v1_interface.version;
+		cosmic_protocol_found = TRUE;
+		cosmic_protocol_id = id;
+		cosmic_protocol_version = version;
+		if ((uint32_t)zcosmic_workspace_manager_v1_interface.version < cosmic_protocol_version)
+			cosmic_protocol_version = zcosmic_workspace_manager_v1_interface.version;
+		return TRUE;
+	}
+	if (!strcmp(interface, zext_workspace_manager_v1_interface.name))
+	{
+		ext_protocol_found = TRUE;
+		ext_protocol_id = id;
+		ext_protocol_version = version;
+		if ((uint32_t)zext_workspace_manager_v1_interface.version < ext_protocol_version)
+			ext_protocol_version = zext_workspace_manager_v1_interface.version;
 		return TRUE;
 	}
 	return FALSE;
 }
 
-gboolean gldi_cosmic_workspaces_try_init (struct wl_registry *registry)
+gboolean gldi_cosmic_workspaces_try_init (struct wl_registry *registry, gboolean prefer_cosmic)
 {
-	if (!protocol_found) return FALSE;
-	s_pWSManager = wl_registry_bind (registry, protocol_id, &zcosmic_workspace_manager_v1_interface, protocol_version);
+	if (!(cosmic_protocol_found || ext_protocol_found)) return FALSE;
+	
+	if (ext_protocol_found)
+		if ( !(cosmic_protocol_found && prefer_cosmic))
+			s_bExtProto = TRUE;
+	
+	if (s_bExtProto) s_pWSManager = wl_registry_bind (registry, ext_protocol_id, &zext_workspace_manager_v1_interface, ext_protocol_version);
+	else s_pWSManager = wl_registry_bind (registry, cosmic_protocol_id, &zcosmic_workspace_manager_v1_interface, cosmic_protocol_version);
 	if (!s_pWSManager) return FALSE;
 	
 	GldiDesktopManagerBackend dmb;
@@ -516,12 +593,14 @@ gboolean gldi_cosmic_workspaces_try_init (struct wl_registry *registry)
 //	dmb.remove_last_workspace = _remove_workspace;
 	gldi_desktop_manager_register_backend (&dmb, "cosmic-workspaces");
 	
-	zcosmic_workspace_manager_v1_add_listener (s_pWSManager, &manager_listener, NULL);
+	if (s_bExtProto) zext_workspace_manager_v1_add_listener (s_pWSManager, &ext_manager_listener, NULL);
+	else zcosmic_workspace_manager_v1_add_listener (s_pWSManager, &manager_listener, NULL);
 	return TRUE;
 }
 
 struct zcosmic_workspace_handle_v1 *gldi_cosmic_workspaces_get_handle (int x, int y)
 {
+	if (s_bExtProto) return NULL;
 	unsigned int iReq = _get_ix ((guint)x, (guint)y);
 	if (iReq < s_iNumDesktops)
 		return desktops[iReq]->handle;
@@ -531,6 +610,7 @@ struct zcosmic_workspace_handle_v1 *gldi_cosmic_workspaces_get_handle (int x, in
 
 void gldi_cosmic_workspaces_update_window (GldiWindowActor *actor, struct zcosmic_workspace_handle_v1 *handle)
 {
+	if (s_bExtProto) return;
 	unsigned int i;
 	for (i = 0; i < s_iNumDesktops; i++)
 	{

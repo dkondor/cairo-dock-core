@@ -24,11 +24,12 @@
 #include <wayland-client.h>
 #include <stdint.h>
 #include "wayland-cosmic-workspace-client-protocol.h"
+#include "wayland-ext-workspace-client-protocol.h"
 
 extern struct wl_output *s_ws_output;
 
 gboolean gldi_cosmic_workspaces_match_protocol (uint32_t id, const char *interface, uint32_t version);
-gboolean gldi_cosmic_workspaces_try_init (struct wl_registry *registry);
+gboolean gldi_cosmic_workspaces_try_init (struct wl_registry *registry, gboolean prefer_cosmic);
 struct zcosmic_workspace_handle_v1 *gldi_cosmic_workspaces_get_handle (int x, int y);
 void gldi_cosmic_workspaces_update_window (GldiWindowActor *actor, struct zcosmic_workspace_handle_v1 *handle);
 
