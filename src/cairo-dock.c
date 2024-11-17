@@ -126,6 +126,31 @@ static gboolean s_bPingServer = TRUE;
 static gboolean s_bCDSessionLaunched = FALSE; // session CD already launched?
 static gboolean s_bWaylandRunAlready = FALSE;
 
+// private: options used only in this file
+static gboolean bSafeMode = FALSE;
+static gboolean bMaintenance = FALSE;
+static gboolean bNoSticky = FALSE;
+static gboolean bCappuccino = FALSE;
+static gboolean bPrintVersion = FALSE;
+static gboolean bTesting = FALSE;
+static gboolean bForceOpenGL = FALSE;
+static gboolean bToggleIndirectRendering = FALSE;
+static gboolean bKeepAbove = FALSE;
+static gboolean bForceColors = FALSE;
+static gboolean bAskBackend = FALSE;
+static gboolean bTransparencyWorkaround = FALSE;
+static gchar *cEnvironment = NULL;
+static gchar *cUserDefinedDataDir = NULL;
+static gchar *cVerbosity = 0;
+static gchar *cUserDefinedModuleDir = NULL;
+static gchar *cExcludeModule = NULL;
+static gchar *cThemeServerAdress = NULL;
+static int iDelay = 0;
+	
+static GApplication *s_pApp = NULL;
+
+static void _startup (GApplication *self, void*);
+static void _shutdown (void);
 
 static void _on_got_server_answer (const gchar *data, G_GNUC_UNUSED gpointer user_data)
 {
@@ -179,7 +204,8 @@ static gboolean _cairo_dock_first_launch_setup (G_GNUC_UNUSED gpointer data)
 }
 static void _cairo_dock_quit (G_GNUC_UNUSED int signal)
 {
-	gtk_main_quit ();
+	g_application_quit (s_pApp);
+	// gtk_main_quit ();
 }
 /* Crash at startup:
  *  - First 2 crashes: retry with a delay of 2 sec (maybe due to a problem at startup)
@@ -343,7 +369,7 @@ int main (int argc, char** argv)
 
 	dbus_g_thread_init (); // it's a wrapper: it will use dbus_threads_init_default ();
 	
-	GError *erreur = NULL;
+	// GError *erreur = NULL;
 	
 	//\___________________ internationalize the app.
 	bindtextdomain (CAIRO_DOCK_GETTEXT_PACKAGE, CAIRO_DOCK_LOCALE_DIR);
@@ -351,9 +377,6 @@ int main (int argc, char** argv)
 	textdomain (CAIRO_DOCK_GETTEXT_PACKAGE);
 	
 	//\___________________ get app's options.
-	gboolean bSafeMode = FALSE, bMaintenance = FALSE, bNoSticky = FALSE, bCappuccino = FALSE, bPrintVersion = FALSE, bTesting = FALSE, bForceOpenGL = FALSE, bToggleIndirectRendering = FALSE, bKeepAbove = FALSE, bForceColors = FALSE, bAskBackend = FALSE, bTransparencyWorkaround = FALSE;
-	gchar *cEnvironment = NULL, *cUserDefinedDataDir = NULL, *cVerbosity = 0, *cUserDefinedModuleDir = NULL, *cExcludeModule = NULL, *cThemeServerAdress = NULL;
-	int iDelay = 0;
 	GOptionEntry pOptionsTable[] =
 	{
 		// GLDI options: cairo, opengl, indirect-opengl, env, keep-above, no-sticky
@@ -452,7 +475,24 @@ int main (int argc, char** argv)
 			NULL,
 			NULL, NULL}
 	};
+	
+	
+	
+	GApplication *app = G_APPLICATION (gtk_application_new (NULL, G_APPLICATION_NON_UNIQUE));
+	g_application_add_main_option_entries (app, pOptionsTable);
+	g_signal_connect (G_OBJECT (app), "activate", G_CALLBACK (_startup), NULL);
+	s_pApp = app;
+	g_application_run (app, argc, argv);
+	
+	_shutdown ();
+}
 
+
+static gboolean s_bRunning = FALSE;
+
+static void _startup (GApplication *app, void*)
+{
+/*
 	GOptionContext *context = g_option_context_new ("Cairo-Dock");
 	g_option_context_add_main_entries (context, pOptionsTable, NULL);
 	g_option_context_parse (context, &argc, &argv, &erreur);
@@ -461,22 +501,39 @@ int main (int argc, char** argv)
 		cd_error ("ERROR in options: %s", erreur->message);
 		return 1;
 	}
+	*/
+	
+	if (s_bRunning)
+	{
+		cd_warning ("GApplication::activate called multiple times, this should not happen!");
+		return;
+	}
+	s_bRunning = TRUE;
+	
+	g_application_hold (app);
+	
+	GError *erreur = NULL;
+	
 	if (g_bForceWayland && g_bForceX11)
 	{
 		cd_error ("Both Wayland and X11 backends cannot be requested (use only one of the -L and -X options)!\n");
-		return 1;
+		g_application_quit (app);
+		return;
+		// return 1;
 	}
 	if (g_bForceWayland)
 		gdk_set_allowed_backends ("wayland");
 	if (g_bForceX11)
 		gdk_set_allowed_backends ("x11");
 	
-	gtk_init (&argc, &argv);
+	// gtk_init (&argc, &argv);
 	
 	if (bPrintVersion)
 	{
 		g_print ("%s\n", CAIRO_DOCK_VERSION);
-		return 0;
+		g_application_quit (app);
+		return;
+		// return 0;
 	}
 	
 	if (g_bLocked)
@@ -511,7 +568,9 @@ int main (int argc, char** argv)
 	{
 		const gchar *cCappuccino = _("Cairo-Dock makes anything, including coffee !");
 		g_print ("%s\n", cCappuccino);
-		return 0;
+		g_application_quit (app);
+		return;
+		// return 0;
 	}
 	
 	//\___________________ get global config.
@@ -749,6 +808,7 @@ int main (int argc, char** argv)
 	
 	//\___________________ handle terminate signals to quit properly (especially when the system shuts down).
 	signal (SIGTERM, _cairo_dock_quit);  // Term // kill -15 (system)
+	signal (SIGINT,  _cairo_dock_quit);  // Int (Ctrl-C)
 	signal (SIGHUP,  _cairo_dock_quit);  // sent to a process when its controlling terminal is closed
 
 	//\___________________ Disable modules that have crashed
@@ -993,13 +1053,18 @@ int main (int argc, char** argv)
 		g_timeout_add_seconds (5, _cairo_dock_successful_launch, GINT_TO_POINTER (bFirstLaunch));
 
 	// Start Mainloop
-	gtk_main ();
-	
+	// gtk_main ();
+}
+
+static void _shutdown (void)
+{
+
 	signal (SIGSEGV, NULL);  // Segmentation violation
 	signal (SIGFPE, NULL);  // Floating-point exception
 	signal (SIGILL, NULL);  // Illegal instruction
 	signal (SIGABRT, NULL);
 	signal (SIGTERM, NULL);
+	signal (SIGINT, NULL);
 	signal (SIGHUP, NULL);
 
 	gldi_free_all ();
@@ -1013,5 +1078,6 @@ int main (int argc, char** argv)
 	cd_message ("Bye bye !");
 	g_print ("\033[0m\n");
 
-	return 0;
+	// return 0;
 }
+
