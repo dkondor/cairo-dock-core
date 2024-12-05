@@ -481,10 +481,10 @@ static void _on_menu_deactivated (GtkMenuShell *pMenu, G_GNUC_UNUSED gpointer da
 		if (pIcon->iHideLabel == 0 && pContainer)
 			gtk_widget_queue_draw (pContainer->pWidget);
 	}
-	if (gldi_container_is_wayland_backend ())
+/*	if (gldi_container_is_wayland_backend ())
 	{
 		gldi_wayland_release_keyboard (pContainer);
-	}
+	} */
 }
 
 void gldi_menu_init (GtkWidget *pMenu, Icon *pIcon)
@@ -573,7 +573,7 @@ static void _menu_realized_cb (GtkWidget *widget, gpointer user_data)
 	
 	// try to shift the menu
 	gdouble fAlign = pParams->fAlign;
-	gint dx = 0, dy = 0;
+/*	gint dx = 0, dy = 0;
 	switch (pParams->iMarginPosition)
 	{
 		case 0: // bottom
@@ -607,7 +607,7 @@ static void _menu_realized_cb (GtkWidget *widget, gpointer user_data)
 				&rect, rect_anchor, menu_anchor, NULL);
 			// gdk_window_move_to_rect (window, &rect, rect_anchor, menu_anchor, GDK_ANCHOR_SLIDE_X | GDK_ANCHOR_SLIDE_Y, dx, dy);
 		}
-	}
+	} */
 	
 	gldi_container_calculate_aimed_point (pIcon, widget, w, h, pParams->iMarginPosition, fAlign, &(pParams->iAimedX), &(pParams->iAimedY));
 	
