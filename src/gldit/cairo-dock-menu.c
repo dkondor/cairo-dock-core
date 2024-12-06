@@ -481,10 +481,10 @@ static void _on_menu_deactivated (GtkMenuShell *pMenu, G_GNUC_UNUSED gpointer da
 		if (pIcon->iHideLabel == 0 && pContainer)
 			gtk_widget_queue_draw (pContainer->pWidget);
 	}
-/*	if (gldi_container_is_wayland_backend ())
+	if (gldi_container_is_wayland_backend ())
 	{
 		gldi_wayland_release_keyboard (pContainer);
-	} */
+	}
 }
 
 void gldi_menu_init (GtkWidget *pMenu, Icon *pIcon)
