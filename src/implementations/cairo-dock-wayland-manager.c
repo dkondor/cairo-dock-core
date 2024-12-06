@@ -443,13 +443,35 @@ void gldi_wayland_grab_keyboard (GldiContainer *pContainer)
 
 void gldi_wayland_release_keyboard ( G_GNUC_UNUSED GldiContainer *pContainer)
 {
-	GldiWindowActor *actor = gldi_windows_get_active ();
+#ifdef HAVE_GTK_LAYER_SHELL
+	GtkWindow* window = GTK_WINDOW (pContainer->pWidget);
+	gtk_layer_set_keyboard_mode (window, GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
+	wl_surface_commit (gdk_wayland_window_get_wl_surface (
+		gldi_container_get_gdk_window (pContainer)));
+	gtk_layer_set_keyboard_mode (window, GTK_LAYER_SHELL_KEYBOARD_MODE_ON_DEMAND);
+#endif
+/*	GldiWindowActor *actor = gldi_windows_get_active ();
 	if (actor && !actor->bIsHidden) {
 		if (gldi_window_manager_can_track_workspaces () && !gldi_window_is_on_current_desktop (actor))
 			return;
 		// TODO: avoid activating a window not on the current workspace in other cases!
 		gldi_window_show (actor);
-	}
+	} */
+/*
+ * current behavior:
+ * Wayfire (latest):
+ *  - setting keyboard to ON_DEMAND grabs the focus
+ *  - no need to call this function after closing menus, focus is automatically lost
+ *  - need to call this when starting scale (TODO: is there IPC alternative?)
+ * Labwc (latest):
+ *  - setting keyboard to NONE -> ON_DEMAND works as expected to lose focus
+ *  - need to call this after closing menus
+ * KWin (5.27.11):
+ *  - need to call after closing menus
+ *  - ON_DEMAND is not supported at all, gtk-layer-shell sets NONE instead
+ *  - but NONE works as ON_DEMAND would, dock receives keyboard focus
+ *  - should test on 6.x version
+ */
 }
 
 static gboolean _dock_handle_leave (CairoDock *pDock, GdkEventCrossing *pEvent)
