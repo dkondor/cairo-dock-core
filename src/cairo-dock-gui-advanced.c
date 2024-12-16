@@ -935,6 +935,7 @@ static gboolean _show_group_dialog (CairoDockGroupDescription *pGroupDescription
 	if (pIcon == NULL || cairo_dock_get_icon_container(pIcon) == NULL || cairo_dock_icon_is_being_removed (pIcon))
 		pIcon = gldi_icons_get_any_without_dialog ();
 	GldiContainer *pContainer = (pIcon != NULL ? cairo_dock_get_icon_container (pIcon) : NULL);
+	//!! TODO: ensure that pContainer is not a hidden subdock !!
 	
 	CairoDialogAttr attr;
 	memset (&attr, 0, sizeof (CairoDialogAttr));
