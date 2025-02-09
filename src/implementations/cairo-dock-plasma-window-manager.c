@@ -56,8 +56,6 @@ struct _GldiPlasmaWindowActor {
 	unsigned int pid; // pid of the process associated with this window
 	unsigned int sigkill_timeout; // set to an event source if the user requested to kill this process
 	unsigned int cap_and_state; // capabilites and state that is not stored elsewhere
-	char *service_name; // appmenu service name
-	char *object_path; // appmenu object path
 	GldiContainer *pMinimizeContainer; // the container that this actor's minimize position is set to
 };
 typedef struct _GldiPlasmaWindowActor GldiPlasmaWindowActor;
@@ -194,14 +192,6 @@ static void _kill (GldiWindowActor *actor)
 	// 2. after 2s, we send sigkill (if the window is still not closed)
 	pactor->sigkill_timeout = g_timeout_add (2000, _send_sigkill, pactor);
 }
-
-static void _get_menu_address (GldiWindowActor *actor, char **service_name, char **object_path)
-{
-	GldiPlasmaWindowActor *pactor = (GldiPlasmaWindowActor*)actor;
-	if (service_name) *service_name = pactor->service_name;
-	if (object_path)  *object_path  = pactor->object_path;
-}
-
 
 /***********************************************************************
  * window manager interface -> minimize position handling
@@ -426,12 +416,8 @@ static void _gldi_toplevel_pid_changed_cb (void* data, G_GNUC_UNUSED pwhandle *h
 static void _gldi_toplevel_application_menu_cb (void* data, G_GNUC_UNUSED pwhandle *handle,
 	const char *service_name, const char *object_path)
 {
-	GldiPlasmaWindowActor *pactor = (GldiPlasmaWindowActor*)data;
-	g_free (pactor->service_name);
-	g_free (pactor->object_path);
-	pactor->service_name = (service_name && *service_name) ? g_strdup (service_name) : NULL;
-	pactor->object_path  = (object_path  && *object_path ) ? g_strdup (object_path)  : NULL;
-	cd_debug ("got app menu address: %s %s", service_name, object_path);
+	GldiWaylandWindowActor *wactor = (GldiWaylandWindowActor*)data;
+	gldi_wayland_wm_appmenu_changed (wactor, service_name, object_path);
 }
 
 static void _gldi_toplevel_client_geometry_cb (G_GNUC_UNUSED void* data, G_GNUC_UNUSED pwhandle* handle,
@@ -616,8 +602,6 @@ static void _reset_object (GldiObject* obj)
 		g_hash_table_remove (s_hIDTable, pactor->uuid);
 		g_free (pactor->uuid);
 		org_kde_plasma_window_destroy ((pwhandle*)pactor->wactor.handle);
-		g_free (pactor->service_name);
-		g_free (pactor->object_path);
 	}
 }
 
@@ -657,7 +641,7 @@ static void gldi_plasma_window_manager_init ()
 	wmb.set_sticky = _set_sticky;
 	wmb.can_minimize_maximize_close = _can_minimize_maximize_close;
 	// wmb.get_id = _get_id;
-	wmb.get_menu_address = _get_menu_address;
+	wmb.get_menu_address = gldi_wayland_wm_get_appmenu_address;
 	wmb.pick_window = gldi_wayland_wm_pick_window;
 	wmb.flags = GINT_TO_POINTER (GLDI_WM_NO_VIEWPORT_OVERLAP | GLDI_WM_GEOM_REL_TO_VIEWPORT | GLDI_WM_HAVE_WINDOW_GEOMETRY | GLDI_WM_HAVE_WORKSPACES);
 	wmb.name = "plasma";
