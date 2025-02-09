@@ -54,6 +54,9 @@ struct _GldiWaylandWindowActor {
 	
 	gboolean init_done; // initial state has been configured
 	gboolean in_queue; // this actor has been added to the s_pending_queue
+	
+	char *service_name; // appmenu service name
+	char *object_path; // appmenu object path
 };
 typedef struct _GldiWaylandWindowActor GldiWaylandWindowActor;
 
@@ -81,6 +84,8 @@ void gldi_wayland_wm_skip_changed (GldiWaylandWindowActor *wactor, gboolean skip
 void gldi_wayland_wm_sticky_changed (GldiWaylandWindowActor *wactor, gboolean sticky, gboolean notify);
 void gldi_wayland_wm_activated (GldiWaylandWindowActor *wactor, gboolean activated, gboolean notify);
 
+void gldi_wayland_wm_appmenu_changed (GldiWaylandWindowActor *wactor, const char *service_name, const char *object_path);
+
 void gldi_wayland_wm_closed (GldiWaylandWindowActor *wactor, gboolean notify);
 
 void gldi_wayland_wm_viewport_changed (GldiWaylandWindowActor *wactor, int viewport_x, int viewport_y, gboolean notify);
@@ -93,6 +98,8 @@ GldiWindowActor* gldi_wayland_wm_get_active_window ();
 GldiWindowActor* gldi_wayland_wm_get_last_active_window ();
 
 GldiWindowActor* gldi_wayland_wm_pick_window (GtkWindow *pParentWindow);
+
+void gldi_wayland_wm_get_appmenu_address (GldiWindowActor *actor, char **service_name, char **object_path);
 
 /** Change the stacking order such that actor is on top. Will schedule a
  * notification (NOTIFICATION_WINDOW_Z_ORDER_CHANGED) that will be emitted

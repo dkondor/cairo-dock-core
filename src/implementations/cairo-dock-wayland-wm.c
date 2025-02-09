@@ -225,6 +225,14 @@ void gldi_wayland_wm_geometry_changed (GldiWaylandWindowActor *wactor, const Gtk
 	if (notify) gldi_wayland_wm_done (wactor);
 }
 
+void gldi_wayland_wm_appmenu_changed (GldiWaylandWindowActor *wactor, const char *service_name, const char *object_path)
+{
+	g_free (wactor->service_name);
+	g_free (wactor->object_path);
+	wactor->service_name = (service_name && *service_name) ? g_strdup (service_name) : NULL;
+	wactor->object_path  = (object_path  && *object_path ) ? g_strdup (object_path)  : NULL;
+	cd_debug ("got app menu address: %s %s", service_name, object_path);
+}
 
 /* Process pending updates for a window's title and send a notification
  * if notify == TRUE. Returns whether a notification has been sent. */
@@ -662,6 +670,14 @@ GldiWindowActor* gldi_wayland_wm_get_last_active_window ()
 	return s_pLastActiveWindow;
 }
 
+void gldi_wayland_wm_get_appmenu_address (GldiWindowActor *actor, char **service_name, char **object_path)
+{
+	GldiWaylandWindowActor *wactor = (GldiWaylandWindowActor*)actor;
+	if (service_name) *service_name = wactor->service_name;
+	if (object_path)  *object_path  = wactor->object_path;
+}
+
+
 GldiWaylandWindowActor* gldi_wayland_wm_new_toplevel (gpointer handle)
 {
 	return (GldiWaylandWindowActor*)gldi_object_new (&myWaylandWMObjectMgr, handle);
@@ -690,9 +706,11 @@ static void _reset_object (GldiObject* obj)
 	
 	if (wactor)
 	{
-		g_free(wactor->cClassPending);
-		g_free(wactor->cTitlePending);
-		if (wactor->handle && s_handle_destroy_cb) s_handle_destroy_cb(wactor->handle);
+		g_free (wactor->cClassPending);
+		g_free (wactor->cTitlePending);
+		if (wactor->handle && s_handle_destroy_cb) s_handle_destroy_cb (wactor->handle);
+		g_free (wactor->service_name);
+		g_free (wactor->object_path);
 	}
 }
 
