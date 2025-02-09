@@ -181,6 +181,20 @@ static void _gldi_toplevel_parent_cb (void* data, G_GNUC_UNUSED wfthandle *handl
 	wactor->parent = parent;
 }
 
+static void _gldi_toplevel_gtk_dbus_props_cb (void* data, G_GNUC_UNUSED wfthandle *handle,
+	const char *, const char *, const char *, const char *, const char *, const char *)
+{
+	GldiWaylandWindowActor* wactor = (GldiWaylandWindowActor*)data;
+	//!! TODO
+}
+
+static void _gldi_toplevel_kde_appmenu_cb (void* data, G_GNUC_UNUSED wfthandle *handle,
+	const char *service_name, const char *object_path)
+{
+	GldiWaylandWindowActor *wactor = (GldiWaylandWindowActor*)data;
+	gldi_wayland_wm_appmenu_changed (wactor, service_name, object_path);
+}
+
 /**********************************************************************
  * interface and object manager definitions                           */
 
@@ -192,7 +206,9 @@ static struct zwlr_foreign_toplevel_handle_v1_listener gldi_toplevel_handle_inte
     .state        = _gldi_toplevel_state_cb,
     .done         = _gldi_toplevel_done_cb,
     .closed       = _gldi_toplevel_closed_cb,
-    .parent       = _gldi_toplevel_parent_cb
+    .parent       = _gldi_toplevel_parent_cb,
+    .gtk_shell1_surface_dbus_properties = _gldi_toplevel_gtk_dbus_props_cb,
+    .kde_application_menu = _gldi_toplevel_kde_appmenu_cb
 };
 
 /* register new toplevel */
@@ -258,6 +274,7 @@ static void gldi_zwlr_foreign_toplevel_manager_init ()
 	// wmb.set_sticky = _set_sticky;
 	wmb.can_minimize_maximize_close = _can_minimize_maximize_close;
 	// wmb.get_id = _get_id;
+	wmb.get_menu_address = gldi_wayland_wm_get_appmenu_address;
 	wmb.pick_window = gldi_wayland_wm_pick_window;
 	wmb.name = "wlr";
 	gldi_windows_manager_register_backend (&wmb);
