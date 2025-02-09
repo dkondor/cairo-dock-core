@@ -25,7 +25,7 @@
     THIS SOFTWARE.
   </copyright>
 
-  <interface name="zwlr_foreign_toplevel_manager_v1" version="3">
+  <interface name="zwlr_foreign_toplevel_manager_v1" version="4">
     <description summary="list and control opened apps">
       The purpose of this protocol is to enable the creation of taskbars
       and docks by providing them with a list of opened applications and
@@ -68,7 +68,7 @@
     </event>
   </interface>
 
-  <interface name="zwlr_foreign_toplevel_handle_v1" version="3">
+  <interface name="zwlr_foreign_toplevel_handle_v1" version="4">
     <description summary="an opened toplevel">
       A zwlr_foreign_toplevel_handle_v1 object represents an opened toplevel
       window. Each app may have multiple opened toplevels.
@@ -265,6 +265,36 @@
         No event is emitted when the parent handle is destroyed by the client.
       </description>
       <arg name="parent" type="object" interface="zwlr_foreign_toplevel_handle_v1" allow-null="true"/>
+    </event>
+
+    <!-- Version 4 additions -->
+
+    <event name="gtk_shell1_surface_dbus_properties" since="4">
+      <description summary="information about dbus properties set by the gtk-shell protocol">
+        This event is emitted for clients that use the gtk-shell protocol
+        and the "set_dbus_properties" request defined there to set additional
+        properties. The properties set by the client are relayed here.
+        This can be used e.g. for implementing global menus or for triggering
+        supported actions directly from a desktop interface component.
+      </description>
+      <!-- TODO: should we really include the application ID here? -->
+      <arg name="application_id" type="string" allow-null="true"/>
+      <arg name="app_menu_path" type="string" allow-null="true"/>
+      <arg name="menubar_path" type="string" allow-null="true"/>
+      <arg name="window_object_path" type="string" allow-null="true"/>
+      <arg name="application_object_path" type="string" allow-null="true"/>
+      <arg name="unique_bus_name" type="string" allow-null="true"/>
+    </event>
+    
+    <event name="kde_application_menu" since="4">	
+      <description summary="information about the appmenu  set by the kde-appmenu protocol">
+          This event is emitted for clients that use the kde-application-menu protocol
+          to set the DBus object path at which they implement the com.canonical.???
+          interface. The interface set by the client is relayed here. This can be used
+          for implementing global menus by a desktop interface component.
+      </description>
+      <arg name="service_name" type="string" />
+      <arg name="object_path" type="string" />
     </event>
   </interface>
 </protocol>
