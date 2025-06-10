@@ -262,7 +262,11 @@ static void _gldi_toplevel_state_cb (void *data, G_GNUC_UNUSED pwhandle *handle,
 		// is handled separately below; for versions >= 17, we would need
 		// to support stacking_order_changed_2
 		if (server_protocol_version < 12 || server_protocol_version >= 17)
+		{
 			gldi_wayland_wm_stack_on_top ((GldiWindowActor*)wactor);
+			cd_warning ("window activated: %s (stacking on top)", pactor->uuid);
+		}
+		else cd_warning ("window activated: %s (not stacking on top)", pactor->uuid);
 	}
 	else gldi_wayland_wm_activated (wactor, FALSE, FALSE);
 	if (wactor->init_done) gldi_wayland_wm_done (wactor);
@@ -296,6 +300,9 @@ static void _gldi_toplevel_parent_cb (void* data, G_GNUC_UNUSED pwhandle *handle
 
 static void _gldi_toplevel_geometry_cb (void* data, G_GNUC_UNUSED pwhandle *handle, int32_t x, int32_t y, uint32_t w, uint32_t h)
 {
+	GldiPlasmaWindowActor* pwactor = (GldiPlasmaWindowActor*)data;
+	cd_warning ("geometry changed: %s (%d, %d) %ux%u", pwactor->uuid, x, y, w, h);
+	
 	GldiWaylandWindowActor* wactor = (GldiWaylandWindowActor*)data;
 	GldiWindowActor* actor = (GldiWindowActor*)wactor;
 	actor->windowGeometry.width = w;
@@ -306,13 +313,17 @@ static void _gldi_toplevel_geometry_cb (void* data, G_GNUC_UNUSED pwhandle *hand
 		gldi_object_notify (&myWindowObjectMgr, NOTIFICATION_WINDOW_SIZE_POSITION_CHANGED, actor);
 }
 
-static void _gldi_toplevel_virtual_desktop_changed (G_GNUC_UNUSED void* data, G_GNUC_UNUSED pwhandle *handle, G_GNUC_UNUSED int32_t x)
+static void _gldi_toplevel_virtual_desktop_changed (void* data, G_GNUC_UNUSED pwhandle *handle, int32_t x)
 {
+	GldiPlasmaWindowActor* pwactor = (GldiPlasmaWindowActor*)data;
+	cd_warning ("virtual desktop changed: %s %d", pwactor->uuid, x);
 	/* don't care */
 }
 
 static void _virtual_desktop_entered (void *data, G_GNUC_UNUSED pwhandle *handle, const char *desktop_id)
 {
+	GldiPlasmaWindowActor* pwactor = (GldiPlasmaWindowActor*)data;
+	cd_warning ("virtual desktop entered: %s %s", pwactor->uuid, desktop_id);
 	GldiWindowActor* actor = (GldiWindowActor*)data;
 	int i = gldi_plasma_virtual_desktop_get_index (desktop_id);
 	if (i >= 0)
@@ -322,6 +333,12 @@ static void _virtual_desktop_entered (void *data, G_GNUC_UNUSED pwhandle *handle
 		actor->iViewPortX = i % g_desktopGeometry.iNbViewportX;
 		gldi_object_notify (&myWindowObjectMgr, NOTIFICATION_WINDOW_DESKTOP_CHANGED, actor);
 	}
+}
+
+static void _virtual_desktop_left (void *data, G_GNUC_UNUSED pwhandle *handle, const char *desktop_id)
+{
+	GldiPlasmaWindowActor* pwactor = (GldiPlasmaWindowActor*)data;
+	cd_warning ("virtual desktop left: %s %s", pwactor->uuid, desktop_id);
 }
 
 /* dummy callback shared between all that take a const char* parameter */
@@ -365,7 +382,7 @@ static struct org_kde_plasma_window_listener gldi_toplevel_handle_interface = {
     .icon_changed = _gldi_toplevel_icon_changed_cb,
     .pid_changed = _gldi_toplevel_pid_changed_cb,
     .virtual_desktop_entered = _virtual_desktop_entered,
-    .virtual_desktop_left = _gldi_toplevel_dummy_cb,
+    .virtual_desktop_left = _virtual_desktop_left,
     .application_menu = _gldi_toplevel_application_menu_cb,
     .activity_entered = _gldi_toplevel_dummy_cb,
     .activity_left = _gldi_toplevel_dummy_cb
@@ -414,12 +431,15 @@ static void _show_desktop_changed_cb ( G_GNUC_UNUSED void *data,
 static void _stacking_order_changed_cb( G_GNUC_UNUSED void *data,
 	G_GNUC_UNUSED struct org_kde_plasma_window_management *org_kde_plasma_window_management, G_GNUC_UNUSED struct wl_array *ids)
 {
+	cd_warning ("_stacking_order_changed_cb()");
 	/* don't care */
 }
 
 static void _stacking_order_uuid_changed_cb ( G_GNUC_UNUSED void *data,
 	G_GNUC_UNUSED struct org_kde_plasma_window_management *org_kde_plasma_window_management, const char *uuids)
 {
+	cd_warning ("_stacking_order_uuid_changed_cb()");
+	
 	int i = 0;
 	GString *str = NULL;
 	do {
@@ -548,6 +568,8 @@ gboolean gldi_plasma_window_manager_match_protocol (uint32_t id, const char *int
 gboolean gldi_plasma_window_manager_try_init (struct wl_registry *registry)
 {
 	if (!protocol_found) return FALSE;
+	cd_warning ("Initializing KDE plasma window management protocol, server version: %u, client version %d",
+		server_protocol_version, org_kde_plasma_window_management_interface.version);
 	
 	uint32_t protocol_version = server_protocol_version;
 	if (protocol_version > (uint32_t)org_kde_plasma_window_management_interface.version)
