@@ -1491,12 +1491,15 @@ static void _add_main_groups_buttons (void)
 	pGroupDescription->pManagers = g_list_prepend (pGroupDescription->pManagers, (gchar*)"Taskbar");
 	pGroupDescription->build_widget = _build_config_group_widget;
 	
-	pGroupDescription = _add_one_main_group_button ("Shortkeys",
-		CAIRO_DOCK_SHARE_DATA_DIR"/icons/icon-shortkeys.svg",
-		CAIRO_DOCK_CATEGORY_BEHAVIOR,
-		N_("Define all the keyboard shortcuts currently available."),
-		_("Shortkeys"));
-	pGroupDescription->build_widget = _build_shortkeys_widget;
+	if (!gldi_container_is_wayland_backend ())
+	{
+		pGroupDescription = _add_one_main_group_button ("Shortkeys",
+			CAIRO_DOCK_SHARE_DATA_DIR"/icons/icon-shortkeys.svg",
+			CAIRO_DOCK_CATEGORY_BEHAVIOR,
+			N_("Define all the keyboard shortcuts currently available."),
+			_("Shortkeys"));
+		pGroupDescription->build_widget = _build_shortkeys_widget;
+	}
 	
 	pGroupDescription = _add_one_main_group_button ("System",
 		CAIRO_DOCK_SHARE_DATA_DIR"/icons/icon-system.svg",

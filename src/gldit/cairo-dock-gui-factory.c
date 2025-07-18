@@ -1936,6 +1936,12 @@ GtkWidget *cairo_dock_build_group_widget (GKeyFile *pKeyFile, const gchar *cGrou
 			g_free (cKeyComment);
 			continue;
 		}
+		if (gldi_container_is_wayland_backend () && iElementType == CAIRO_DOCK_WIDGET_SHORTKEY_SELECTOR)
+		{
+			// no global shortcuts on Wayland, we should not display the option to set them
+			g_free (cKeyComment);
+			continue;
+		}
 		
 		//\______________ On cree la boite du groupe si c'est la 1ere cle valide.
 		if (pGroupBox == NULL)  // maintenant qu'on a au moins un element dans ce groupe, on cree sa page dans le notebook.
@@ -3264,6 +3270,9 @@ GtkWidget *cairo_dock_build_key_file_widget_full (GKeyFile* pKeyFile, const gcha
 				}
 			}
 		}
+		
+		if (gldi_container_is_wayland_backend () && !strcmp (cGroupName, "Shortkeys"))
+			continue; // no support for global keybindings on Wayland
 		
 		//\____________ On construit son widget.
 		pLabel = gtk_label_new (dgettext (cGettextDomain, cDisplayedGroupName ? cDisplayedGroupName : cGroupName));
