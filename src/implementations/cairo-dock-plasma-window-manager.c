@@ -292,7 +292,11 @@ static void _gldi_toplevel_geometry_cb (void* data, G_GNUC_UNUSED pwhandle *hand
 	actor->windowGeometry.x = x;
 	actor->windowGeometry.y = y;
 	if (wactor->init_done && actor->bDisplayed)
+	{
+		cd_warning ("Window position changed (%p, %s -- %s): %d, %d; %dx%d", actor, actor->cWmClass, actor->cName,
+			x, y, w, h);
 		gldi_object_notify (&myWindowObjectMgr, NOTIFICATION_WINDOW_SIZE_POSITION_CHANGED, actor);
+	}
 }
 
 static void _gldi_toplevel_virtual_desktop_changed (G_GNUC_UNUSED void* data, G_GNUC_UNUSED pwhandle *handle, G_GNUC_UNUSED int32_t x)
@@ -309,6 +313,8 @@ static void _virtual_desktop_entered (void *data, G_GNUC_UNUSED pwhandle *handle
 		actor->iNumDesktop = 0;
 		actor->iViewPortY = i / g_desktopGeometry.iNbViewportX;
 		actor->iViewPortX = i % g_desktopGeometry.iNbViewportX;
+		cd_warning ("Window desktop changed (%p, %s -- %s): %d, %d", actor, actor->cWmClass, actor->cName,
+			actor->iViewPortX, actor->iViewPortY);
 		gldi_object_notify (&myWindowObjectMgr, NOTIFICATION_WINDOW_DESKTOP_CHANGED, actor);
 	}
 }

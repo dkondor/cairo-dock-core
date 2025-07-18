@@ -98,6 +98,7 @@ static void _show_if_no_overlapping_window (CairoDock *pDock, G_GNUC_UNUSED gpoi
 {
 	if (pDock->iVisibility != CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP_ANY)
 		return ;
+	cd_warning("");
 	if (cairo_dock_is_temporary_hidden (pDock))
 	{
 		if (!gldi_dock_has_overlapping_window (pDock))
@@ -111,6 +112,7 @@ static void _hide_if_overlap (CairoDock *pDock, GldiWindowActor *pAppli)
 {
 	if (pDock->iVisibility != CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP_ANY)
 		return ;
+	cd_warning ("");
 	if (! cairo_dock_is_temporary_hidden (pDock))
 	{
 		if (gldi_window_is_on_current_desktop (pAppli) && _window_overlaps_dock (pAppli, pDock))
@@ -128,6 +130,7 @@ static void _hide_if_overlap_or_show_if_no_overlapping_window (CairoDock *pDock,
 	_get_dock_geometry (pDock, &area);
 	if (_window_overlaps_area (pAppli, &area))  // cette fenetre peut provoquer l'auto-hide.
 	{
+		cd_warning ("overlap with window: %p, %s -- %s", pAppli, pAppli->cWmClass, pAppli->cName);
 		if (! cairo_dock_is_temporary_hidden (pDock))
 		{
 			cairo_dock_activate_temporary_auto_hide (pDock);
@@ -135,6 +138,7 @@ static void _hide_if_overlap_or_show_if_no_overlapping_window (CairoDock *pDock,
 	}
 	else  // ne gene pas/plus.
 	{
+		cd_warning ("no overlap with window: %p, %s -- %s", pAppli, pAppli->cWmClass, pAppli->cName);
 		if (cairo_dock_is_temporary_hidden (pDock))
 		{
 			if (!_dock_has_overlapping_window (&area))
@@ -162,7 +166,10 @@ static void _hide_show_if_on_our_way (CairoDock *pDock, GldiWindowActor *pCurren
 		_get_dock_geometry (pDock, &area);
 		
 		if (gldi_window_is_on_current_desktop (pCurrentAppli) && _window_overlaps_area (pCurrentAppli, &area))
+		{
+			cd_warning ("overlap with window: %p, %s -- %s", pCurrentAppli, pCurrentAppli->cWmClass, pCurrentAppli->cName);
 			bShow = FALSE;
+		}
 		else
 		{
 			GldiWindowActor *pParentAppli = pCurrentAppli->bIsTransientFor ?
@@ -171,6 +178,7 @@ static void _hide_show_if_on_our_way (CairoDock *pDock, GldiWindowActor *pCurren
 			if (pParentAppli && gldi_window_is_on_current_desktop (pParentAppli) &&
 				_window_overlaps_area (pParentAppli, &area))
 			{
+				cd_warning ("overlap with window: %p, %s -- %s", pParentAppli, pParentAppli->cWmClass, pParentAppli->cName);
 				bShow = FALSE;
 			}
 		}
@@ -181,8 +189,12 @@ static void _hide_show_if_on_our_way (CairoDock *pDock, GldiWindowActor *pCurren
 		if (cairo_dock_is_temporary_hidden (pDock))
 			cairo_dock_deactivate_temporary_auto_hide (pDock);
 	}
-	else if (!cairo_dock_is_temporary_hidden (pDock))
-		cairo_dock_activate_temporary_auto_hide (pDock);
+	else
+	{
+		cd_warning ("no overlap with window: %p, %s -- %s", pCurrentAppli, pCurrentAppli->cWmClass, pCurrentAppli->cName);
+		if (!cairo_dock_is_temporary_hidden (pDock))
+			cairo_dock_activate_temporary_auto_hide (pDock);
+	}
 }
 
 static void _hide_if_any_overlap_or_show (CairoDock *pDock, G_GNUC_UNUSED gpointer data)
@@ -334,7 +346,10 @@ static inline gboolean _window_overlaps_dock (const GldiWindowActor *actor, cons
 	if (actor->bIsHidden || !actor->bDisplayed) return FALSE;
 	GtkAllocation area;
 	_get_dock_geometry (pDock, &area);
-	return _window_overlaps_area (actor, &area);
+	gboolean ret = _window_overlaps_area (actor, &area);
+	cd_warning ("Dock %s with window: %p, %s -- %s", ret ? "overlaps" : "does not overlap",
+		actor, actor->cWmClass, actor->cName);
+	return ret;
 }
 
 static gboolean _window_is_overlapping_dock (GldiWindowActor *actor, gpointer data)
@@ -342,7 +357,9 @@ static gboolean _window_is_overlapping_dock (GldiWindowActor *actor, gpointer da
 	const GtkAllocation *pArea = (const GtkAllocation*)data;
 	if (gldi_window_is_on_current_desktop (actor) && ! actor->bIsHidden && actor->bDisplayed)
 	{
-		return _window_overlaps_area (actor, pArea);
+		gboolean ret = _window_overlaps_area (actor, pArea);
+		if (ret) cd_warning ("Found overlapping window: %p, %s -- %s", actor, actor->cWmClass, actor->cName);
+		return ret;
 	}
 	return FALSE;
 }
@@ -372,7 +389,8 @@ gboolean gldi_dock_has_overlapping_window (CairoDock *pDock)
 ////////////
 
 static void _refresh (CairoDock *pDock)
-{	
+{
+	cd_warning("");
 	if (pDock->iVisibility == CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP_ANY)
 		_hide_if_any_overlap_or_show (pDock, NULL);
 	else if (pDock->iVisibility == CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP)

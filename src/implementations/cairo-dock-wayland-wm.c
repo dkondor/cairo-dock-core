@@ -236,7 +236,11 @@ static gboolean _update_sticky (GldiWaylandWindowActor *wactor, gboolean notify)
 {
 	GldiWindowActor* actor = (GldiWindowActor*)wactor;
 	gboolean changed = (wactor->sticky_pending != actor->bIsSticky);
-	if (changed) actor->bIsSticky = wactor->sticky_pending;
+	if (changed)
+	{
+		cd_warning ("Window sticky state changed (%p, %s -- %s): %s", actor, actor->cWmClass, actor->cName, wactor->sticky_pending ? "TRUE" : "FALSE");
+		actor->bIsSticky = wactor->sticky_pending;
+	}
 	// a change in stickyness can be seen as a change in the desktop position
 	if (notify && changed) gldi_object_notify (&myWindowObjectMgr, NOTIFICATION_WINDOW_DESKTOP_CHANGED, actor);
 	return changed;
@@ -310,7 +314,11 @@ void gldi_wayland_wm_done (GldiWaylandWindowActor *wactor)
 			// Process all possible fields
 			if(wactor->close_pending) {
 				// this window was closed, just notify the taskbar and free it
-				if (actor->bDisplayed) gldi_object_notify (&myWindowObjectMgr, NOTIFICATION_WINDOW_DESTROYED, actor);
+				if (actor->bDisplayed)
+				{
+					cd_warning ("Window closed (%p): %s -- %s", actor, actor->cWmClass, actor->cName);
+					gldi_object_notify (&myWindowObjectMgr, NOTIFICATION_WINDOW_DESTROYED, actor);
+				}
 				if (actor == s_pSelf) s_pSelf = NULL;
 				if (actor == s_pActiveWindow) s_pActiveWindow = NULL;
 				if (actor == s_pLastActiveWindow) s_pLastActiveWindow = NULL;
@@ -362,6 +370,7 @@ void gldi_wayland_wm_done (GldiWaylandWindowActor *wactor)
 				_update_state(wactor, FALSE);
 				_update_attention(wactor, FALSE);
 				
+				cd_warning ("New window (%p): %s -- %s", actor, actor->cWmClass, actor->cName);
 				gldi_object_notify (&myWindowObjectMgr, NOTIFICATION_WINDOW_CREATED, actor);
 				continue; /* check for other changes that might have happened while processing the above */
 			}
@@ -374,6 +383,7 @@ void gldi_wayland_wm_done (GldiWaylandWindowActor *wactor)
 				_update_state(wactor, FALSE);
 				_update_attention(wactor, FALSE);
 				
+				cd_warning ("Window closed (%p): %s -- %s", actor, actor->cWmClass, actor->cName);
 				gldi_object_notify (&myWindowObjectMgr, NOTIFICATION_WINDOW_DESTROYED, actor);
 				if (actor == s_pSelf) s_pSelf = NULL;
 				if (actor == s_pActiveWindow) s_pActiveWindow = NULL;
@@ -419,6 +429,7 @@ void gldi_wayland_wm_done (GldiWaylandWindowActor *wactor)
 					s_pActiveWindow = actor;
 					s_pLastActiveWindow = actor;
 					bUnfocused = FALSE;
+					cd_warning ("New active window (%p): %s -- %s", actor, actor->cWmClass, actor->cName);
 					gldi_object_notify (&myWindowObjectMgr, NOTIFICATION_WINDOW_ACTIVATED, actor);
 				}
 				s_pMaybeActiveWindow = NULL;
@@ -439,7 +450,10 @@ void gldi_wayland_wm_done (GldiWaylandWindowActor *wactor)
 		{
 			// notify if the active window has been unfocused
 			if (bUnfocused && !s_pActiveWindow)
+			{
+				cd_warning ("No more active window");
 				gldi_object_notify (&myWindowObjectMgr, NOTIFICATION_WINDOW_ACTIVATED, NULL);
+			}
 			bUnfocused = FALSE;
 			
 			// notify if the stacking order has changed
