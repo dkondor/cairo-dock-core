@@ -48,6 +48,7 @@ static void _gldi_appli_icon_demands_attention (Icon *icon, CairoDock *pDock, gb
 	//\____________________ On montre le dialogue.
 	if (myTaskbarParam.bDemandsAttentionWithDialog)
 	{
+		cd_warning ("Showing attention dialog (pDock: %p, bIsMainDock : %d)", pDock, pDock->bIsMainDock);
 		CairoDialog *pDialog;
 		if (pHiddenIcon == NULL)
 		{
