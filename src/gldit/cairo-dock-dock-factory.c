@@ -657,7 +657,7 @@ void gldi_dock_leave_synthetic (CairoDock *pDock)
 static gboolean _on_dock_unmap (GtkWidget* pWidget, G_GNUC_UNUSED GdkEvent* pEvent, CairoDock *pDock)
 {
 	// this event is only necessary on Wayland
-	// g_print ("_on_dock_unmap() for dock: %p (bIsMainDock : %d; bInside:%d)\n", pDock, pDock->bIsMainDock, pDock->container.bInside);
+	g_print ("_on_dock_unmap() for dock: %p (bIsMainDock : %d; bInside:%d)\n", pDock, pDock->bIsMainDock, pDock->container.bInside);
 	pDock->iMousePositionType = CAIRO_DOCK_MOUSE_OUTSIDE;
 	_on_leave_notify (pWidget, NULL, pDock);
 	return FALSE;
