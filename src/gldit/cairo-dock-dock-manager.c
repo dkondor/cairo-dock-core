@@ -1787,14 +1787,18 @@ static void init_object (GldiObject *obj, gpointer attr)
 	}
 
 	//\__________________ init layer-shell (if enabled) and also set parent; needs to happen before window is mapped
+	CairoDock *pParentDock = NULL;
 	if (dattr->bSubDock && gldi_container_use_new_positioning_code ())
 	{
-		CairoDock *pParentDock = dattr->pParentDock;
+		pParentDock = dattr->pParentDock;
 		if (pParentDock == NULL)
 			pParentDock = g_pMainDock;
 		gtk_window_set_transient_for (GTK_WINDOW (pDock->container.pWidget), GTK_WINDOW (pParentDock->container.pWidget));
 	}
 	gldi_container_init_layer (&(pDock->container));
+	
+	cd_warning ("new dock: %p (parent: %p, name: %s)", pDock->container.pWidget,
+		pParentDock ? (pParentDock->container.pWidget) : NULL, dattr->cDockName);
 	
 	//\__________________ init internals
 	gldi_dock_init_internals (pDock);

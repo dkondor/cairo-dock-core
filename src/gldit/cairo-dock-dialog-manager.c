@@ -1182,6 +1182,9 @@ static void init_object (GldiObject *obj, gpointer attr)
 			tmp = gtk_window_get_transient_for (tmp);
 		gtk_window_set_transient_for (GTK_WINDOW (pDialog->container.pWidget), tmp);
 		gldi_container_init_layer (&(pDialog->container));
+		
+		cd_warning ("new dialog: %p (parent: %p, text: %s)", pDialog->container.pWidget, tmp,
+			pAttribute->cText ? pAttribute->cText : "(null)");
 	}
 	
 	//\________________ set up its orientation (do it now, as we need bDirectionUp to place the internal widgets)

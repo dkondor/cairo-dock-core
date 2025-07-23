@@ -657,9 +657,16 @@ void gldi_dock_leave_synthetic (CairoDock *pDock)
 static gboolean _on_dock_unmap (GtkWidget* pWidget, G_GNUC_UNUSED GdkEvent* pEvent, CairoDock *pDock)
 {
 	// this event is only necessary on Wayland
-	g_print ("_on_dock_unmap() for dock: %p (bIsMainDock : %d; bInside:%d)\n", pDock, pDock->bIsMainDock, pDock->container.bInside);
+	g_print ("_on_dock_unmap() for dock: %p (pWidget: %p, bIsMainDock : %d; bInside:%d)\n", pDock, pDock->container.pWidget,
+		pDock->bIsMainDock, pDock->container.bInside);
 	pDock->iMousePositionType = CAIRO_DOCK_MOUSE_OUTSIDE;
 	_on_leave_notify (pWidget, NULL, pDock);
+	return FALSE;
+}
+
+static gboolean _on_dock_map (GtkWidget *pWidget, GdkEvent*, void*)
+{
+	cd_warning ("dock mapped: %p", pWidget);
 	return FALSE;
 }
 
@@ -2312,6 +2319,12 @@ void gldi_dock_init_internals (CairoDock *pDock)
 			"unmap-event",
 			G_CALLBACK (_on_dock_unmap),
 			pDock);
+	// print debug info on map as well
+	g_signal_connect (G_OBJECT (pWindow),
+		"map-event",
+		G_CALLBACK (_on_dock_map),
+		NULL);
+
 	
 	gtk_widget_show_all (pDock->container.pWidget);
 }

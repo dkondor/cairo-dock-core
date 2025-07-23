@@ -272,7 +272,8 @@ static gboolean on_unmap_dialog (GtkWidget* pWidget,
 	G_GNUC_UNUSED GdkEvent *pEvent,
 	CairoDialog *pDialog)
 {
-	//g_print ("unmap dialog (bAllowMinimize:%d, visible:%d)\n", pDialog->bAllowMinimize, GTK_WIDGET_VISIBLE (pWidget));
+	g_print ("unmap dialog: %p (bAllowMinimize:%d, visible:%d, mapped:%d)\n", pWidget, pDialog->bAllowMinimize,
+		gtk_widget_is_visible (pWidget), gtk_widget_get_mapped (pWidget));
 	if (gldi_container_use_new_positioning_code ()) pDialog->container.bInside = FALSE;
 	if (! pDialog->bAllowMinimize)  // it's an unexpected unmap event
 	{
@@ -288,10 +289,15 @@ static gboolean on_unmap_dialog (GtkWidget* pWidget,
 		{
 			// new behavior: we accept that the WM can close our dialogs any time
 			if (pDialog->bHideOnClick) {
+				g_print ("    hiding...\n");
 				gtk_widget_hide (pDialog->container.pWidget);
 				gldi_dialog_leave (pDialog); // notify that the dialog is hidden
 			}
-			else gldi_object_unref (GLDI_OBJECT(pDialog)); // destroy the dialog
+			else
+			{
+				g_print ("    destroying...\n");
+				gldi_object_unref (GLDI_OBJECT(pDialog)); // destroy the dialog
+			}
 		}
 		else gtk_window_present (GTK_WINDOW (pWidget));  // old behavior: counter it, we don't want dialogs to be hidden
 	}
@@ -309,6 +315,8 @@ static gboolean on_map_dialog (G_GNUC_UNUSED GtkWidget* pWidget,
 	G_GNUC_UNUSED GdkEvent *pEvent,
 	CairoDialog *pDialog)
 {
+	cd_warning ("map dialog: %p", pWidget);
+	
 	if (pDialog->pInteractiveWidget)
 	{
 		gldi_container_present (CAIRO_CONTAINER (pDialog));
