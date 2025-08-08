@@ -1149,7 +1149,7 @@ static gboolean _on_scroll (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventScroll* pS
 
 static gboolean _on_configure (GtkWidget* pWidget, GdkEventConfigure* pEvent, CairoDock *pDock)
 {
-	cd_debug ("%p, main dock : %d (%d;%d) (%dx%d)", pDock, pDock->bIsMainDock, pEvent->x, pEvent->y, pEvent->width, pEvent->height);
+	cd_warning ("%p, main dock : %d (%d;%d) (%dx%d)\n", pDock, pDock->bIsMainDock, pEvent->x, pEvent->y, pEvent->width, pEvent->height);
 	// set the new actual size of the container
 	gint iNewWidth, iNewHeight, iNewX, iNewY;
 	if (pDock->container.bIsHorizontal)
