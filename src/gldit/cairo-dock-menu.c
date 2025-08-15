@@ -972,6 +972,89 @@ GtkWidget *gldi_menu_item_get_image (GtkWidget *pMenuItem)
 	return gtk3_image_menu_item_get_image (GTK3_IMAGE_MENU_ITEM (pMenuItem));
 }
 
+
+// custom data to store with menu items that have a tooltip
+typedef struct _GldiMenuItemTooltip {
+	gchar *cText;
+	gboolean bShow;
+	void (*pFunction)(GtkMenuItem*, gpointer);
+	gpointer pData;
+} GldiMenuItemTooltip;
+
+static void _free_tooltip_data (gpointer ptr, GObject*)
+{
+	if (!ptr) return;
+	GldiMenuItemTooltip *pCustomData = (GldiMenuItemTooltip*)ptr;
+	g_free (pCustomData->cText);
+	g_free (pCustomData);
+	// note: pData is not managed by us
+}
+
+static gboolean _query_tooltip (GtkWidget*, int, int, gboolean, GtkTooltip* pToolTip, gpointer ptr)
+{
+	if (!ptr) return FALSE; // should not happen
+	GldiMenuItemTooltip *pCustomData = (GldiMenuItemTooltip*)ptr;
+	if (pCustomData->bShow && pCustomData->cText)
+	{
+		// this is quite inefficient (as it will make a copy every time this function is called),
+		// but seems to be required as GTK resets the text to NULL before calling this function, see:
+		// https://gitlab.gnome.org/GNOME/gtk/-/blob/gtk-3-24/gtk/gtktooltip.c?ref_type=heads#L833
+		gtk_tooltip_set_text (pToolTip, pCustomData->cText);
+		return TRUE;
+	}
+	else return FALSE;
+}
+
+static void _enable_tooltip (GtkWidget*, gpointer ptr)
+{
+	if (!ptr) return; // should not happen
+	GldiMenuItemTooltip *pCustomData = (GldiMenuItemTooltip*)ptr;
+	pCustomData->bShow = TRUE;
+}
+
+static void _tooltip_activate (GtkMenuItem* pMenuItem, gpointer ptr)
+{
+	if (!ptr) return; // should not happen
+	GldiMenuItemTooltip *pCustomData = (GldiMenuItemTooltip*)ptr;
+	pCustomData->bShow = FALSE;
+	if (pCustomData->pFunction)
+		(pCustomData->pFunction)(pMenuItem, pCustomData->pData);
+}
+
+static GtkWidget *_menu_item_new_with_action_and_tooltip (const gchar *cLabel, const gchar *cImage, const gchar *cToolTip, void (*pFunction)(GtkMenuItem*, gpointer), gpointer pData)
+{
+	GtkWidget *pMenuItem;
+	gboolean bCustomCallback = TRUE;
+	if (!cToolTip) bCustomCallback = FALSE;
+	else if (!gldi_container_is_wayland_backend ()) //!! TODO: also check if we're using layer shell
+		bCustomCallback = FALSE;
+	
+	if (bCustomCallback)
+	{
+		pMenuItem = gldi_menu_item_new (cLabel, cImage);
+		if (!pMenuItem) return NULL;
+		
+		GldiMenuItemTooltip *pCustomData = g_new0 (GldiMenuItemTooltip, 1);
+		pCustomData->cText = g_strdup (cToolTip);
+		pCustomData->bShow = TRUE;
+		pCustomData->pFunction = pFunction;
+		pCustomData->pData = pData;
+		
+		g_object_weak_ref (G_OBJECT (pMenuItem), _free_tooltip_data, pCustomData);
+		gtk_widget_set_has_tooltip (pMenuItem, TRUE);
+		g_signal_connect (G_OBJECT (pMenuItem), "query-tooltip", G_CALLBACK (_query_tooltip), pCustomData);
+		g_signal_connect (G_OBJECT (pMenuItem), "map", G_CALLBACK (_enable_tooltip), pCustomData);
+		g_signal_connect (G_OBJECT (pMenuItem), "activate", G_CALLBACK (_tooltip_activate), pCustomData);
+	}
+	else
+	{
+		pMenuItem = gldi_menu_item_new_with_action (cLabel, cImage, G_CALLBACK (pFunction), pData);
+		if (pMenuItem && cToolTip) gtk_widget_set_tooltip_text (pMenuItem, cToolTip);
+	}
+	return pMenuItem;
+}
+
+
 GtkWidget *gldi_menu_item_new_with_action (const gchar *cLabel, const gchar *cImage, GCallback pFunction, gpointer pData)
 {
 	GtkWidget *pMenuItem = gldi_menu_item_new (cLabel, cImage);
@@ -998,6 +1081,13 @@ GtkWidget *gldi_menu_item_new_with_submenu (const gchar *cLabel, const gchar *cI
 GtkWidget *gldi_menu_add_item (GtkWidget *pMenu, const gchar *cLabel, const gchar *cImage, GCallback pFunction, gpointer pData)
 {
 	GtkWidget *pMenuItem = gldi_menu_item_new_with_action (cLabel, cImage, pFunction, pData);
+	gtk_menu_shell_append (GTK_MENU_SHELL (pMenu), pMenuItem);
+	return pMenuItem;
+}
+
+GtkWidget *gldi_menu_add_item_with_tooltip (GtkWidget *pMenu, const gchar *cLabel, const gchar *cImage, const gchar *cToolTip, void (*pFunction)(GtkMenuItem*, gpointer), gpointer pData)
+{
+	GtkWidget *pMenuItem = _menu_item_new_with_action_and_tooltip (cLabel, cImage, cToolTip, pFunction, pData);
 	gtk_menu_shell_append (GTK_MENU_SHELL (pMenu), pMenuItem);
 	return pMenuItem;
 }
