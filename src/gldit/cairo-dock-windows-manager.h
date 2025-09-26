@@ -87,6 +87,8 @@ struct _GldiWindowManagerBackend {
 	void (*move_to_viewport_abs) (GldiWindowActor *actor, int iNumDesktop, int iViewportX, int iViewportY); // like move_to_nth_desktop, but use absolute viewport coordinates
 	gpointer flags; // GldiWMBackendFlags, cast to pointer
 	void (*get_menu_address) (GldiWindowActor *actor, char **service_name, char **object_path);
+	/// backend implementation for gldi_window_show_or_minimize () -- only called if actor != gldi_windows_get_active ()
+	void (*show_or_minimize) (GldiWindowActor *actor);
 	} ;
 
 /// Definition of a window actor.
@@ -150,6 +152,12 @@ void gldi_window_lower (GldiWindowActor *actor);
 void gldi_window_maximize (GldiWindowActor *actor, gboolean bMaximize);
 void gldi_window_set_fullscreen (GldiWindowActor *actor, gboolean bFullScreen);
 void gldi_window_set_above (GldiWindowActor *actor, gboolean bAbove);
+/** Show (activate) actor if it is not the active window, or minimize it if it is already
+ * active. We need a separate function for this as tracking the active window can be
+ * inaccurate, see: https://github.com/Cairo-Dock/cairo-dock-core/issues/140
+ * This allows backends to implement any necessary workarounds.
+ */
+void gldi_window_show_or_minimize (GldiWindowActor *actor);
 
 /** Set the position of this window's icon, to be used by the WM for its minimize animation.
  * Note: coordinates are relative to the passed container's main surface. */

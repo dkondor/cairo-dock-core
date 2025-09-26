@@ -157,6 +157,22 @@ void gldi_window_show (GldiWindowActor *actor)
 		s_backend.show (actor);
 }
 
+void gldi_window_show_or_minimize (GldiWindowActor *actor)
+{
+	g_return_if_fail (actor != NULL);
+	if (actor->bIsHidden || (gldi_window_manager_can_track_workspaces () && !gldi_window_is_on_current_desktop (actor)))
+		gldi_window_show (actor);
+	else
+	{
+		if (gldi_windows_get_active () == actor) gldi_window_minimize (actor);
+		else
+		{
+			if (s_backend.show_or_minimize)
+				s_backend.show_or_minimize (actor);
+			else gldi_window_show (actor);
+		}
+	}
+}
 
 void gldi_window_close (GldiWindowActor *actor)
 {
