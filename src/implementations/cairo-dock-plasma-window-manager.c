@@ -67,6 +67,15 @@ typedef enum {
 
 static uint32_t server_protocol_version = 0;
 static GHashTable *s_hIDTable = NULL;
+static GldiPlasmaWindowActor *s_pLastDeactivated = NULL;
+/* static uint32_t s_iSidDeactivated = 0;
+
+gboolean _clear_last_deactivated (gpointer)
+{
+	s_pLastDeactivated = NULL;
+	s_iSidDeactivated = 0;
+	return G_SOURCE_REMOVE;
+} */
 
 // window manager interface
 
@@ -103,6 +112,24 @@ static void _minimize (GldiWindowActor *actor)
 		ORG_KDE_PLASMA_WINDOW_MANAGEMENT_STATE_MINIMIZED,
 		ORG_KDE_PLASMA_WINDOW_MANAGEMENT_STATE_MINIMIZED);
 }
+
+static void _show_or_minimize (GldiWindowActor *actor)
+{
+	// note: this function is only called if actor is not the currently active one
+	GldiPlasmaWindowActor *pactor = (GldiPlasmaWindowActor *)actor;
+	if (pactor == s_pLastDeactivated)
+	{
+		_minimize (actor);
+/*		if (s_iSidDeactivated)
+		{
+			g_source_remove (s_iSidDeactivated);
+			s_iSidDeactivated = 0;
+		} */
+		s_pLastDeactivated = NULL;
+	}
+	else _show (actor);
+}
+
 /* does not work this way, would need to use timeout
 static void _lower (GldiWindowActor *actor)
 {
@@ -250,8 +277,25 @@ static void _gldi_toplevel_state_cb (void *data, G_GNUC_UNUSED pwhandle *handle,
 		// separately below; versions >= 17, have stacking_order_changed_2 which is
 		// also handled separately
 		if (server_protocol_version < 12) gldi_wayland_wm_stack_on_top ((GldiWindowActor*)wactor);
+		if (s_pLastDeactivated) s_pLastDeactivated = NULL;
+/*		if (s_iSidDeactivated)
+		{
+			g_source_remove (s_iSidDeactivated);
+			s_iSidDeactivated = 0;
+		} */
+		cd_warning ("Window activated: %p %s", wactor, wactor->actor.cName);
 	}
-	else gldi_wayland_wm_activated (wactor, FALSE, FALSE);
+	else
+	{
+		gldi_wayland_wm_activated (wactor, FALSE, FALSE);
+		if (pactor == (GldiPlasmaWindowActor*)gldi_wayland_wm_get_active_window ())
+		{
+			s_pLastDeactivated = pactor;
+/*			if (s_iSidDeactivated) g_source_remove (s_iSidDeactivated);
+			s_iSidDeactivated = g_timeout_add (50, _clear_last_deactivated, NULL); */
+		}
+		cd_warning ("Window deactivated: %p %s", wactor, wactor->actor.cName);
+	}
 	if (wactor->init_done) gldi_wayland_wm_done (wactor);
 }
 
@@ -538,6 +582,7 @@ static void gldi_plasma_window_manager_init ()
 	wmb.maximize = _maximize;
 	wmb.set_fullscreen = _fullscreen;
 	wmb.set_above = _set_above;
+	wmb.show_or_minimize = _show_or_minimize;
 	wmb.set_thumbnail_area = _set_thumbnail_area;
 	// wmb.set_window_border = _set_window_border;
 	// wmb.get_icon_surface = _get_icon_surface;
