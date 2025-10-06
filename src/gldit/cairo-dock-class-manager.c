@@ -45,7 +45,7 @@
 #include "cairo-dock-image-buffer.h"
 #include "cairo-dock-icon-manager.h"
 #include "cairo-dock-indicator-manager.h"  // myIndicatorsParam.bUseClassIndic
-#include "cairo-dock-container.h"
+#include "cairo-dock-container-priv.h"
 #include "cairo-dock-animations.h"
 #include "cairo-dock-application-facility.h"
 #include "cairo-dock-keyfile-utilities.h"

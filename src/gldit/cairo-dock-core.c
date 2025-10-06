@@ -31,7 +31,7 @@
 #include "cairo-dock-dock-visibility.h"
 #include "cairo-dock-desklet-manager.h"
 #include "cairo-dock-dialog-manager.h"
-#include "cairo-dock-container.h"
+#include "cairo-dock-container-priv.h"
 #include "cairo-dock-flying-container.h"
 #include "cairo-dock-applications-manager.h"
 #include "cairo-dock-applet-manager.h"

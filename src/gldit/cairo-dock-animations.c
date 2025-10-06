@@ -34,7 +34,7 @@
 #include "cairo-dock-dock-visibility.h"  // gldi_dock_has_overlapping_window
 #include "cairo-dock-log.h"
 #include "cairo-dock-backends-manager.h"
-#include "cairo-dock-container.h"
+#include "cairo-dock-container-priv.h"
 #include "cairo-dock-animations.h"
 
 extern gboolean g_bUseOpenGL;

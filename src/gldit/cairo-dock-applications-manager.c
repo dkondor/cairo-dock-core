@@ -33,7 +33,7 @@
 #include "cairo-dock-animations.h"  // cairo_dock_trigger_icon_removal_from_dock
 #include "cairo-dock-dock-facility.h"  // cairo_dock_update_dock_size
 #include "cairo-dock-icon-facility.h"  // gldi_icon_set_name
-#include "cairo-dock-container.h"
+#include "cairo-dock-container-priv.h"
 #include "cairo-dock-object.h"
 #include "cairo-dock-log.h"
 #include "cairo-dock-config.h"

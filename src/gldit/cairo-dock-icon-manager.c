@@ -32,7 +32,7 @@
 #include "cairo-dock-class-manager.h"  // cairo_dock_deinhibite_class
 #include "cairo-dock-draw.h"  // cairo_dock_render_icon_notification
 #include "cairo-dock-draw-opengl.h"  // cairo_dock_destroy_icon_fbo
-#include "cairo-dock-container.h"
+#include "cairo-dock-container-priv.h"
 #include "cairo-dock-dock-manager.h"  // gldi_icons_foreach_in_docks
 #include "cairo-dock-dialog-manager.h"  // cairo_dock_remove_dialog_if_any
 #include "cairo-dock-data-renderer.h"  // cairo_dock_remove_data_renderer_on_icon

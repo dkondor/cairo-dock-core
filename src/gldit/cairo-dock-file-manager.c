@@ -35,7 +35,7 @@
 #include "cairo-dock-dialog-factory.h"  // gldi_dialog_show_temporary
 #include "cairo-dock-log.h"
 #include "cairo-dock-dock-manager.h"
-#include "cairo-dock-container.h"
+#include "cairo-dock-container-priv.h"
 #include "cairo-dock-utils.h"  // cairo_dock_property_is_present_on_root
 #include "cairo-dock-class-manager.h"  // GldiAppInfo functions
 #include "cairo-dock-icon-manager.h"  // cairo_dock_free_icon

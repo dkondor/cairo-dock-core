@@ -46,7 +46,7 @@
 #include "cairo-dock-desktop-manager.h"
 #include "cairo-dock-class-manager.h"  // gldi_class_startup_notify_end
 #include "cairo-dock-windows-manager.h"
-#include "cairo-dock-container.h"  // GldiContainerManagerBackend
+#include "cairo-dock-container-priv.h"  // GldiContainerManagerBackend
 #include "cairo-dock-dock-factory.h"
 #include "cairo-dock-dock-manager.h" // gldi_docks_foreach_root
 #include "cairo-dock-dock-facility.h" // gldi_dock_get_screen_offset_y

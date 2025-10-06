@@ -36,7 +36,7 @@
 #include "wayland-ext-toplevel-list-client-protocol.h"
 #include "cairo-dock-desktop-manager.h"
 #include "cairo-dock-windows-manager.h"
-#include "cairo-dock-container.h"
+#include "cairo-dock-container-priv.h"
 #include "cairo-dock-dock-factory.h"
 #include "cairo-dock-dock-manager.h"
 #include "cairo-dock-dock-visibility.h"

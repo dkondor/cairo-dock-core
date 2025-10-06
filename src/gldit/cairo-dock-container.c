@@ -39,7 +39,7 @@
 #include "cairo-dock-menu.h"  // gldi_menu_new
 #include "cdwindow.h"
 #define _MANAGER_DEF_
-#include "cairo-dock-container.h"
+#include "cairo-dock-container-priv.h"
 
 #if (GTK_MAJOR_VERSION == 3 && GTK_MINOR_VERSION == 22)
 #include "gdk-move-to-rect-hack.h"

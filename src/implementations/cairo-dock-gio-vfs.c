@@ -33,7 +33,7 @@
 
 #include <cairo-dock-log.h>
 #include <cairo-dock-utils.h>
-#include <cairo-dock-container.h>
+#include <cairo-dock-container-priv.h>
 #include <cairo-dock-class-manager.h>
 #include <cairo-dock-class-manager.h>
 #include <cairo-dock-icon-facility.h>

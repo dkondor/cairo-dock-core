@@ -19,7 +19,7 @@
 
 #include "gldi-config.h"
 #include "cairo-dock-dock-facility.h"
-#include "cairo-dock-container.h"
+#include "cairo-dock-container-priv.h"
 #include "cairo-dock-object.h"
 #include "cairo-dock-log.h"
 #include "cairo-dock-windows-manager.h"

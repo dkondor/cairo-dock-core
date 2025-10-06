@@ -20,6 +20,7 @@
 
 #include <stddef.h>
 #include "gldi-config.h"
+#include "cairo-dock-container-priv.h" // gldi_container_use_new_positioning_code
 #include "cairo-dock-dock-manager.h"
 #include "cairo-dock-desklet-manager.h"
 #include "cairo-dock-keyfile-utilities.h"  // cairo_dock_conf_file_needs_update

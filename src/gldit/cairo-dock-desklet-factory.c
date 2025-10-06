@@ -40,7 +40,7 @@
 #include "cairo-dock-themes-manager.h"  // cairo_dock_update_conf_file
 #include "cairo-dock-desktop-manager.h"
 #include "cairo-dock-log.h"
-#include "cairo-dock-container.h"
+#include "cairo-dock-container-priv.h"
 #include "cairo-dock-surface-factory.h"
 #include "cairo-dock-backends-manager.h"
 #include "cairo-dock-draw-opengl.h"

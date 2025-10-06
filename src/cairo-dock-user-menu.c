@@ -48,7 +48,7 @@
 #include "cairo-dock-desklet-manager.h"
 #include "cairo-dock-dock-manager.h"
 #include "cairo-dock-class-manager.h"
-#include "cairo-dock-container.h"
+#include "cairo-dock-container-priv.h"
 #include "cairo-dock-dialog-factory.h"  // gldi_dialog_show_*
 #include "cairo-dock-desktop-manager.h"
 #include "cairo-dock-windows-manager.h"

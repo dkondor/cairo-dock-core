@@ -51,6 +51,7 @@
 #include "cairo-dock-class-manager.h"  // cairo_dock_check_class_subdock_is_empty
 #include "cairo-dock-desktop-manager.h"
 #include "cairo-dock-windows-manager.h"  // gldi_windows_get_active
+#include "cairo-dock-container-priv.h"
 #include "cairo-dock-dock-factory.h"
 
 // dependencies
