@@ -22,6 +22,7 @@
 #define  __CAIRO_DOCK_CONTAINER_PRIV__
 
 #include "cairo-dock-container.h"
+#include "cairo-dock-manager.h"
 
 G_BEGIN_DECLS
 

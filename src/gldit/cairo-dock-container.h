@@ -32,7 +32,7 @@
 #endif
 #endif
 #include "cairo-dock-struct.h"
-#include "cairo-dock-manager.h"
+#include "cairo-dock-object.h"
 
 G_BEGIN_DECLS
 
