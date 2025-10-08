@@ -52,7 +52,7 @@
 #include "cairo-dock-file-manager.h"
 #include "cairo-dock-windows-manager.h"
 #include "cairo-dock-desktop-file-db.h"
-#include "cairo-dock-class-manager.h"
+#include "cairo-dock-class-manager-priv.h"
 
 extern CairoDock *g_pMainDock;
 extern CairoDockDesktopEnv g_iDesktopEnv;

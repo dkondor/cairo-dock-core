@@ -38,7 +38,7 @@
 #include "cairo-dock-backends-manager.h"
 #include "cairo-dock-desktop-manager.h"
 #include "cairo-dock-windows-manager.h"
-#include "cairo-dock-class-manager.h"
+#include "cairo-dock-class-manager-priv.h"
 #include "cairo-dock-X-manager.h"
 #include "cairo-dock-wayland-manager.h"
 #include "cairo-dock-systemd-integration.h"

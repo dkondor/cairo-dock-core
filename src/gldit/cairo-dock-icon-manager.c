@@ -29,7 +29,7 @@
 #include "cairo-dock-desklet-manager.h"  // gldi_desklets_foreach_icons
 #include "cairo-dock-log.h"
 #include "cairo-dock-config.h"
-#include "cairo-dock-class-manager.h"  // cairo_dock_deinhibite_class
+#include "cairo-dock-class-manager-priv.h"  // cairo_dock_deinhibite_class
 #include "cairo-dock-draw.h"  // cairo_dock_render_icon_notification
 #include "cairo-dock-draw-opengl.h"  // cairo_dock_destroy_icon_fbo
 #include "cairo-dock-container-priv.h"

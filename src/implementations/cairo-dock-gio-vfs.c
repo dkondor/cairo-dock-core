@@ -34,8 +34,8 @@
 #include <cairo-dock-log.h>
 #include <cairo-dock-utils.h>
 #include <cairo-dock-container-priv.h>
-#include <cairo-dock-class-manager.h>
-#include <cairo-dock-class-manager.h>
+#include <cairo-dock-class-manager-priv.h>
+#include <cairo-dock-class-manager-priv.h>
 #include <cairo-dock-icon-facility.h>
 #include <cairo-dock-icon-manager.h>
 

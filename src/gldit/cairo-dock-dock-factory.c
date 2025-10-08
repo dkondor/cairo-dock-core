@@ -48,7 +48,7 @@
 #include "cairo-dock-dock-visibility.h"  // gldi_dock_visibility_refresh
 #include "cairo-dock-flying-container.h"
 #include "cairo-dock-backends-manager.h"
-#include "cairo-dock-class-manager.h"  // cairo_dock_check_class_subdock_is_empty
+#include "cairo-dock-class-manager-priv.h"  // cairo_dock_check_class_subdock_is_empty
 #include "cairo-dock-desktop-manager.h"
 #include "cairo-dock-windows-manager.h"  // gldi_windows_get_active
 #include "cairo-dock-container-priv.h"

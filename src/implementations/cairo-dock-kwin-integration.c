@@ -31,7 +31,7 @@
 #include "cairo-dock-icon-factory.h"
 #include "cairo-dock-dock-factory.h"
 #include "cairo-dock-windows-manager.h"  // gldi_window_get_id
-#include "cairo-dock-class-manager.h"
+#include "cairo-dock-class-manager-priv.h"
 #include "cairo-dock-icon-manager.h"  // myIconsParam.fAmplitude
 #include "cairo-dock-kwin-integration.h"
 #ifdef HAVE_WAYLAND_PROTOCOLS

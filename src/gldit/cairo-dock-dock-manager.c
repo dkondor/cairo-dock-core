@@ -37,7 +37,7 @@
 #include "cairo-dock-applet-manager.h"
 #include "cairo-dock-stack-icon-manager.h"
 #include "cairo-dock-class-icon-manager.h"
-#include "cairo-dock-class-manager.h"  // cairo_dock_update_class_subdock_name
+#include "cairo-dock-class-manager-priv.h"  // cairo_dock_update_class_subdock_name
 #include "cairo-dock-backends-manager.h"
 #include "cairo-dock-desktop-manager.h"
 #include "cairo-dock-log.h"

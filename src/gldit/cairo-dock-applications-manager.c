@@ -39,7 +39,7 @@
 #include "cairo-dock-config.h"
 #include "cairo-dock-dock-manager.h"
 #include "cairo-dock-desktop-manager.h"  // NOTIFICATION_DESKTOP_CHANGED
-#include "cairo-dock-class-manager.h"
+#include "cairo-dock-class-manager-priv.h"
 #include "cairo-dock-draw-opengl.h"  // cairo_dock_create_texture_from_surface
 #include "cairo-dock-keyfile-utilities.h"  // cairo_dock_open_key_file
 #include "cairo-dock-application-facility.h"

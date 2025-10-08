@@ -33,7 +33,7 @@
 #include "cairo-dock-dock-manager.h"
 #include "cairo-dock-keybinder.h"  // cairo_dock_trigger_shortkey
 #include "cairo-dock-animations.h"  // gldi_icon_request_animation
-#include "cairo-dock-class-manager.h"
+#include "cairo-dock-class-manager-priv.h"
 #include "cairo-dock-desktop-manager.h"
 #include "cairo-dock-windows-manager.h"
 #include "cairo-dock-gui-backend.h"
