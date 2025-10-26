@@ -107,7 +107,7 @@ static void _logind_action (const gchar *cAction)
 }
 
 
-static void _shut_down (void)
+static void _shut_down_real (void)
 {
 	// gldi_object_notify (&myModuleObjectMgr, NOTIFICATION_LOGOUT); -- TODO: move to fm !!
 	if (s_bCanStop)
@@ -126,7 +126,13 @@ static void _shut_down (void)
 	}
 }
 
-static void _restart (void)
+static void _shut_down (CairoDockFMConfirmationFunc cb_confirm, gpointer data)
+{
+	if (cb_confirm) cb_confirm (data, _shut_down_real);
+	else _shut_down_real ();
+}
+
+static void _restart_real (void)
 {
 	// gldi_object_notify (&myModuleObjectMgr, NOTIFICATION_LOGOUT); -- TODO: move to fm !!
 	if (s_bCanRestart)
@@ -145,6 +151,11 @@ static void _restart (void)
 	}
 }
 
+static void _restart (CairoDockFMConfirmationFunc cb_confirm, gpointer data)
+{
+	if (cb_confirm) cb_confirm (data, _restart_real);
+	else _restart_real ();
+}
 
 static void _suspend (void)
 {
@@ -167,7 +178,7 @@ static void _hybridSleep (void)
 		_logind_action ("HybridSleep");
 }
 
-static void _logout (void)
+static void _logout_real (void)
 {
 	switch (s_iLogoutType)
 	{
@@ -186,6 +197,12 @@ static void _logout (void)
 			cd_warning ("Unknown logout method!");
 			break;
 	}
+}
+
+static void _logout (CairoDockFMConfirmationFunc cb_confirm, gpointer data)
+{
+	if (cb_confirm) cb_confirm (data, _logout_real);
+	else _logout_real ();
 }
 
 static void _lock_screen (void) {
