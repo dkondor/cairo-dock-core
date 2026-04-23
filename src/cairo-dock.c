@@ -514,6 +514,9 @@ int main (int argc, char** argv)
 	 * https://gitlab.gnome.org/GNOME/glib/-/issues/541
 	 */
 	g_vfs_get_default ();
+	/* Recently, I saw another deadlock with specifically this type,
+	 * let's try harder to ensure that it is initialized. */
+	g_object_unref (g_volume_monitor_get ());
 	
 	gtk_init (&argc, &argv);
 	
