@@ -191,11 +191,33 @@ static void _cairo_dock_quit (G_GNUC_UNUSED int signal)
 {
 	gtk_main_quit ();
 }
-/* Crash at startup:
+/* Crash handler that tries to restart Cairo-Dock. The motivation is that since Cairo-Dock may
+ * provide the main (or only) desktop UI, it should not "just disappear" due to a crash. The
+ * crash handler thus tries to ensure that it keeps running by restarting it. If the crash happens
+ * at startup, we try to disable any module that may have caused it to avoid endless crash loops.
+ * Specifically, the following sequence is followed:
  *  - First 2 crashes: retry with a delay of 2 sec (maybe due to a problem at startup)
- *  - 3th crash: remove the applet and restart the dock
+ *  - 3th crash: restart the dock immediately
  *  - 4th crash: show the maintenance mode
- *  - 5th crash: quit
+ *  - 5th crash: quit with error code (1)
+ * 
+ * Note: this is to catch crashes due to bugs, so it handles the corresponding signals:
+ *   SIGSEGV, SIGFPE, SIGILL, SIGABRT
+ * Other signals (SIGTERM, SIGINT) are not handled and they can be used to quite Cairo-Dock
+ * (TODO: handle these while manipulating config files to avoid having half-written output?),
+ * while SIGPIPE is set to ignore by GTK. Other errors will lead to exit with an error code:
+ *  - bad command line options (these will typically come from launching the dock from a terminal,
+ *    so it is better to show the error to the user)
+ *  - already running (to avoid having multiple instances; can be overridden by the "-I" option)
+ *  - if the DBus connection to the session bus is closed, Gio will exit (with SIGTERM); this
+ *    should not happen under normal circumstances
+ * 
+ * If running as a systemd unit, an additional protection against OOM kills is provided by the
+ * "Restart=on-abnormal" option that will try to restart the dock after being killed in this case
+ * (since the OOM uses SIGKILL, it is not possible to catch this ourselves). All other cases
+ * covered by this are already handled above, and we do not ask to restart after exit with an
+ * error code, since that corresponds to errors that could not be fixed if running as a systemd
+ * unit.
  */
 static void _cairo_dock_intercept_signal (int signal)
 {
@@ -491,7 +513,13 @@ int main (int argc, char** argv)
 	GOptionContext *context = g_option_context_new ("Cairo-Dock");
 	g_option_context_add_main_entries (context, pOptionsTable, NULL);
 	g_option_context_parse (context, &argc, &argv, &erreur);
-	if (erreur != NULL) cd_error ("ERROR in options: %s", erreur->message); // will exit
+	if (erreur != NULL)
+	{
+		// return instead of using cd_error () so that systemd will not attempt to restart us
+		// (no point if the problem was with wrong command line options)
+		cd_critical ("ERROR in options: %s", erreur->message);
+		return 1;
+	}
 	
 	if (bPrintVersion)
 	{
@@ -505,9 +533,15 @@ int main (int argc, char** argv)
 		return 0;
 	}
 	if (g_bDisableDbusActivation && g_bGioLaunch)
-		cd_error ("Cannot disable DBus activation if launching apps with GIO (use only one of the --disable-dbus-activation and --force-gio-launch options)!\n");
+	{
+		cd_critical ("Cannot disable DBus activation if launching apps with GIO (use only one of the --disable-dbus-activation and --force-gio-launch options)!\n");
+		return 1;
+	}
 	if (g_bForceWayland && g_bForceX11)
-		cd_error ("Both Wayland and X11 backends cannot be requested (use only one of the -L and -X options)!\n");
+	{
+		cd_critical ("Both Wayland and X11 backends cannot be requested (use only one of the -L and -X options)!\n");
+		return 1;
+	}
 	if (g_bForceWayland) gdk_set_allowed_backends ("wayland");
 	if (g_bForceX11) gdk_set_allowed_backends ("x11");
 	
@@ -560,7 +594,8 @@ int main (int argc, char** argv)
 		else if (!bAllowMultiInstance)
 		{
 			//!! TODO: check if another instance is really running and responsive? (e.g. with a Ping-like call)
-			cd_error ("Cairo-Dock is already running, not starting another instance (use the \"-I\" command line option to override).");
+			cd_critical ("Cairo-Dock is already running, not starting another instance (use the \"-I\" command line option to override).");
+			return 1;
 		}
 	}
 	
