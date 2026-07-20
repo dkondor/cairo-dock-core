@@ -8,6 +8,12 @@ Requisite=graphical-session.target
 ExecStart=@CMAKE_INSTALL_PREFIX@/bin/cairo-dock
 Type=exec
 BusName=org.cairodock.CairoDock
+# We want to restart on OOM or if killed by a signal not caught by our crash
+# manager, but not on nonzero exit code which happens if we already tried
+# restarting ourselves several times, if wrong command line options were given
+# (which should not happen as there are no options above) or if an instance is
+# already running.
+Restart=on-abnormal
 
 [Install]
 WantedBy=graphical-session.target
