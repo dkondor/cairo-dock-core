@@ -53,6 +53,7 @@
 #include <time.h>
 
 #include <glib/gstdio.h>
+#include <glib-unix.h> // g_unix_signal_add
 
 #include "config.h"
 #include "gldi-config.h"
@@ -187,9 +188,10 @@ static gboolean _cairo_dock_first_launch_setup (G_GNUC_UNUSED gpointer data)
 	cairo_dock_launch_command_single (CAIRO_DOCK_SHARE_DATA_DIR"/scripts/initial-setup.sh");
 	return FALSE;
 }
-static void _cairo_dock_quit (G_GNUC_UNUSED int signal)
+static gboolean _cairo_dock_quit (G_GNUC_UNUSED gpointer user_data)
 {
 	gtk_main_quit ();
+	return G_SOURCE_CONTINUE;
 }
 /* Crash handler that tries to restart Cairo-Dock. The motivation is that since Cairo-Dock may
  * provide the main (or only) desktop UI, it should not "just disappear" due to a crash. The
@@ -203,9 +205,8 @@ static void _cairo_dock_quit (G_GNUC_UNUSED int signal)
  * 
  * Note: this is to catch crashes due to bugs, so it handles the corresponding signals:
  *   SIGSEGV, SIGFPE, SIGILL, SIGABRT
- * Other signals (SIGTERM, SIGINT) are not handled and they can be used to quite Cairo-Dock
- * (TODO: handle these while manipulating config files to avoid having half-written output?),
- * while SIGPIPE is set to ignore by GTK. Other errors will lead to exit with an error code:
+ * while SIGPIPE is set to ignore by GTK and SIGTERM and SIGINT are handled above, leading to a
+ * clean exit (TODO: SIGHUP?). Other errors will lead to exit with an error code:
  *  - bad command line options (these will typically come from launching the dock from a terminal,
  *    so it is better to show the error to the user)
  *  - already running (to avoid having multiple instances; can be overridden by the "-I" option)
@@ -836,8 +837,8 @@ int main (int argc, char** argv)
 		_cairo_dock_set_signal_interception ();
 	
 	//\___________________ handle terminate signals to quit properly (especially when the system shuts down).
-	signal (SIGTERM, _cairo_dock_quit);  // Term // kill -15 (system)
-	signal (SIGHUP,  _cairo_dock_quit);  // sent to a process when its controlling terminal is closed
+	g_unix_signal_add (SIGTERM, _cairo_dock_quit, NULL);  // Term // kill -15 (system)
+	g_unix_signal_add (SIGINT, _cairo_dock_quit, NULL);  // Int // Ctrl-C
 
 	//\___________________ Disable modules that have crashed
 	if (cExcludeModule != NULL && (s_iNbCrashes > 2 || bMaintenance)) // 3th crash or 4th (with -m)
