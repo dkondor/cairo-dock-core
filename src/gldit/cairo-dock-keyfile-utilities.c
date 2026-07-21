@@ -17,10 +17,12 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define _DEFAULT_SOURCE
+
 #include <string.h>
 #include <stdlib.h>
+#include <fcntl.h> // O_CLOEXEC (need _DEFAULT_SOURCE above)
 #include <glib/gstdio.h>
-#include <gio/gunixoutputstream.h>
 
 #include "cairo-dock-log.h"
 #include "cairo-dock-keyfile-utilities.h"
@@ -41,53 +43,43 @@ GKeyFile *cairo_dock_open_key_file (const gchar *cConfFilePath)
 	return pKeyFile;
 }
 
-void cairo_dock_write_keys_to_file_full (GKeyFile *pKeyFile, const gchar *cConfFilePath, gboolean bAllowEmpty)
+static gboolean _write_keys_to_file_internal (GKeyFile *pKeyFile, const gchar *cConfFilePath, gboolean bAllowEmpty)
 {
-	cd_debug ("%s (%s)", __func__, cConfFilePath);
 	GError *erreur = NULL;
-
-	gchar *cDirectory = g_path_get_dirname (cConfFilePath);
-	if (! g_file_test (cDirectory, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_EXECUTABLE))
-	{
-		g_mkdir_with_parents (cDirectory, 7*8*8+7*8+5);
-	}
-	g_free (cDirectory);
-
-
 	gsize length=0;
 	gchar *cNewConfFileContent = g_key_file_to_data (pKeyFile, &length, &erreur);
 	if (erreur != NULL)
 	{
 		cd_warning ("Error while fetching data : %s", erreur->message);
 		g_error_free (erreur);
-		return ;
+		return FALSE;
 	}
-	if (! bAllowEmpty) g_return_if_fail (cNewConfFileContent != NULL && *cNewConfFileContent != '\0');
-
-	g_file_set_contents (cConfFilePath, cNewConfFileContent, length, &erreur);
+	if (! bAllowEmpty)
+	{
+		if (! cNewConfFileContent || !*cNewConfFileContent || !length)
+		{
+			cd_warning ("Empty keyfile contents");
+			g_free (cNewConfFileContent);
+			return FALSE;
+		}
+	}
+	
+	g_file_set_contents_full (cConfFilePath, cNewConfFileContent ? cNewConfFileContent : "",
+		length, G_FILE_SET_CONTENTS_CONSISTENT, 0600, &erreur);
+	g_free (cNewConfFileContent);
 	if (erreur != NULL)
 	{
 		cd_warning ("Error while writing data to %s : %s", cConfFilePath, erreur->message);
 		g_error_free (erreur);
-		return ;
+		return FALSE;
 	}
-	g_free (cNewConfFileContent);
+	
+	return TRUE;
 }
 
-gchar *cairo_dock_write_keys_to_new_file (GKeyFile *pKeyFile, const gchar *cConfFilePath)
+void cairo_dock_write_keys_to_file_full (GKeyFile *pKeyFile, const gchar *cConfFilePath, gboolean bAllowEmpty)
 {
-	GError *erreur = NULL;
-	GOutputStream *out = NULL;
-	gchar *cTemplate = NULL;
-
-	gsize length = 0;
-	// note: g_key_file_to_data () never reports errors
-	gchar *cNewConfFileContent = g_key_file_to_data (pKeyFile, &length, NULL);
-	if ( !(cNewConfFileContent && length && *cNewConfFileContent) )
-	{
-		cd_warning ("Error while fetching data for keyfile");
-		return NULL;
-	}
+	cd_debug ("%s (%s)", __func__, cConfFilePath);
 
 	gchar *cDirectory = g_path_get_dirname (cConfFilePath);
 	if (! g_file_test (cDirectory, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_EXECUTABLE))
@@ -95,65 +87,57 @@ gchar *cairo_dock_write_keys_to_new_file (GKeyFile *pKeyFile, const gchar *cConf
 		g_mkdir_with_parents (cDirectory, 7*8*8+7*8+5);
 	}
 	g_free (cDirectory);
+	
+	_write_keys_to_file_internal (pKeyFile, cConfFilePath, bAllowEmpty);
+}
 
-	GFile *file = g_file_new_for_path (cConfFilePath);
-	out = G_OUTPUT_STREAM (g_file_create (file, G_FILE_CREATE_NONE, NULL, NULL));
-	g_object_unref (file);
-	if (out) cTemplate = g_strdup (cConfFilePath);
-	else
+gchar *cairo_dock_write_keys_to_new_file (GKeyFile *pKeyFile, const gchar *cConfFilePath)
+{
+	gchar *cDirectory = g_path_get_dirname (cConfFilePath);
+	if (! g_file_test (cDirectory, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_EXECUTABLE))
+	{
+		g_mkdir_with_parents (cDirectory, 7*8*8+7*8+5);
+	}
+	g_free (cDirectory);
+
+	/* Potentially add a suffix to cConfFilePath if it exists.
+	 * In this function, we care about:
+	 *   -- not overwriting an existing valid config file
+	 *   -- not leaving a half-written config file after a crash
+	 * We do not care about TOCTOU, since g_file_set_contents() will replace any existing
+	 * file in a safe way (using rename()), and no one else should be (legitimately) writing
+	 * to our config directory. This way, just checking for existence of a file is sufficient.
+	 */
+	gchar *cNewPath = NULL;
+	if (g_file_test (cConfFilePath, G_FILE_TEST_EXISTS))
 	{
 		size_t len = strlen (cConfFilePath);
 		if (g_str_has_suffix (cConfFilePath, ".desktop")) len -= 8;
+		
 		GString *sTemplate = g_string_sized_new (len + 16); // suffix + _XXXXXX.desktop + 0-terminator
 		g_string_append_len (sTemplate, cConfFilePath, len);
 		g_string_append (sTemplate, "_XXXXXX.desktop");
-		cTemplate = g_string_free (sTemplate, FALSE);
+		gchar *cTemplate = g_string_free (sTemplate, FALSE);
 
-		gint fd = g_mkstemp (cTemplate);
+		gint fd = g_mkstemp_full (cTemplate, O_CLOEXEC, 0600);
 		if (fd == -1)
 		{
 			cd_warning ("Error creating new launcher for template: %s", cConfFilePath);
 			g_free (cTemplate);
-			g_free (cNewConfFileContent);
 			return NULL; // cannot create new file
 		}
-		out = g_unix_output_stream_new (fd, TRUE);
-		if (!out)
-		{
-			// should not happen at this point
-			g_free (cTemplate);
-			g_free (cNewConfFileContent);
-			close (fd);
-			return NULL;
-		}
+		
+		close (fd); // not needed, file will be overwritten below
+		cNewPath = cTemplate;
 	}
-
-	gboolean res = g_output_stream_write_all (out, cNewConfFileContent, length, NULL, NULL, &erreur);
-	if (!res)
-	{
-		cd_warning ("Error while writing data to %s : %s", cTemplate, erreur->message);
-		g_error_free (erreur);
-		erreur = NULL;
-	}
-
-	if (!g_output_stream_close (out, NULL, &erreur))
-	{
-		if (res) // otherwise we already printed a warning above
-			cd_warning ("Error while writing data to %s : %s", cTemplate, erreur->message);
-		g_error_free (erreur);
-		erreur = NULL;
-		res = FALSE;
-	}
-	g_object_unref (out);
-	g_free (cNewConfFileContent);
-
-	if (!res)
-	{
-		g_unlink (cTemplate);
-		g_free (cTemplate);
-		cTemplate = NULL;
-	}
-	return cTemplate;
+	
+	// now that we have a valid path, write to the file
+	if (_write_keys_to_file_internal (pKeyFile, cNewPath ? cNewPath : cConfFilePath, FALSE))
+		return cNewPath ? cNewPath : g_strdup (cConfFilePath); // success: return a newly allocated string
+	
+	// failure: free any memory and return NULL
+	g_free (cNewPath);
+	return NULL;
 }
 
 
