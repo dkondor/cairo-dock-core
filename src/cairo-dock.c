@@ -204,9 +204,10 @@ static gboolean _cairo_dock_quit (G_GNUC_UNUSED gpointer user_data)
  *  - 5th crash: quit with error code (1)
  * 
  * Note: this is to catch crashes due to bugs, so it handles the corresponding signals:
- *   SIGSEGV, SIGFPE, SIGILL, SIGABRT
- * while SIGPIPE is set to ignore by GTK and SIGTERM and SIGINT are handled above, leading to a
- * clean exit (TODO: SIGHUP?). Other errors will lead to exit with an error code:
+ *   SIGSEGV, SIGBUS, SIGFPE, SIGILL, SIGABRT
+ * while SIGPIPE is set to ignore by GTK, we explicitly ignore SIGHUP, while SIGTERM and SIGINT
+ * are handled above, leading to a clean exit.
+ * Other errors will lead to exit with an error code:
  *  - bad command line options (these will typically come from launching the dock from a terminal,
  *    so it is better to show the error to the user)
  *  - already running (to avoid having multiple instances; can be overridden by the "-I" option)
@@ -273,9 +274,11 @@ static void _cairo_dock_intercept_signal (int signal)
 static void _cairo_dock_set_signal_interception (void)
 {
 	signal (SIGSEGV, _cairo_dock_intercept_signal);  // Segmentation violation
+	signal (SIGBUS, _cairo_dock_intercept_signal);  // Bad memory access (can happen instead of SIGSEGV in some cases)
 	signal (SIGFPE, _cairo_dock_intercept_signal);  // Floating-point exception
 	signal (SIGILL, _cairo_dock_intercept_signal);  // Illegal instruction
 	signal (SIGABRT, _cairo_dock_intercept_signal);  // Abort // kill -6
+	signal (SIGHUP, SIG_IGN); // ignore SIGHUP, not really useful (we will instead quit if the connection to the X server / Wayland compositor closes)
 }
 
 static gboolean on_delete_maintenance_gui (G_GNUC_UNUSED GtkWidget *pWidget, GMainLoop *pBlockingLoop)
@@ -1080,10 +1083,12 @@ int main (int argc, char** argv)
 	gtk_main ();
 	
 	signal (SIGSEGV, NULL);  // Segmentation violation
+	signal (SIGBUS, NULL);
 	signal (SIGFPE, NULL);  // Floating-point exception
 	signal (SIGILL, NULL);  // Illegal instruction
 	signal (SIGABRT, NULL);
 	signal (SIGTERM, NULL);
+	signal (SIGINT, NULL);
 	signal (SIGHUP, NULL);
 
 	gldi_free_all ();
