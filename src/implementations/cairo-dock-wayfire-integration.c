@@ -525,6 +525,12 @@ static gboolean _wf_on_window_created (G_GNUC_UNUSED gpointer data, GldiWindowAc
 	
 	GldiWaylandWindowActor *wactor = (GldiWaylandWindowActor*)actor;
 	if (!wactor->cClassExtra) return GLDI_NOTIFICATION_LET_PASS;
+	if (wactor->pExtraData)
+	{
+		// already processed, should not happen
+		cd_warning ("Window already seen!");
+		return GLDI_NOTIFICATION_LET_PASS;
+	}
 	
 	const char *tmp = strstr (wactor->cClassExtra, "wf-ipc-");
 	if (tmp)
@@ -617,7 +623,10 @@ static gboolean _wf_on_window_class_changed (G_GNUC_UNUSED gpointer ptr, GldiWin
 
 static void _add_existing_actor (gpointer ptr, G_GNUC_UNUSED gpointer data)
 {
-	_wf_on_window_created (NULL, (GldiWindowActor*)ptr);
+	GldiWindowActor *actor = (GldiWindowActor*)ptr;
+	// note: if bDisplayed == FALSE, then this window is not in the
+	// taskbar yet and we will get a separate notification about it later
+	if (actor->bDisplayed) _wf_on_window_created (NULL, actor);
 }
 
 static void _init_window_maping (void)
