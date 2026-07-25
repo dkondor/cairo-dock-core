@@ -31,7 +31,7 @@
 #include "cairo-dock-dock-visibility.h"
 #include "cairo-dock-desklet-manager.h"
 #include "cairo-dock-dialog-priv.h"
-#include "cairo-dock-container-priv.h"
+// #include "cairo-dock-container-priv.h"
 #include "cairo-dock-flying-container.h"
 #include "cairo-dock-applications-priv.h"
 #include "cairo-dock-applet-manager.h"
@@ -212,10 +212,7 @@ bWAYFIRE = TRUE;
 		bWAYLAND_PROTOCOLS ? "yes" : "no",
 		bWAYFIRE ? "yes" : "no",
 		bIsWayland ? "Wayland" : "X11",
-		bIsWayland ? (layer_shell_info ? layer_shell_info : "") :
-			(gldi_container_use_new_positioning_code () ?
-				" * window positioning:           new\n" :
-				" * window positioning:           legacy\n"),
+		bIsWayland ? (layer_shell_info ? layer_shell_info : "") : "",
 		gldi_windows_manager_get_name (),
 		gldi_desktop_manager_get_backend_names (),
 		gldi_dock_visbility_get_backend_name (),

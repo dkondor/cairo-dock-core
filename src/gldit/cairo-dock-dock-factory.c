@@ -620,13 +620,8 @@ static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCro
 				}
 				else if (pDock->bAutoHide)
 				{
-					const int delay = gldi_container_use_new_positioning_code() ? 250 : 0;  // original behavior: 0
-					if (delay != 0)  /// maybe try to see if we left the dock frankly, or just by a few pixels...
-					{
-						//g_print (" delay the leave event by %dms\n", delay);
-						pDock->iSidLeaveDemand = g_timeout_add (250, (GSourceFunc) _emit_leave_signal_delayed, (gpointer) pDock);
-						return TRUE;
-					}
+					pDock->iSidLeaveDemand = g_timeout_add (250, (GSourceFunc) _emit_leave_signal_delayed, (gpointer) pDock);
+					return TRUE;
 				}
 			}
 			else/** if (myDocksParam.iLeaveSubDockDelay != 0)*/  // cas d'un sous-dock : on retarde le cachage.
@@ -715,19 +710,16 @@ static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCro
 			gldi_icon_detach (s_pIconClicked);
 			cairo_dock_stop_icon_glide (pOriginDock);
 			
-			if (gldi_container_use_new_positioning_code ())
-			{
-				// use GTK DnD (works on Wayland as well, but no custom effects so far)
-				s_pDndIcon = s_pIconClicked;
-				GtkTargetList *targets = gtk_target_list_new (NULL, 0);
-				gtk_target_list_add (targets, gldi_container_icon_dnd_atom (), GTK_TARGET_SAME_APP, 0);
-				GdkDragContext *context = gtk_drag_begin_with_coordinates (pDock->container.pWidget,
-					targets, GDK_ACTION_COPY, 1, (GdkEvent*)pEvent, -1, -1);
-				gtk_target_list_unref (targets);
-				gtk_drag_set_icon_surface (context, s_pIconClicked->image.pSurface);
-			}
+			// use GTK DnD (works on Wayland as well, but no custom effects so far)
+			s_pDndIcon = s_pIconClicked;
+			GtkTargetList *targets = gtk_target_list_new (NULL, 0);
+			gtk_target_list_add (targets, gldi_container_icon_dnd_atom (), GTK_TARGET_SAME_APP, 0);
+			GdkDragContext *context = gtk_drag_begin_with_coordinates (pDock->container.pWidget,
+				targets, GDK_ACTION_COPY, 1, (GdkEvent*)pEvent, -1, -1);
+			gtk_target_list_unref (targets);
+			gtk_drag_set_icon_surface (context, s_pIconClicked->image.pSurface);
 			// "old" method: use a flying container (only works reliably on X11)
-			else s_pFlyingContainer = gldi_flying_container_new (s_pIconClicked, pOriginDock);
+			// else s_pFlyingContainer = gldi_flying_container_new (s_pIconClicked, pOriginDock);
 			//g_print ("- s_pIconClicked <- NULL\n");
 			s_pIconClicked = NULL;
 			if (pDock->iRefCount > 0 || pDock->bAutoHide)  // pour garder le dock visible.
@@ -2531,11 +2523,10 @@ void gldi_dock_init_internals (CairoDock *pDock)
 		pDock);*/
 	// connect unmap signal -- on Wayland, the compositor might close
 	// the dock at any time, so we need to handle this possibility
-	if (gldi_container_use_new_positioning_code ())
-		g_signal_connect (G_OBJECT (pWindow),
-			"unmap-event",
-			G_CALLBACK (_on_dock_unmap),
-			pDock);
+	g_signal_connect (G_OBJECT (pWindow),
+		"unmap-event",
+		G_CALLBACK (_on_dock_unmap),
+		pDock);
 	
 	if (!pDock->iRefCount) gtk_widget_show_all (pDock->container.pWidget);
 }
@@ -2562,7 +2553,7 @@ CairoDock *gldi_subdock_new (const gchar *cDockName, const gchar *cRendererName,
 	attr.cRendererName = cRendererName;
 	attr.pParentDock = pParentDock;
 	attr.pIconList = pIconList;
-	if (gldi_container_use_new_positioning_code ()) attr.cattr.bIsPopup = TRUE;
+	attr.cattr.bIsPopup = TRUE;
 	return (CairoDock*)gldi_object_new (&myDockObjectMgr, &attr);
 }
 

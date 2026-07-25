@@ -90,35 +90,16 @@ static void _set_margin_position (GtkWidget *pMenu, GldiMenuParams *pParams)
 	
 	// define where the menu will point
 	int iMarginPosition;  // b, t, r, l
-	// new positioning code should work on both X11 and Wayland, but, by default, it is used
-	// only on Wayland, unless it is specifically requested by the user
-	if (gldi_container_use_new_positioning_code ())
+	
+	if (pContainer->bIsHorizontal)
 	{
-		if (pContainer->bIsHorizontal)
-		{
-			if (pContainer->bDirectionUp) iMarginPosition = 0;
-			else iMarginPosition = 1;
-		}
-		else
-		{
-			if (pContainer->bDirectionUp) iMarginPosition = 2;
-			else iMarginPosition = 3;
-		}
+		if (pContainer->bDirectionUp) iMarginPosition = 0;
+		else iMarginPosition = 1;
 	}
 	else
 	{
-		int y0 = pContainer->iWindowPositionY + pIcon->fDrawY;
-		if (pContainer->bDirectionUp)
-			y0 += pIcon->fHeight * pIcon->fScale - pIcon->image.iHeight;  // the icon might not be maximised yet
-		int Hs = (pContainer->bIsHorizontal ? gldi_desktop_get_height() : gldi_desktop_get_width());
-		if (pContainer->bIsHorizontal)
-		{
-			iMarginPosition = (y0 > Hs/2 ? 0 : 1);
-		}
-		else
-		{
-			iMarginPosition = (y0 > Hs/2 ? 2 : 3);
-		}
+		if (pContainer->bDirectionUp) iMarginPosition = 2;
+		else iMarginPosition = 3;
 	}
 	
 	// store the result, and allocate some space to draw the arrow
@@ -264,16 +245,13 @@ void gldi_menu_init (GtkWidget *pMenu, Icon *pIcon)
 		G_CALLBACK (_on_menu_destroyed),
 		NULL);
 	
-	// handle any adjustments necessary when the menu is first shown
-	if (gldi_container_use_new_positioning_code ())
-	{
-		// This is a bit hacky: if we have an icon (so we are the first-level menu), we connect to the "realized" signal,
-		// which will allow us to resize the menu before it is positioned, leading to better results if it needs to be moved out
-		// of the way from the dock it's pointing at. For submenus, we connect to the "popped-up" signal, to better handle it
-		// opening and closing multiple times.
-		if (pIcon) g_signal_connect (G_OBJECT (pMenu), "realize", G_CALLBACK (_menu_realized_cb), pParams);
-		else g_signal_connect (G_OBJECT (pMenu), "popped-up", G_CALLBACK (_menu_popped_up_cb), pParams);
-	}
+	// Handle any adjustments necessary when the menu is first shown.
+	// This is a bit hacky: if we have an icon (so we are the first-level menu), we connect to the "realized" signal,
+	// which will allow us to resize the menu before it is positioned, leading to better results if it needs to be moved out
+	// of the way from the dock it's pointing at. For submenus, we connect to the "popped-up" signal, to better handle it
+	// opening and closing multiple times.
+	if (pIcon) g_signal_connect (G_OBJECT (pMenu), "realize", G_CALLBACK (_menu_realized_cb), pParams);
+	else g_signal_connect (G_OBJECT (pMenu), "popped-up", G_CALLBACK (_menu_popped_up_cb), pParams);
 	
 	// init a main menu
 	if (pIcon != NULL)  // the menu points on an icon
@@ -307,13 +285,10 @@ void gldi_menu_init (GtkWidget *pMenu, Icon *pIcon)
 			// set transient for (parent relationship; needed for positioning on Wayland)
 			// note: it is an error to try to map (and position) a popup
 			// relative to a window that is not mapped; we need to take care of this
-			if (gldi_container_use_new_positioning_code ())
-			{
-				GtkWindow *tmp = GTK_WINDOW (pContainer->pWidget);
-				while (tmp && !gtk_widget_get_mapped (GTK_WIDGET(tmp)))
-					tmp = gtk_window_get_transient_for (tmp);
-				gtk_window_set_transient_for (GTK_WINDOW (pWindow), tmp);
-			}
+			GtkWindow *tmp = GTK_WINDOW (pContainer->pWidget);
+			while (tmp && !gtk_widget_get_mapped (GTK_WIDGET(tmp)))
+				tmp = gtk_window_get_transient_for (tmp);
+			gtk_window_set_transient_for (GTK_WINDOW (pWindow), tmp);
 		}
 	}
 }
@@ -349,17 +324,14 @@ void gldi_menu_reinit (GtkWidget *pMenu, Icon *pIcon)
 		// set transient for (parent relationship; needed for positioning on Wayland)
 		// note: it is an error to try to map (and position) a popup
 		// relative to a window that is not mapped; we need to take care of this
-		if (gldi_container_use_new_positioning_code ())
+		GldiContainer *pContainer = cairo_dock_get_icon_container (pIcon);
+		if (pContainer)
 		{
-			GldiContainer *pContainer = cairo_dock_get_icon_container (pIcon);
-			if (pContainer)
-			{
-				GtkWidget *pWindow = gtk_widget_get_toplevel (pMenu);
-				GtkWindow *tmp = GTK_WINDOW (pContainer->pWidget);
-				while (tmp && !gtk_widget_get_mapped (GTK_WIDGET(tmp)))
-					tmp = gtk_window_get_transient_for (tmp);
-				gtk_window_set_transient_for (GTK_WINDOW (pWindow), tmp);
-			}
+			GtkWidget *pWindow = gtk_widget_get_toplevel (pMenu);
+			GtkWindow *tmp = GTK_WINDOW (pContainer->pWidget);
+			while (tmp && !gtk_widget_get_mapped (GTK_WIDGET(tmp)))
+				tmp = gtk_window_get_transient_for (tmp);
+			gtk_window_set_transient_for (GTK_WINDOW (pWindow), tmp);
 		}
 	}
 }
@@ -406,75 +378,10 @@ static void _menu_realized_cb (GtkWidget *widget, gpointer user_data)
 		else cd_warning ("menu has no associated GdkWindow!");
 	}
 	
-	if (pParams->pIcon && gldi_container_use_new_positioning_code ())
+	if (pParams->pIcon)
 		gldi_container_calculate_aimed_point (pParams->pIcon, widget, w, h, pParams->iMarginPosition,
 			pParams->fAlign, &(pParams->iAimedX), &(pParams->iAimedY));
 }
-
-static void _place_menu_on_icon (GtkMenu *menu, gint *x, gint *y, gboolean *push_in, G_GNUC_UNUSED gpointer data)
-{
-	*push_in = FALSE;
-	GldiMenuParams *pParams = g_object_get_data (G_OBJECT(menu), "gldi-params");
-	g_return_if_fail (pParams != NULL);
-
-	Icon *pIcon = pParams->pIcon;
-	GldiContainer *pContainer = (pIcon ? cairo_dock_get_icon_container (pIcon) : NULL);
-	int x0 = pContainer->iWindowPositionX + pIcon->fDrawX;
-	int y0 = pContainer->iWindowPositionY + pIcon->fDrawY;
-	if (pContainer->bDirectionUp)
-		y0 += pIcon->fHeight * pIcon->fScale - pIcon->image.iHeight;  // the icon might not be maximised yet
-
-	int w, h;  // taille menu
-	GtkRequisition requisition;
-	gtk_widget_get_preferred_size (GTK_WIDGET (menu), NULL, &requisition);  // retrieve the natural size; Note: before gtk3.10 we used the minimum size but it's now incorrect; the natural size works for prior versions too.
-	w = requisition.width;
-	h = requisition.height;
-
-	/// TODO: use iMarginPosition...
-	double fAlign = pParams->fAlign;
-	int r = pParams->iRadius;
-	int ah = pParams->iArrowHeight;
-	int w_, h_;
-	int iAimedX, iAimedY;
-	int Hs = (pContainer->bIsHorizontal ? gldi_desktop_get_height() : gldi_desktop_get_width());
-	if (pContainer->bIsHorizontal)
-	{
-		iAimedX = x0 + pIcon->image.iWidth/2;
-		w_ = w - 2 * r;
-		h_ = h - 2 * r - ah;
-		*x = MAX (0, iAimedX - fAlign * w_ - r);
-		if (y0 > Hs/2)  // pContainer->bDirectionUp
-		{
-			*y = y0 - h;
-			iAimedY = y0;
-		}
-		else
-		{
-			*y = y0 + pIcon->fHeight * pIcon->fScale;
-			iAimedY = y0 + pIcon->image.iHeight;
-		}
-	}
-	else
-	{
-		iAimedY = x0 + pIcon->image.iWidth/2;
-		w_ = w - 2 * r - ah;
-		h_ = h - 2 * r;
-		*y = MIN (iAimedY - fAlign * h_ - r, gldi_desktop_get_height() - h);
-		if (y0 > Hs/2)  // pContainer->bDirectionUp
-		{
-			*x = y0 - w;
-			iAimedX = y0;
-		}
-		else
-		{
-			*x = y0 + pIcon->image.iHeight;
-			iAimedX = y0 + pIcon->image.iHeight;
-		}
-	}
-	pParams->iAimedX = iAimedX;
-	pParams->iAimedY = iAimedY;
-}
-
 
 static void _init_menu_item (GtkWidget *pMenuItem);
 static void _init_menu_item2 (GtkWidget *menu, G_GNUC_UNUSED gpointer dummy)
@@ -559,69 +466,52 @@ static void _popup_menu (GtkWidget *menu, const GdkEvent *event)
 
 	gtk_widget_show_all (GTK_WIDGET (menu));
 
-	// new positioning code should work on both X11 and Wayland, but, by default, it is used
-	// only on Wayland, unless it is specifically requested by the user
-	if (gldi_container_use_new_positioning_code ())
+	if (pContainer && pIcon)
 	{
-		if (pContainer && pIcon)
+		GdkRectangle rect = {0, 0, 1, 1};
+		GdkGravity rect_anchor = GDK_GRAVITY_NORTH;
+		GdkGravity menu_anchor = GDK_GRAVITY_SOUTH;
+		gldi_container_calculate_rect (pContainer, pIcon, &rect, &rect_anchor, &menu_anchor, FALSE);
+		
+		if (pParams->fAlign == 0.0 || pParams->fAlign == 1.0)
 		{
-			GdkRectangle rect = {0, 0, 1, 1};
-			GdkGravity rect_anchor = GDK_GRAVITY_NORTH;
-			GdkGravity menu_anchor = GDK_GRAVITY_SOUTH;
-			gldi_container_calculate_rect (pContainer, pIcon, &rect, &rect_anchor, &menu_anchor, FALSE);
-			
-			if (pParams->fAlign == 0.0 || pParams->fAlign == 1.0)
-			{
-				// adjust anchors
-				_adjust_anchor (&rect_anchor, (pParams->fAlign == 0.0));
-				_adjust_anchor (&menu_anchor, (pParams->fAlign == 0.0));
-			}
-			else
-			{
-				/* add an offset -- unfortunately, we can only add an absolute offset, but we
-				 * do not know our size, and by the time we get it in _menu_realized_cb (),
-				 * setting an offset does not have an effect
-				 * see e.g. (links to the latest GTK+3 release when writing this):
-https://gitlab.gnome.org/GNOME/gtk/-/blob/e1d664da630ee32c4068c8ead4101bce94e7e24a/gtk/gtkmenu.c#L5218
-https://gitlab.gnome.org/GNOME/gtk/-/blob/e1d664da630ee32c4068c8ead4101bce94e7e24a/gtk/gtkmenu.c#L5303
-https://gitlab.gnome.org/GNOME/gtk/-/blob/e1d664da630ee32c4068c8ead4101bce94e7e24a/gtk/gtkmenu.c#L5325
-				 * so we just use a dummy size that works in most cases (note: this is only
-				 * used by the "modern" renderer, all others have fAlign == 0.0, 0.5 or 1.0
-				 * which is handled correctly by setting anchors)
-				 */
-				const double dummy_width = 240.0;
-				const double dummy_height = 120.0;
-				if (pContainer->bIsHorizontal)
-				{
-					int dx = (int) (dummy_width * (0.5 - pParams->fAlign));
-					g_object_set (G_OBJECT (menu), "rect-anchor-dx", dx, NULL);
-				}
-				else
-				{
-					int dy = (int) (dummy_height * (0.5 - pParams->fAlign));
-					g_object_set (G_OBJECT (menu), "rect-anchor-dy", dy, NULL);
-				}
-			}
-			
-			gtk_menu_popup_at_rect (GTK_MENU (menu), gtk_widget_get_window (pContainer->pWidget),
-				&rect, rect_anchor, menu_anchor, event);
+			// adjust anchors
+			_adjust_anchor (&rect_anchor, (pParams->fAlign == 0.0));
+			_adjust_anchor (&menu_anchor, (pParams->fAlign == 0.0));
 		}
 		else
 		{
-			gtk_menu_popup_at_pointer (GTK_MENU (menu), event);
+			/* add an offset -- unfortunately, we can only add an absolute offset, but we
+			 * do not know our size, and by the time we get it in _menu_realized_cb (),
+			 * setting an offset does not have an effect
+			 * see e.g. (links to the latest GTK+3 release when writing this):
+https://gitlab.gnome.org/GNOME/gtk/-/blob/e1d664da630ee32c4068c8ead4101bce94e7e24a/gtk/gtkmenu.c#L5218
+https://gitlab.gnome.org/GNOME/gtk/-/blob/e1d664da630ee32c4068c8ead4101bce94e7e24a/gtk/gtkmenu.c#L5303
+https://gitlab.gnome.org/GNOME/gtk/-/blob/e1d664da630ee32c4068c8ead4101bce94e7e24a/gtk/gtkmenu.c#L5325
+			 * so we just use a dummy size that works in most cases (note: this is only
+			 * used by the "modern" renderer, all others have fAlign == 0.0, 0.5 or 1.0
+			 * which is handled correctly by setting anchors)
+			 */
+			const double dummy_width = 240.0;
+			const double dummy_height = 120.0;
+			if (pContainer->bIsHorizontal)
+			{
+				int dx = (int) (dummy_width * (0.5 - pParams->fAlign));
+				g_object_set (G_OBJECT (menu), "rect-anchor-dx", dx, NULL);
+			}
+			else
+			{
+				int dy = (int) (dummy_height * (0.5 - pParams->fAlign));
+				g_object_set (G_OBJECT (menu), "rect-anchor-dy", dy, NULL);
+			}
 		}
+		
+		gtk_menu_popup_at_rect (GTK_MENU (menu), gtk_widget_get_window (pContainer->pWidget),
+			&rect, rect_anchor, menu_anchor, event);
 	}
 	else
 	{
-		guint button;
-		if ( !(event && gdk_event_get_button (event, &button))) button = 0;
-		gtk_menu_popup (GTK_MENU (menu),
-			NULL,
-			NULL,
-			pIcon != NULL && pContainer != NULL ? _place_menu_on_icon : NULL,
-			NULL,
-			button,
-			gdk_event_get_time (event)); // note: event can be NULL, in this case, the current time is used
+		gtk_menu_popup_at_pointer (GTK_MENU (menu), event);
 	}
 }
 static gboolean _popup_menu_delayed (GtkWidget *menu)
