@@ -64,7 +64,6 @@ static gboolean s_bSticky = TRUE;
 static gboolean s_bInitialOpacity0 = FALSE;  // set initial window opacity to 0, to avoid grey rectangles.
 static gboolean s_bNoComposite = FALSE;
 static GldiContainerManagerBackend s_backend = {0};
-static gboolean s_bNewPositioning = FALSE;
 static GdkAtom s_dnd_atom = GDK_NONE;
 
 void cairo_dock_set_containers_non_sticky (void)
@@ -643,11 +642,6 @@ void gldi_container_dock_check_if_mouse_inside_linear (CairoDock *pDock)
 		s_backend.dock_check_if_mouse_inside_linear (pDock);
 }
 
-gboolean gldi_container_use_new_positioning_code ()
-{
-	return (s_bNewPositioning || gldi_container_is_wayland_backend ());
-}
-
 void gldi_container_manager_register_backend (GldiContainerManagerBackend *pBackend)
 {
 	gpointer *ptr = (gpointer*)&s_backend;
@@ -772,8 +766,6 @@ static gboolean get_config (GKeyFile *pKeyFile, GldiContainersParam *pContainers
 	
 	iRefreshFrequency = cairo_dock_get_integer_key_value (pKeyFile, "System", "cairo anim freq", &bFlushConfFileNeeded, 25, NULL, NULL);
 	pContainersParam->iCairoAnimationDeltaT = 1000. / iRefreshFrequency;
-	
-	s_bNewPositioning = cairo_dock_get_boolean_key_value (pKeyFile, "System", "X11_new_rendering_code", &bFlushConfFileNeeded, FALSE, NULL, NULL);
 	
 	return bFlushConfFileNeeded;
 }

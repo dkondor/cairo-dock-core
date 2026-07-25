@@ -265,20 +265,20 @@ static gboolean on_configure_dialog (G_GNUC_UNUSED GtkWidget* pWidget,
 		*/pDialog->bPositionForced ++;
 	}
 	
-	//\____________ compute aimed point (for new positioning)
-	if (gldi_container_use_new_positioning_code ()) _calculate_aimed_point_new (pDialog);
+	//\____________ compute aimed point
+	_calculate_aimed_point_new (pDialog);
 	
 	gtk_widget_queue_draw (pDialog->container.pWidget);  // les widgets internes peuvent avoir changer de taille sans que le dialogue n'en ait change, il faut donc redessiner tout le temps.
 
 	return FALSE;
 }
 
-static gboolean on_unmap_dialog (GtkWidget* pWidget,
+static gboolean on_unmap_dialog (G_GNUC_UNUSED GtkWidget* pWidget,
 	G_GNUC_UNUSED GdkEvent *pEvent,
 	CairoDialog *pDialog)
 {
 	//g_print ("unmap dialog (bAllowMinimize:%d, visible:%d)\n", pDialog->bAllowMinimize, GTK_WIDGET_VISIBLE (pWidget));
-	if (gldi_container_use_new_positioning_code ()) pDialog->container.bInside = FALSE;
+	pDialog->container.bInside = FALSE;
 	if (! pDialog->bAllowMinimize)  // it's an unexpected unmap event
 	{
 		if (pDialog->pUnmapTimer)  // see if it happened just after an event that we expected
@@ -289,16 +289,12 @@ static gboolean on_unmap_dialog (GtkWidget* pWidget,
 				return TRUE;
 		}
 		
-		if (gldi_container_use_new_positioning_code ())
-		{
-			// new behavior: we accept that the WM can close our dialogs any time
-			if (pDialog->bHideOnClick) {
-				gtk_widget_hide (pDialog->container.pWidget);
-				gldi_dialog_leave (pDialog); // notify that the dialog is hidden
-			}
-			else gldi_object_unref (GLDI_OBJECT(pDialog)); // destroy the dialog
+		// new behavior: we accept that the WM can close our dialogs any time
+		if (pDialog->bHideOnClick) {
+			gtk_widget_hide (pDialog->container.pWidget);
+			gldi_dialog_leave (pDialog); // notify that the dialog is hidden
 		}
-		else gtk_window_present (GTK_WINDOW (pWidget));  // old behavior: counter it, we don't want dialogs to be hidden
+		else gldi_object_unref (GLDI_OBJECT(pDialog)); // destroy the dialog
 	}
 	else  // expected event, it's an unmap that we triggered with 'gldi_dialog_hide', so let pass it
 	{
@@ -635,15 +631,12 @@ void gldi_dialog_init_internals (CairoDialog *pDialog, CairoDialogAttr *pAttribu
 			"button-press-event",
 			G_CALLBACK (on_button_press_widget),
 			pDialog);
-	if (gldi_container_use_new_positioning_code ())
-	{
-		if (gtk_widget_get_realized (pDialog->container.pWidget))
-			_calculate_aimed_point_new (pDialog);
-		else g_signal_connect_after (G_OBJECT (pDialog->container.pWidget),
-			"realize",
-			G_CALLBACK (_on_realize_dialog),
-			pDialog);
-	}
+	if (gtk_widget_get_realized (pDialog->container.pWidget))
+		_calculate_aimed_point_new (pDialog);
+	else g_signal_connect_after (G_OBJECT (pDialog->container.pWidget),
+		"realize",
+		G_CALLBACK (_on_realize_dialog),
+		pDialog);
 	
 	cairo_dock_launch_animation (CAIRO_CONTAINER (pDialog));
 }
@@ -660,7 +653,7 @@ CairoDialog *gldi_dialog_new (CairoDialogAttr *pAttribute)
 		}
 	}
 	pAttribute->cattr.bNoOpengl = TRUE;
-	if (gldi_container_use_new_positioning_code ()) pAttribute->cattr.bIsPopup = TRUE;
+	pAttribute->cattr.bIsPopup = TRUE;
 	cd_debug ("%s (%s, %s, %x, %x, (%p;%p))", __func__, pAttribute->cText, pAttribute->cImageFilePath, pAttribute->pInteractiveWidget, pAttribute->pActionFunc, pAttribute->pIcon, pAttribute->pContainer);
 	return (CairoDialog*)gldi_object_new (&myDialogObjectMgr, pAttribute);
 }

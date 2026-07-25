@@ -1282,17 +1282,6 @@ static gboolean _on_new_dialog (G_GNUC_UNUSED gpointer data, CairoDialog *pDialo
 		gldi_dock_leave_synthetic (pIcon->pSubDock);
 	}
 	
-	if (! gldi_container_use_new_positioning_code ())
-	{
-		GldiContainer *pContainer = cairo_dock_get_icon_container (pIcon);
-		if (CAIRO_DOCK_IS_DOCK (pContainer) && cairo_dock_get_icon_max_scale (pIcon) < 1.01)  // view without zoom, the dialog is stuck to the icon, and therefore is under the label, so hide this one.
-		{
-			if (pIcon->iHideLabel == 0)
-				gtk_widget_queue_draw (pContainer->pWidget);
-			pIcon->iHideLabel ++;
-		}
-	}
-	
 	return GLDI_NOTIFICATION_LET_PASS;
 }
 
@@ -2232,7 +2221,7 @@ static void init_object (GldiObject *obj, gpointer attr)
 	}
 
 	//\__________________ init layer-shell (if enabled) and also set parent; needs to happen before window is mapped
-	if (dattr->bSubDock && gldi_container_use_new_positioning_code ())
+	if (dattr->bSubDock)
 	{
 		CairoDock *pParentDock = dattr->pParentDock;
 		if (pParentDock == NULL)
@@ -2321,14 +2310,6 @@ static void init_object (GldiObject *obj, gpointer attr)
 		pDock->iIconSize = pParentDock->iIconSize;
 		
 		pDock->container.fRatio = myBackendsParam.fSubDockSizeRatio;
-		
-		//\__________________ hide the dock if needed
-		if (!gldi_container_use_new_positioning_code ())
-		{
-			// in this case, dock was shown in gldi_dock_init_internals (), we need to hide again
-			pDock->iRefCount = 1;
-			gtk_widget_hide (pDock->container.pWidget);
-		}
 	}
 	
 	//\__________________ set a renderer (got from the conf, or the default one).

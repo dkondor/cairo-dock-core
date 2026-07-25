@@ -938,54 +938,38 @@ void cairo_dock_show_subdock (Icon *pPointedIcon, CairoDock *pParentDock)
 	int iNewWidth = pSubDock->iMaxDockWidth;
 	int iNewHeight = pSubDock->iMaxDockHeight;
 	
-	// new positioning code should work on both X11 and Wayland, but, by default, it is used
-	// only on Wayland, unless it is specifically requested by the user
-	if (gldi_container_use_new_positioning_code ())
+	if (!gtk_widget_get_realized (pSubDock->container.pWidget))
 	{
-		if (!gtk_widget_get_realized (pSubDock->container.pWidget))
-		{
-			// if we don't have a GDK Window yet, we can set the size on the GTK Window
-			if (pSubDock->container.bIsHorizontal)
-				gtk_window_resize (GTK_WINDOW (pSubDock->container.pWidget), iNewWidth, iNewHeight);
-			else gtk_window_resize (GTK_WINDOW (pSubDock->container.pWidget), iNewHeight, iNewWidth);
-		}
-		else
-		{
-			// otherwise, it's better to directly set the size of the GDK Window to
-			// avoid problems with move_to_rect () later
-			if (pSubDock->container.bIsHorizontal)
-				gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
-					iNewWidth, iNewHeight);
-			else gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
-				iNewHeight, iNewWidth);
-		}
-
-		GdkRectangle rect = {0, 0, 1, 1};
-		GdkGravity rect_anchor = GDK_GRAVITY_NORTH;
-		GdkGravity subdock_anchor = GDK_GRAVITY_SOUTH;
-		gldi_container_calculate_rect (CAIRO_CONTAINER (pParentDock), pPointedIcon,
-			&rect, &rect_anchor, &subdock_anchor, TRUE);
-		gldi_container_move_to_rect (CAIRO_CONTAINER (pSubDock),
-			&rect, rect_anchor, subdock_anchor, GDK_ANCHOR_SLIDE, 0, 0);
-		// note: for some reason, we do not receive configure events at least on Wayland,
-		// so we need to set these manually
-		// TODO: we might need to trigger reloading icon images as well? (see dock-factory.c:1245-1282)
-		pSubDock->bNeedSizeUpdate = TRUE;
-		pSubDock->container.iWidth = iNewWidth;
-		pSubDock->container.iHeight = iNewHeight;
+		// if we don't have a GDK Window yet, we can set the size on the GTK Window
+		if (pSubDock->container.bIsHorizontal)
+			gtk_window_resize (GTK_WINDOW (pSubDock->container.pWidget), iNewWidth, iNewHeight);
+		else gtk_window_resize (GTK_WINDOW (pSubDock->container.pWidget), iNewHeight, iNewWidth);
 	}
 	else
 	{
-		// original behavior: calling present () before moving the subdock to its place
-		gtk_window_present (GTK_WINDOW (pSubDock->container.pWidget));
-		// will calculate position and do the resize
-		gldi_container_move_resize_dock (pSubDock);
-		
-		/* for vertical docks, the sub-dock is over the label, so this one is drawn
-		 * with a low transparency, so we trigger the redraw. */
-		if (!pSubDock->container.bIsHorizontal)
-			gtk_widget_queue_draw (pParentDock->container.pWidget);
+		// otherwise, it's better to directly set the size of the GDK Window to
+		// avoid problems with move_to_rect () later
+		if (pSubDock->container.bIsHorizontal)
+			gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
+				iNewWidth, iNewHeight);
+		else gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
+			iNewHeight, iNewWidth);
 	}
+
+	GdkRectangle rect = {0, 0, 1, 1};
+	GdkGravity rect_anchor = GDK_GRAVITY_NORTH;
+	GdkGravity subdock_anchor = GDK_GRAVITY_SOUTH;
+	gldi_container_calculate_rect (CAIRO_CONTAINER (pParentDock), pPointedIcon,
+		&rect, &rect_anchor, &subdock_anchor, TRUE);
+	gldi_container_move_to_rect (CAIRO_CONTAINER (pSubDock),
+		&rect, rect_anchor, subdock_anchor, GDK_ANCHOR_SLIDE, 0, 0);
+	// note: for some reason, we do not receive configure events at least on Wayland,
+	// so we need to set these manually
+	// TODO: we might need to trigger reloading icon images as well? (see dock-factory.c:1245-1282)
+	pSubDock->bNeedSizeUpdate = TRUE;
+	pSubDock->container.iWidth = iNewWidth;
+	pSubDock->container.iHeight = iNewHeight;
+
 	if (g_bUseOpenGL)
 	{
 		// note: this is a no-op on X11, only needed on Wayland + EGL
@@ -996,8 +980,7 @@ void cairo_dock_show_subdock (Icon *pPointedIcon, CairoDock *pParentDock)
 	
 	// note: when using gtk-layer-shell (the parent dock is layer surface),
 	// showing the window has to happen after (relative) positioning
-	if (gldi_container_use_new_positioning_code ())
-		gtk_window_present (GTK_WINDOW (pSubDock->container.pWidget));
+	gtk_window_present (GTK_WINDOW (pSubDock->container.pWidget));
 		
 	// animate it
 	if (myDocksParam.bAnimateSubDock && pSubDock->icons != NULL)

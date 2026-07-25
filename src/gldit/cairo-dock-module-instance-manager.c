@@ -20,7 +20,6 @@
 
 #include <stddef.h>
 #include "gldi-config.h"
-#include "cairo-dock-container-priv.h" // gldi_container_use_new_positioning_code
 #include "cairo-dock-dock-manager.h"
 #include "cairo-dock-desklet-manager.h"
 #include "cairo-dock-keyfile-utilities.h"  // cairo_dock_conf_file_needs_update
@@ -733,7 +732,7 @@ static GKeyFile* reload_object (GldiObject *obj, gboolean bReadConfig, GKeyFile 
 			 * desklet mode, since the desklet doesn't have a renderer yet (so
 			 * buffer can't be loaded).
 			 */
-			 if (pIcon->pSubDock && gldi_container_use_new_positioning_code ())
+			 if (pIcon->pSubDock)
 			 {
 				 gtk_window_set_transient_for (GTK_WINDOW (pIcon->pSubDock->container.pWidget), GTK_WINDOW (pNewDock->container.pWidget));
 			 }

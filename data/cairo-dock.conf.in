@@ -185,10 +185,6 @@ animation on demands attention = rotate
 
 [System]
 
-#b- Experimental drawing code (X11)
-#{Enable new code paths on X11 to test for regressions.}
-X11_new_rendering_code=false
-
 #F+[Additional UI scaling;zoom-fit-best]
 frame_scale =
 
