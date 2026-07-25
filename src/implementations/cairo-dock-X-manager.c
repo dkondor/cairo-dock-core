@@ -100,7 +100,8 @@ static GHashTable *s_hXClientMessageTable = NULL;  // table of (Xid,client-messa
 static int s_iTime = 1;  // on peut aller jusqu'a 2^31, soit 17 ans a 4Hz.
 static int s_iNumWindow = 1;  // used to order appli icons by age (=creation date).
 static Window s_iCurrentActiveWindow = 0;
-static guint num_lock_mask=0, caps_lock_mask=0, scroll_lock_mask=0;
+static guint num_lock_mask=0, caps_lock_mask=0, scroll_lock_mask=0,
+	alt_mask=0, ctrl_mask=0, shift_mask=0, super_mask=0;
 static GPollFD s_poll_fd;
 
 typedef enum {
@@ -391,11 +392,16 @@ static void _unset_demand_attention (GldiXWindowActor *actor, XAttentionFlag fla
 	gldi_object_notify (&myWindowObjectMgr, NOTIFICATION_WINDOW_ATTENTION_CHANGED, actor);
 }
 
-static void lookup_ignorable_modifiers (void)
+static void lookup_modifiers (void)
 {
 	caps_lock_mask = XkbKeysymToModifiers (s_XDisplay, GDK_KEY_Caps_Lock);
 	num_lock_mask = XkbKeysymToModifiers (s_XDisplay, GDK_KEY_Num_Lock);
 	scroll_lock_mask = XkbKeysymToModifiers (s_XDisplay, GDK_KEY_Scroll_Lock);
+	
+	alt_mask = XkbKeysymToModifiers (s_XDisplay, GDK_KEY_Alt_L); // hopefully will work regardless of _L or _R
+	ctrl_mask = XkbKeysymToModifiers (s_XDisplay, GDK_KEY_Control_L);
+	shift_mask = XkbKeysymToModifiers (s_XDisplay, GDK_KEY_Shift_L);
+	super_mask = XkbKeysymToModifiers (s_XDisplay, GDK_KEY_Super_L);
 }
 
 static gboolean _cairo_dock_unstack_Xevents (G_GNUC_UNUSED gpointer data)
@@ -531,7 +537,7 @@ static gboolean _cairo_dock_unstack_Xevents (G_GNUC_UNUSED gpointer data)
 		else if (event.type == MappingNotify)  // keymap changed (this event is always sent to all clients)
 		{
 			gldi_object_notify (&myDesktopMgr, NOTIFICATION_KEYMAP_CHANGED, FALSE);
-			lookup_ignorable_modifiers ();
+			lookup_modifiers ();
 			gldi_object_notify (&myDesktopMgr, NOTIFICATION_KEYMAP_CHANGED, TRUE);
 		}
 		else if (Xid == root)  // event on the desktop
@@ -592,7 +598,12 @@ static gboolean _cairo_dock_unstack_Xevents (G_GNUC_UNUSED gpointer data)
 			}  // end of PropertyNotify on root.
 			else if (event.type == KeyPress)
 			{
-				guint event_mods = event.xkey.state & ~(num_lock_mask | caps_lock_mask | scroll_lock_mask);  // remove the lock masks
+				guint event_mods = 0;
+				if (event.xkey.state & alt_mask) event_mods |= GDK_MOD1_MASK;
+				if (event.xkey.state & ctrl_mask) event_mods |= GDK_CONTROL_MASK;
+				if (event.xkey.state & shift_mask) event_mods |= GDK_SHIFT_MASK;
+				if (event.xkey.state & super_mask) event_mods |= GDK_SUPER_MASK;
+				
 				gldi_object_notify (&myDesktopMgr, NOTIFICATION_SHORTKEY_PRESSED, event.xkey.keycode, event_mods);
 			}
 		}
@@ -960,7 +971,11 @@ static void _refresh (void)
 static void _grab_shortkey (GldiShortkey *pBinding, gboolean grab, CairoDockGrabKeyResult cb)
 {
 	guint keycode = pBinding->keycode;
-	guint modifiers = pBinding->modifiers;
+	guint modifiers = 0;
+	if (pBinding->modifiers & GDK_MOD1_MASK || pBinding->modifiers & GDK_META_MASK) modifiers |= alt_mask;
+	if (pBinding->modifiers & GDK_CONTROL_MASK) modifiers |= ctrl_mask;
+	if (pBinding->modifiers & GDK_SHIFT_MASK) modifiers |= shift_mask;
+	if (pBinding->modifiers & GDK_SUPER_MASK) modifiers |= super_mask;
 	
 	Window root = DefaultRootWindow (s_XDisplay);
 	
@@ -1848,7 +1863,7 @@ static void init (void)
 		GLDI_RUN_FIRST, NULL);
 	
 	//\__________________ get modifiers we want to filter
-	lookup_ignorable_modifiers ();
+	lookup_modifiers ();
 }
 
 

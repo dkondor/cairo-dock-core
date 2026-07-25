@@ -73,11 +73,6 @@ static void do_grab_key (GldiShortkey *binding, CairoDockGrabKeyResult cb)
 	binding->keycode = accelerator_codes[0];  // just take the first one
 	g_free (accelerator_codes);
 	
-	// convert virtual modifiers to concrete ones
-	GdkKeymap *keymap = gdk_keymap_get_default ();
-	gdk_keymap_map_virtual_modifiers (keymap, &binding->modifiers);  // map the Meta, Super, Hyper virtual modifiers to their concrete counterparts
-	binding->modifiers &= ~(GDK_SUPER_MASK | GDK_META_MASK | GDK_HYPER_MASK);  // and then remove them
-	
 	cd_debug ("%s -> %d, %d %d", binding->keystring, keysym, binding->keycode, binding->modifiers);
 	
 	// now grab the shortkey from the server
