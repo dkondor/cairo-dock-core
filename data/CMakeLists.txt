@@ -20,22 +20,22 @@ configure_file (${CMAKE_CURRENT_SOURCE_DIR}/container.desktop.in ${CMAKE_CURRENT
 configure_file (${CMAKE_CURRENT_SOURCE_DIR}/separator.desktop.in ${CMAKE_CURRENT_BINARY_DIR}/separator.desktop)
 configure_file (${CMAKE_CURRENT_SOURCE_DIR}/themes.conf.in ${CMAKE_CURRENT_BINARY_DIR}/themes.conf)
 
-configure_file (${CMAKE_CURRENT_SOURCE_DIR}/cairo-dock.desktop.in ${CMAKE_CURRENT_BINARY_DIR}/cairo-dock.desktop)
-configure_file (${CMAKE_CURRENT_SOURCE_DIR}/cairo-dock-cairo.desktop.in ${CMAKE_CURRENT_BINARY_DIR}/cairo-dock-cairo.desktop)
+configure_file (${CMAKE_CURRENT_SOURCE_DIR}/cairo-dock4.desktop.in ${CMAKE_CURRENT_BINARY_DIR}/cairo-dock4.desktop)
+configure_file (${CMAKE_CURRENT_SOURCE_DIR}/cairo-dock4-cairo.desktop.in ${CMAKE_CURRENT_BINARY_DIR}/cairo-dock4-cairo.desktop)
 
 
 ########### install files ###############
 
 # misc
 install (FILES
-	cairo-dock.svg
+	cairo-dock4.svg
 	readme-default-view
 	ChangeLog.txt
 	DESTINATION ${pkgdatadir})
 
 # appli icon
 install (FILES
-	cairo-dock.svg
+	cairo-dock4.svg
 	DESTINATION ${datadir}/pixmaps)
 
 # conf files
@@ -53,6 +53,6 @@ install (FILES
 
 # appli desktop file
 install (FILES
-	${CMAKE_CURRENT_BINARY_DIR}/cairo-dock.desktop
-	${CMAKE_CURRENT_BINARY_DIR}/cairo-dock-cairo.desktop
+	${CMAKE_CURRENT_BINARY_DIR}/cairo-dock4.desktop
+	${CMAKE_CURRENT_BINARY_DIR}/cairo-dock4-cairo.desktop
 	DESTINATION ${datadir}/applications)

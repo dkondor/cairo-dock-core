@@ -7,7 +7,7 @@ find_program(GZIP_TOOL
 if(NOT GZIP_TOOL)
 	message(FATAL_ERROR "Unable to find 'gzip' program")
 endif(NOT GZIP_TOOL)
-set(cairo_dock_man_src cairo-dock_en.1) # cairo-dock_fr.1 cairo-dock_it.1)
+set(cairo_dock_man_src cairo-dock4_en.1) # cairo-dock_fr.1 cairo-dock_it.1)
 
 # Compression of the manuals
 foreach(man ${cairo_dock_man_src})
@@ -17,6 +17,6 @@ foreach(man ${cairo_dock_man_src})
 endforeach(man)
 
 # Installation of the manuals
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cairo-dock_en.1.gz
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cairo-dock4_en.1.gz
         DESTINATION "${mandir}/man1"
-        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ RENAME cairo-dock.1.gz)
+        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ RENAME cairo-dock4.1.gz)

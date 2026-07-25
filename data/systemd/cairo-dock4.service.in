@@ -1,13 +1,13 @@
 [Unit]
-Description=Cairo-Dock
+Description=Cairo-Dock4
 PartOf=graphical-session.target
 After=graphical-session.target
 Requisite=graphical-session.target
 
 [Service]
-ExecStart=@CMAKE_INSTALL_PREFIX@/bin/cairo-dock
+ExecStart=@CMAKE_INSTALL_PREFIX@/bin/cairo-dock4
 Type=exec
-BusName=org.cairodock.CairoDock
+BusName=org.cairodock.CairoDock4
 # We want to restart on OOM or if killed by a signal not caught by our crash
 # manager, but not on nonzero exit code which happens if we already tried
 # restarting ourselves several times, if wrong command line options were given

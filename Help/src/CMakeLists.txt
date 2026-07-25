@@ -45,4 +45,4 @@ target_link_libraries (${PACKAGE_HELP}
 
 ########### install files ###############
 
-install(TARGETS ${PACKAGE_HELP} DESTINATION "${libdir}/cairo-dock")
+install(TARGETS ${PACKAGE_HELP} DESTINATION "${libdir}/cairo-dock4")
