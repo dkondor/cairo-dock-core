@@ -28,7 +28,6 @@ SET(core_lib_SRCS
 	cairo-dock-dialog-factory.c 		cairo-dock-dialog-factory.h
 	cairo-dock-dialog-manager.c 		cairo-dock-dialog-manager.h
 	cairo-dock-dialog-priv.h
-	cairo-dock-flying-container.c 		cairo-dock-flying-container.h
 	cairo-dock-dock-manager.c 			cairo-dock-dock-manager.h
 	cairo-dock-dock-factory.c 			cairo-dock-dock-factory.h
 	cairo-dock-dock-facility.c 			cairo-dock-dock-facility.h
@@ -170,7 +169,6 @@ install(FILES
 	cairo-dock-dock-factory.h
 	cairo-dock-desklet-factory.h
 	cairo-dock-dialog-factory.h
-	cairo-dock-flying-container.h
 	
 	cairo-dock-applet-multi-instance.h 	cairo-dock-applet-single-instance.h
 	cairo-dock-applet-canvas.h			cairo-dock-applet-facility.h

@@ -46,7 +46,6 @@
 #include "cairo-dock-menu.h"  // gldi_menu_popup
 #include "cairo-dock-themes-manager.h"  // cairo_dock_update_conf_file, cairo_dock_add_conf_file
 #include "cairo-dock-dock-visibility.h"  // gldi_dock_visibility_refresh
-#include "cairo-dock-flying-container.h"
 #include "cairo-dock-backends-manager.h"
 #include "cairo-dock-class-manager-priv.h"  // cairo_dock_check_class_subdock_is_empty
 #include "cairo-dock-desktop-manager.h"
@@ -71,7 +70,6 @@ static int s_iSidShowSubDockDemand = 0;
 static int s_iSidActionOnDragHover = 0;
 static CairoDock *s_pDockShowingSubDock = NULL;  // on n'accede pas a son contenu, seulement l'adresse.
 static CairoDock *s_pSubDockShowing = NULL;  // on n'accede pas a son contenu, seulement l'adresse.
-static CairoFlyingContainer *s_pFlyingContainer = NULL;
 static int s_iFirstClickX=0, s_iFirstClickY=0;  // for double-click.
 static gboolean s_bFrozenDock = FALSE;
 static gboolean s_bIconDragged = FALSE;
@@ -412,12 +410,6 @@ static gboolean _on_motion_notify (GtkWidget* pWidget,
 			pDock->container.iMouseY = (int) pMotion->x;
 		}
 		
-		//\_______________ On tire l'icone volante.
-		if (s_pFlyingContainer != NULL && ! pDock->container.bInside)
-		{
-			gldi_flying_container_drag (s_pFlyingContainer, pDock);
-		}
-		
 		//\_______________ On elague le flux des MotionNotify, sinon X en envoie autant que le permet le CPU !
 		if (pMotion->time != 0 && pMotion->time - fLastTime < myBackendsParam.fRefreshInterval && s_pIconClicked == NULL)
 		{
@@ -690,7 +682,6 @@ static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCro
 		|| CAIRO_DOCK_ICON_TYPE_IS_CONTAINER (s_pIconClicked)
 		|| (CAIRO_DOCK_ICON_TYPE_IS_SEPARATOR (s_pIconClicked) && s_pIconClicked->cDesktopFileName && pDock->iMaxDockHeight > 30)  // if the dock is narrow (like a panel), prevent from dragging separators outside of the dock. TODO: maybe we need a parameter in the view...
 		|| CAIRO_DOCK_IS_DETACHABLE_APPLET (s_pIconClicked))
-	&& s_pFlyingContainer == NULL
 	&& ! myDocksParam.bLockIcons
 	&& ! myDocksParam.bLockAll
 	&& ! pDock->bPreventDraggingIcons)
@@ -728,12 +719,6 @@ static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCro
 			}
 		}
 	}
-	/**else if (s_pFlyingContainer != NULL && s_pFlyingContainer->pIcon != NULL && pDock->iRefCount > 0)  // on evite les bouclages.
-	{
-		CairoDock *pOriginDock = gldi_dock_get (s_pFlyingContainer->pIcon->cParentDockName);
-		if (pOriginDock == pDock)
-			return GLDI_NOTIFICATION_INTERCEPT;
-	}*/
 	
 	if (gtk_widget_get_mapped (pDock->container.pWidget))
 	{
@@ -879,36 +864,6 @@ static gboolean _on_enter_notify (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCros
 	{
 		pDock->iAvoidingMouseIconType = s_pIconClicked->iGroup;
 		pDock->fAvoidingMouseMargin = .5;  /// inutile il me semble ...
-	}
-	
-	// si on rentre avec une icone volante, on la met dedans.
-	if (s_pFlyingContainer != NULL)
-	{
-		Icon *pFlyingIcon = s_pFlyingContainer->pIcon;
-		if (pDock != pFlyingIcon->pSubDock)  // on evite les boucles.
-		{
-			struct timeval tv;
-			int r = gettimeofday (&tv, NULL);
-			double t = 0.;
-			if (r == 0)
-				t = tv.tv_sec + tv.tv_usec * 1e-6;
-			if (t - s_pFlyingContainer->fCreationTime > 1)  // on empeche le cas ou enlever l'icone fait augmenter le ratio du dock, et donc sa hauteur, et nous fait rentrer dedans des qu'on sort l'icone.
-			{
-				//g_print ("on remet l'icone volante dans un dock (dock d'origine : %s)\n", pFlyingIcon->cParentDockName);
-				gldi_object_unref (GLDI_OBJECT(s_pFlyingContainer));  // will detach the icon
-				gldi_icon_stop_animation (pFlyingIcon);
-				// reinsert the icon where it was dropped, not at its original position.
-				Icon *icon = cairo_dock_get_pointed_icon (pDock->icons);  // get the pointed icon before we insert the icon, since the inserted icon will be the pointed one!
-				//g_print (" pointed icon: %s\n", icon?icon->cName:"none");
-				gldi_icon_insert_in_container (pFlyingIcon, CAIRO_CONTAINER(pDock), CAIRO_DOCK_ANIMATE_ICON);
-				if (icon != NULL && cairo_dock_get_icon_order (icon) == cairo_dock_get_icon_order (pFlyingIcon))
-				{
-					cairo_dock_move_icon_after_icon (pDock, pFlyingIcon, icon);
-				}
-				s_pFlyingContainer = NULL;
-				pDock->bIconIsFlyingAway = FALSE;
-			}
-		}
 	}
 	
 	// si on etait derriere, on repasse au premier plan.
@@ -1136,34 +1091,6 @@ static gboolean _on_button_press (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventButt
 						}
 						gtk_widget_queue_draw (pDock->container.pWidget);
 					}
-					
-					if (s_pFlyingContainer != NULL)  // the user released the flying icon -> detach/destroy it, or insert it
-					{
-						cd_debug ("on relache l'icone volante");
-						if (pDock->container.bInside)
-						{
-							//g_print ("  on la remet dans son dock d'origine\n");
-							Icon *pFlyingIcon = s_pFlyingContainer->pIcon;
-							gldi_object_unref (GLDI_OBJECT(s_pFlyingContainer));
-							cairo_dock_stop_marking_icon_as_following_mouse (pFlyingIcon);
-							// reinsert the icon where it was dropped, not at its original position.
-							Icon *icon = cairo_dock_get_pointed_icon (pDock->icons);  // get the pointed icon before we insert the icon, since the inserted icon will be the pointed one!
-							gldi_icon_insert_in_container (pFlyingIcon, CAIRO_CONTAINER(pDock), CAIRO_DOCK_ANIMATE_ICON);
-							if (icon != NULL && cairo_dock_get_icon_order (icon) == cairo_dock_get_icon_order (pFlyingIcon))
-							{
-								cairo_dock_move_icon_after_icon (pDock, pFlyingIcon, icon);
-							}
-						}
-						else
-						{
-							gldi_flying_container_terminate (s_pFlyingContainer);  // supprime ou detache l'icone, l'animation se terminera toute seule.
-						}
-						s_pFlyingContainer = NULL;
-						pDock->bIconIsFlyingAway = FALSE;
-						cairo_dock_stop_icon_glide (pDock);
-					}
-					/// a implementer ...
-					///gldi_object_notify (CAIRO_CONTAINER (pDock), CAIRO_DOCK_RELEASE_ICON, icon, pDock);
 				}
 				else
 				{
