@@ -14,6 +14,6 @@ have_wayland = @WAYLAND_FOUND@
 Name: gldi
 Description: openGL Desktop Interface. A library to build advanced interfaces for the desktop (dock, panel, desklet, dialog, ...); it supports both cairo and openGL.
 Requires: @gtk_required@ @packages_required@ @xextend_required@ @x11_required@ @wayland_required@
-Libs: -L${libdir} -lgldi @lm_required@
-Cflags: -I${includedir}/cairo-dock -I${includedir}/cairo-dock/gldit -I${includedir}/cairo-dock/implementations
+Libs: -L${libdir} -lgldi4 @lm_required@
+Cflags: -I${includedir}/cairo-dock4 -I${includedir}/cairo-dock4/gldit -I${includedir}/cairo-dock4/implementations
 Version: @VERSION@

@@ -96,9 +96,9 @@ link_directories(
 	${XINERAMA_LIBRARY_DIRS})
 
 # Define the library
-add_library ("gldi" SHARED ${core_lib_SRCS})
+add_library ("gldi4" SHARED ${core_lib_SRCS})
 STRING (REGEX REPLACE "\\..*" "" SOVERSION "${VERSION}")
-set_target_properties ("gldi" PROPERTIES
+set_target_properties ("gldi4" PROPERTIES
 	# create *nix style library versions + symbolic links
 	VERSION ${VERSION}
 	SOVERSION ${SOVERSION}
@@ -109,7 +109,7 @@ set_target_properties ("gldi" PROPERTIES
 )
 
 # Link the result to the libraries.
-target_link_libraries("gldi"
+target_link_libraries("gldi4"
 	${PACKAGE_LIBRARIES}
 	${GTK_LIBRARIES}
 	${EGL_LIBRARIES}
@@ -125,15 +125,15 @@ target_link_libraries("gldi"
 	${EVDEV_LIBRARIES})
 
 
-configure_file (${CMAKE_CURRENT_SOURCE_DIR}/gldi.pc.in ${CMAKE_CURRENT_BINARY_DIR}/gldi.pc)
-install (FILES  ${CMAKE_CURRENT_BINARY_DIR}/gldi.pc DESTINATION ${install-pc-path})
-install (FILES  ${CMAKE_CURRENT_BINARY_DIR}/libgldi.so DESTINATION ${libdir})
-install (FILES  ${CMAKE_CURRENT_BINARY_DIR}/libgldi.so.${VERSION} DESTINATION ${libdir})
-install (FILES  ${CMAKE_CURRENT_BINARY_DIR}/libgldi.so.${SOVERSION} DESTINATION ${libdir})
+configure_file (${CMAKE_CURRENT_SOURCE_DIR}/gldi4.pc.in ${CMAKE_CURRENT_BINARY_DIR}/gldi4.pc)
+install (FILES  ${CMAKE_CURRENT_BINARY_DIR}/gldi4.pc DESTINATION ${install-pc-path})
+install (FILES  ${CMAKE_CURRENT_BINARY_DIR}/libgldi4.so DESTINATION ${libdir})
+install (FILES  ${CMAKE_CURRENT_BINARY_DIR}/libgldi4.so.${VERSION} DESTINATION ${libdir})
+install (FILES  ${CMAKE_CURRENT_BINARY_DIR}/libgldi4.so.${SOVERSION} DESTINATION ${libdir})
 
 ########### install files ###############
 
-install(FILES cairo-dock.h DESTINATION ${includedir}/cairo-dock)
+install(FILES cairo-dock.h DESTINATION ${includedir}/cairo-dock4)
 install(FILES
 	cairo-dock-struct.h 			cairo-dock-global-variables.h
 	${CMAKE_CURRENT_BINARY_DIR}/gldi-config.h  # gldi-module-config.h doesn't need to be installed
@@ -190,7 +190,7 @@ install(FILES
 	cairo-dock-style-facility.h
 	cairo-dock-utils.h
 	
-	DESTINATION ${includedir}/cairo-dock/gldit)
+	DESTINATION ${includedir}/cairo-dock4/gldit)
 
 if (disable-gtk-grip)
 	add_definitions (-DENABLE_GTK_GRIP=1)

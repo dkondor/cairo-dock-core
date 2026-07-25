@@ -135,4 +135,4 @@ install (FILES
 	cairo-dock-graph.h
 	cairo-dock-progressbar.h
 	cairo-dock-wayland-manager.h
-	DESTINATION ${includedir}/cairo-dock/implementations)  # thoses are needed to expose the attributes of the data-renderers to the plug-ins.
+	DESTINATION ${includedir}/cairo-dock4/implementations)  # thoses are needed to expose the attributes of the data-renderers to the plug-ins.

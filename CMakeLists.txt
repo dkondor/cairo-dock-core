@@ -2,7 +2,7 @@
 
 cmake_minimum_required (VERSION 3.16.0)
 
-project ("cairo-dock" C)
+project ("cairo-dock4" C)
 
 find_package (PkgConfig)
 include (CheckLibraryExists)
@@ -13,7 +13,7 @@ include (GNUInstallDirs)
 
 ########### project ###############
 
-set (VERSION "3.6.102") # no dash, only numbers, dots and maybe alpha/beta/rc, e.g.: 3.3.1 or 3.3.99.alpha1
+set (VERSION "3.99.0") # no dash, only numbers, dots and maybe alpha/beta/rc, e.g.: 3.3.1 or 3.3.99.alpha1
 
 add_compile_options (-std=c99 -Wall -Wextra -Werror-implicit-function-declaration) # -Wextra -Wwrite-strings -Wuninitialized -Wstrict-prototypes -Wreturn-type -Wparentheses -Warray-bounds)
 if (NOT DEFINED CMAKE_BUILD_TYPE)
@@ -21,9 +21,9 @@ if (NOT DEFINED CMAKE_BUILD_TYPE)
 endif()
 add_definitions (-DGL_GLEXT_PROTOTYPES="1")
 add_definitions (-DCAIRO_DOCK_DEFAULT_ICON_NAME="default-icon.svg")
-add_definitions (-DCAIRO_DOCK_ICON="cairo-dock.svg")
+add_definitions (-DCAIRO_DOCK_ICON="cairo-dock4.svg")
 add_definitions (-DCAIRO_DOCK_LOGO="cairo-dock-logo.png")
-add_definitions (-DCAIRO_DOCK_DATA_DIR="cairo-dock")
+add_definitions (-DCAIRO_DOCK_DATA_DIR="cairo-dock4")
 add_custom_target (uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
 
 
@@ -89,10 +89,10 @@ set (bindir "${prefix}/${CMAKE_INSTALL_BINDIR}")  # (...)/bin
 if (NOT DEFINED plugins-prefix)
 	set (plugins-prefix "${prefix}")
 endif()
-set (pluginsdir "${plugins-prefix}/${CMAKE_INSTALL_LIBDIR}/cairo-dock")
+set (pluginsdir "${plugins-prefix}/${CMAKE_INSTALL_LIBDIR}/${CMAKE_PROJECT_NAME}")
 set (pluginsdatarootdir "${plugins-prefix}/${CMAKE_INSTALL_DATAROOTDIR}/${CMAKE_PROJECT_NAME}")
 set (plugins-locale "${plugins-prefix}/${CMAKE_INSTALL_LOCALEDIR}")
-set (plugins-gettext "cairo-dock-plugins") # gettext domain used by plugins
+set (plugins-gettext "cairo-dock-plugins4") # gettext domain used by plugins
 
 if (NOT DEFINED install-pc-path)
 	set (install-pc-path "${libdir}/pkgconfig")  # it can be different (for example ${CMAKE_INSTALL_PREFIX}/libdata/pkgconfig on BSD)
@@ -350,8 +350,8 @@ if (NOT "${pluginsdatarootdir}" STREQUAL "${pkgdatadir}")
 	set (GLDI_PLUGINS_DATA_ROOT "${pluginsdatarootdir}")
 endif()
 set (GLDI_MODULES_DIR ${pluginsdir})
-if (NOT "${pluginsdir}" STREQUAL "${libdir}/cairo-dock")
-	set (GLDI_MODULES_DIR_CORE "${libdir}/cairo-dock")
+if (NOT "${pluginsdir}" STREQUAL "${libdir}/${CMAKE_PROJECT_NAME}")
+	set (GLDI_MODULES_DIR_CORE "${libdir}/${CMAKE_PROJECT_NAME}")
 endif()
 set (GLDI_BIN_DIR ${bindir})
 

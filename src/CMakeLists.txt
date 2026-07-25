@@ -49,7 +49,7 @@ set_target_properties (${PROJECT_NAME} PROPERTIES ENABLE_EXPORTS True)
 target_link_libraries (${PROJECT_NAME}
 	${PACKAGE_LIBRARIES}
 	${GTK_LIBRARIES}
-	gldi
+	gldi4
 	${LIBINTL_LIBRARIES})
 
 # install the program once it is built.
