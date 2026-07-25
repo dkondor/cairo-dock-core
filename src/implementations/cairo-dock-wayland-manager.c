@@ -43,7 +43,6 @@
 #include "cairo-dock-dock-factory.h" // struct _CairoDock
 #include "cairo-dock-dock-manager.h" // myDockObjectMgr, needed for CAIRO_DOCK_IS_DOCK
 #include "cairo-dock-icon-facility.h" // cairo_dock_get_icon_container
-#include "cairo-dock-opengl-priv.h"
 #ifdef HAVE_WAYLAND_PROTOCOLS
 #include "cairo-dock-foreign-toplevel.h"
 #include "cairo-dock-plasma-window-manager.h"
@@ -53,7 +52,6 @@
 #include "cairo-dock-wayland-wm.h"
 #endif
 #include "cairo-dock-wayland-hotspots.h"
-#include "cairo-dock-egl.h"
 #define _MANAGER_DEF_
 #include "cairo-dock-wayland-manager-priv.h"
 
@@ -68,7 +66,6 @@ GldiManager myWaylandMgr;
 
 // dependencies
 extern GldiContainer *g_pPrimaryContainer;
-extern gboolean g_bUseOpenGL;
 
 // private
 static struct wl_display *s_pDisplay = NULL;
@@ -245,12 +242,10 @@ static void _move_resize_dock (CairoDock *pDock)
 	if (pDock->container.bIsHorizontal)
 	{
 		gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock)), iNewWidth, iNewHeight);
-		if (g_bUseOpenGL) gldi_gl_container_resized (CAIRO_CONTAINER (pDock), iNewWidth, iNewHeight);
 	}
 	else
 	{
 		gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock)), iNewHeight, iNewWidth);
-		if (g_bUseOpenGL) gldi_gl_container_resized (CAIRO_CONTAINER (pDock), iNewHeight, iNewWidth);
 	}
 
 #ifdef HAVE_GTK_LAYER_SHELL
@@ -598,7 +593,6 @@ static void init (void)
 	cmb.dock_handle_leave = _dock_handle_leave;
 	cmb.dock_handle_enter = _dock_handle_enter;
 	gldi_container_manager_register_backend (&cmb);
-	gldi_register_egl_backend ();
 }
 
 void gldi_register_wayland_manager (void)

@@ -107,9 +107,6 @@ extern gboolean g_bNoWaylandExclude;
 extern gboolean g_bDisableAllModules;
 extern gboolean g_bNoCheckModuleVersion;
 extern gchar **g_cExcludedModules;
-#ifdef HAVE_X11
-extern gboolean g_bX11UseEgl;
-#endif
 extern gboolean g_bDisableSystemd; // defined in cairo-dock-core.c
 extern gboolean g_bDisableDbusActivation; // defined in cairo-dock-class-manager.c
 extern gboolean g_bGioLaunch; // defined in cairo-dock-class-manager.c
@@ -480,11 +477,6 @@ int main (int argc, char** argv)
 		{"no-dbus-name", 0, G_OPTION_FLAG_IN_MAIN, G_OPTION_ARG_NONE,
 			&bNoDBusName,
 			_("Do not try to own the \"org.cairodock.CairoDock\" DBus name (DBus interface will be unavailable)."), NULL},
-#ifdef HAVE_X11
-		{"egl", 0, G_OPTION_FLAG_IN_MAIN, G_OPTION_ARG_NONE,
-			&g_bX11UseEgl,
-			_("Use EGL on X11."), NULL},
-#endif
 		{"no-layer-shell", 0, G_OPTION_FLAG_IN_MAIN, G_OPTION_ARG_NONE,
 			&g_bDisableLayerShell,
 			_("For debugging purpose only. Disable gtk-layer-shell support."), NULL},

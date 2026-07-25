@@ -60,7 +60,6 @@
 #include "cairo-dock-file-manager.h"
 #include "cairo-dock-overlay.h"
 #include "cairo-dock-log.h"
-#include "cairo-dock-opengl-priv.h"
 #include "cairo-dock-core.h"
 
 extern GldiContainer *g_pPrimaryContainer;
@@ -109,7 +108,7 @@ static void _gldi_register_core_managers (void)
 	gldi_logout_backend_init (); // similarly, this is just a simple backend that will register its functions with the FM
 }
 
-void gldi_init (GldiRenderingMethod iRendering)
+void gldi_init (G_GNUC_UNUSED GldiRenderingMethod iRendering)
 {
 	// allow messages.
 	cd_log_init (FALSE);  // warnings by default.
@@ -130,12 +129,6 @@ void gldi_init (GldiRenderingMethod iRendering)
 	cairo_dock_register_default_renderer ();
 	
 	cairo_dock_register_icon_container_renderers ();
-	
-	// set up rendering method.
-	if (iRendering != GLDI_CAIRO)  // if cairo, nothing to do.
-	{
-		gldi_gl_backend_init (iRendering == GLDI_OPENGL);  // TRUE <=> force.
-	}
 }
 
 void gldi_free_all (void)
@@ -155,19 +148,13 @@ void gldi_free_all (void)
 gchar *gldi_get_diag_msg (void)
 {
 	
-	gboolean bX11 = FALSE, bWAYLAND = FALSE, bGLX = FALSE, bEGL = FALSE;
+	gboolean bX11 = FALSE, bWAYLAND = FALSE;
 	gboolean bGTK_LAYER_SHELL = FALSE, bWAYLAND_PROTOCOLS = FALSE, bWAYFIRE = FALSE;
 #ifdef HAVE_X11
 bX11 = TRUE;
 #endif
 #ifdef HAVE_WAYLAND
 bWAYLAND = TRUE;
-#endif
-#ifdef HAVE_GLX
-bGLX = TRUE;
-#endif
-#ifdef HAVE_EGL
-bEGL = TRUE;
 #endif
 #ifdef HAVE_GTK_LAYER_SHELL
 bGTK_LAYER_SHELL = TRUE;
@@ -205,15 +192,12 @@ bWAYFIRE = TRUE;
 		" * GTK version:                  %d.%d\n"
 		" * X11:                          %s\n"
 		" * Wayland:                      %s\n"
-		" * GLX:                          %s\n"
-		" * EGL:                          %s\n"
 		" * gtk-layer-shell:              %s\n"
 		" * additional Wayland protocols: %s\n"
 		" * Wayfire IPC:                  %s\n\n"
 		"Cairo-Dock is currently running with:\n"
 		" * display backend:              %s\n"
 		"%s"
-		" * OpenGL:                       %s\n"
 		" * taskbar backend:              %s\n"
 		" * desktop manager backend(s):   %s\n"
 		" * dock visibility backend:      %s\n"
@@ -224,8 +208,6 @@ bWAYFIRE = TRUE;
 		GTK_MAJOR_VERSION, GTK_MINOR_VERSION,
 		bX11 ? "yes" : "no",
 		bWAYLAND ? "yes" : "no",
-		bGLX ? "yes" : "no",
-		bEGL ? "yes" : "no",
 		bGTK_LAYER_SHELL ? "yes" : "no",
 		bWAYLAND_PROTOCOLS ? "yes" : "no",
 		bWAYFIRE ? "yes" : "no",
@@ -234,7 +216,6 @@ bWAYFIRE = TRUE;
 			(gldi_container_use_new_positioning_code () ?
 				" * window positioning:           new\n" :
 				" * window positioning:           legacy\n"),
-		g_bUseOpenGL ? gldi_gl_get_backend_name() : "no",
 		gldi_windows_manager_get_name (),
 		gldi_desktop_manager_get_backend_names (),
 		gldi_dock_visbility_get_backend_name (),
