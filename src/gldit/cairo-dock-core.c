@@ -31,8 +31,7 @@
 #include "cairo-dock-dock-visibility.h"
 #include "cairo-dock-desklet-manager.h"
 #include "cairo-dock-dialog-priv.h"
-// #include "cairo-dock-container-priv.h"
-#include "cairo-dock-flying-container.h"
+#include "cairo-dock-container-priv.h"
 #include "cairo-dock-applications-priv.h"
 #include "cairo-dock-applet-manager.h"
 #include "cairo-dock-backends-manager.h"
@@ -79,7 +78,6 @@ static void _gldi_register_core_managers (void)
 	gldi_register_docks_manager ();
 	gldi_register_desklets_manager ();
 	gldi_register_dialogs_manager ();
-	gldi_register_flying_manager ();
 	gldi_register_icons_manager ();
 	gldi_register_user_icons_manager ();
 	gldi_register_launchers_manager ();
