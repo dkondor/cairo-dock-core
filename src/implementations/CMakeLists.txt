@@ -16,17 +16,9 @@ SET(impl_SRCS
 	cairo-dock-systemd-integration.c     cairo-dock-systemd-integration.h
 	cairo-dock-X-manager.c               cairo-dock-X-manager.h
 	cairo-dock-X-utilities.c             cairo-dock-X-utilities.h
-	cairo-dock-glx.c                     cairo-dock-glx.h
-	cairo-dock-egl.c                     cairo-dock-egl.h
 	cairo-dock-wayland-manager.c         cairo-dock-wayland-manager.h         cairo-dock-wayland-manager-priv.h
 	cairo-dock-logout-backend.c          cairo-dock-logout-backend.h
 )
-#if ("${HAVE_X11}")
-#	SET(impl_SRCS ${impl_SRCS}
-#		cairo-dock-X-manager.c               cairo-dock-X-manager.h
-#		cairo-dock-glx.c                     cairo-dock-glx.h
-#	)
-#endif()
 
 if(HAVE_WAYLAND)
 	SET(impl_SRCS

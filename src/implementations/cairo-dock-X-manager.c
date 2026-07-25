@@ -55,29 +55,12 @@
 #include "cairo-dock-keybinder.h"
 #include "cairo-dock-X-utilities.h"
 #include "cairo-dock-task.h"
-#include "cairo-dock-opengl-priv.h"
-#include "cairo-dock-glx.h"
-#include "cairo-dock-egl.h"
 #define _MANAGER_DEF_
 #include "cairo-dock-X-manager.h"
 
 // public (manager, config, data)
 GldiManager myXMgr;
 GldiObjectManager myXObjectMgr;
-
-gboolean g_bX11UseEgl = FALSE;
-static gboolean _prefer_egl (void)
-{
-	#ifndef HAVE_EGL
-		return FALSE;
-	#endif
-	#ifndef HAVE_GLX
-		return TRUE;
-	#endif
-	// the command line option only makes sense if we have compiled both EGL and GLX support
-	return g_bX11UseEgl;
-}
-
 
 // dependencies
 extern GldiContainer *g_pPrimaryContainer;
@@ -1117,7 +1100,7 @@ static cairo_surface_t* _get_thumbnail_surface (GldiWindowActor *actor, int iWid
 	GldiXWindowActor *xactor = (GldiXWindowActor *)actor;
 	return cairo_dock_create_surface_from_xpixmap (xactor->iBackingPixmap, iWidth, iHeight);
 }
-
+/*
 static GLuint _get_texture (GldiWindowActor *actor, int *pWidth, int *pHeight)
 {
 	GldiXWindowActor *xactor = (GldiXWindowActor *)actor;
@@ -1129,7 +1112,7 @@ static GLuint _get_texture (GldiWindowActor *actor, int *pWidth, int *pHeight)
 	}
 	return 0;
 }
-
+*/
 static GldiWindowActor *_get_transient_for (GldiWindowActor *actor)
 {
 	GldiXWindowActor *xactor = (GldiXWindowActor *)actor;
@@ -1829,7 +1812,7 @@ static void init (void)
 	wmb.set_window_border = _set_window_border;
 	wmb.get_icon_surface = _get_icon_surface;
 	wmb.get_thumbnail_surface = _get_thumbnail_surface;
-	wmb.get_texture = _get_texture;
+	// wmb.get_texture = _get_texture;
 	wmb.get_transient_for = _get_transient_for;
 	wmb.is_above_or_below = _is_above_or_below;
 	wmb.set_sticky = _set_sticky;
@@ -1858,9 +1841,6 @@ static void init (void)
 	cmb.dock_check_if_mouse_inside_linear = _dock_check_if_mouse_inside_linear;
 	cmb.adjust_aimed_point = _adjust_aimed_point;
 	gldi_container_manager_register_backend (&cmb);
-	
-	if (_prefer_egl ()) gldi_register_egl_backend ();
-	else gldi_register_glx_backend ();
 	
 	gldi_object_register_notification (&myAppliIconObjectMgr,
 		NOTIFICATION_TASKBAR_PAR_CHANGED,
