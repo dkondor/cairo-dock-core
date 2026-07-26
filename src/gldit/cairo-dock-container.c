@@ -657,10 +657,12 @@ void gldi_container_manager_register_backend (GldiContainerManagerBackend *pBack
 }
 
 
-static GtkWidget *s_pMenu = NULL;  // right-click menu
+// static GtkWidget *s_pMenu = NULL;  // right-click menu
 GtkWidget *gldi_container_build_menu (GldiContainer *pContainer, Icon *icon)
 {
-	if (s_pMenu != NULL)
+	cd_warning ("menus disabled");
+	return NULL;
+/*	if (s_pMenu != NULL)
 	{
 		//g_print ("previous menu still alive\n");
 		gtk_widget_destroy (GTK_WIDGET (s_pMenu));  // -> 's_pMenu' becomes NULL thanks to the weak pointer.
@@ -684,7 +686,7 @@ GtkWidget *gldi_container_build_menu (GldiContainer *pContainer, Icon *icon)
 	s_pMenu = menu;
 	g_object_add_weak_pointer (G_OBJECT (menu), (gpointer*)&s_pMenu);  // will nullify 's_pMenu' as soon as the menu is destroyed.
 	// TODO: it would make sense to destroy the menu as soon as it is closed, since it will not be reused
-	return menu;
+	return menu; */
 }
 
 
