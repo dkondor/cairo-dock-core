@@ -48,8 +48,8 @@ set_target_properties (${PROJECT_NAME} PROPERTIES ENABLE_EXPORTS True)
 # Link the executable to the libraries.
 target_link_libraries (${PROJECT_NAME}
 	${PACKAGE_LIBRARIES}
-	${GTK_LIBRARIES}
 	gldi4
+	${GTK_LIBRARIES}
 	${LIBINTL_LIBRARIES})
 
 # install the program once it is built.

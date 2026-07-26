@@ -104,7 +104,7 @@ list(APPEND CMAKE_INSTALL_RPATH ${libdir})
 
 # check for mandatory dependencies
 # for pkg_check_modules -- use semicolon to have more details if a package is missing
-set (packages_required_semicolon "glib-2.0 >= 2.40.0;gthread-2.0;cairo;librsvg-2.0;libxml-2.0;gl;glu;libcurl;libarchive")
+set (packages_required_semicolon "glib-2.0 >= 2.40.0;gio-2.0;gio-unix-2.0;gthread-2.0;cairo;librsvg-2.0;libxml-2.0;gl;glu;libcurl;libarchive")
 # for gldi.pc -- replace semicolons with spaces
 STRING (REPLACE ";" " " packages_required "${packages_required_semicolon}") # note: need to use quotes around ${packages_required_semicolon} for this to work!
 pkg_check_modules ("PACKAGE" REQUIRED ${packages_required_semicolon})
@@ -122,11 +122,12 @@ set (with_wayland no)
 set (WAYLAND_FOUND 0)
 enable_if_not_defined (enable-wayland-support) # enabled by default
 if (enable-wayland-support)
-	set (wayland_required "wayland-client")  # for the .pc
-	pkg_check_modules ("WAYLAND" ${wayland_required}>=1.0.0)
+	set (wayland_required "wayland-client >= 1.0.0 gtk4-wayland")  # for the .pc
+	set (wayland_required_semicolon "wayland-client >= 1.0.0; gtk4-wayland")  # for checking
+	pkg_check_modules ("WAYLAND" ${wayland_required_semicolon})
 	if (WAYLAND_FOUND)
 		set (HAVE_WAYLAND 1)
-		set (with_wayland "yes (${WAYLAND_VERSION})")
+		set (with_wayland "yes")
 	else()
 		set (wayland_required)
 	endif()
@@ -190,8 +191,9 @@ set (with_xentend no)
 enable_if_not_defined (enable-x11-support) # enabled by default
 if (enable-x11-support)
 	# check for X11
-	set (x11_required "x11")  # for the .pc
-	pkg_check_modules ("X11" ${x11_required})
+	set (x11_required "x11 gtk4-x11")  # for the .pc
+	set (x11_required_semicolon "x11; gtk4-x11")  # for checking
+	pkg_check_modules ("X11" ${x11_required_semicolon})
 	if (X11_FOUND)
 		set (HAVE_X11 1)
 		set (with_x11 yes)
@@ -229,8 +231,8 @@ if (enable-x11-support)
 endif()
 
 # GTK 3
-set (gtk_required "gtk+-3.0")  # for the .pc
-pkg_check_modules ("GTK" REQUIRED "${gtk_required}>=3.22.0")
+set (gtk_required "gtk4")  # for the .pc
+pkg_check_modules ("GTK" REQUIRED "${gtk_required}>=4.14.0")
 
 STRING (REGEX REPLACE "\\..*" "" GTK_MAJOR "${GTK_VERSION}")
 STRING (REGEX REPLACE "[0-9]*\\.([^ ]+)" "\\1" GTK_MINOR "${GTK_VERSION}")  # 3.8.2 => 3.8
@@ -271,7 +273,7 @@ set (with_gtk_layer_shell no)
 enable_if_not_defined (enable-gtk-layer-shell) # enabled by default
 if (enable-gtk-layer-shell)
 	if (HAVE_WAYLAND)
-		pkg_check_modules ("GTKLAYERSHELL" "gtk-layer-shell-0>=0.6.0")
+		pkg_check_modules ("GTKLAYERSHELL" "gtk4-layer-shell-0")
 		if (GTKLAYERSHELL_FOUND)
 			set (HAVE_GTK_LAYER_SHELL 1)
 			set (with_gtk_layer_shell yes)
