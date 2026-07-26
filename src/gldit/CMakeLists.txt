@@ -45,7 +45,7 @@ SET(core_lib_SRCS
 	cairo-dock-image-buffer.c			cairo-dock-image-buffer.h 
 	cairo-dock-opengl.c 				cairo-dock-opengl.h						cairo-dock-opengl-priv.h
 	cairo-dock-opengl-path.c 			cairo-dock-opengl-path.h
-	cairo-dock-opengl-font.c 			cairo-dock-opengl-font.h
+	# cairo-dock-opengl-font.c 			cairo-dock-opengl-font.h
 	cairo-dock-surface-factory.c 		cairo-dock-surface-factory.h
 	cairo-dock-draw.c 					cairo-dock-draw.h 
 	cairo-dock-draw-opengl.c 			cairo-dock-draw-opengl.h
@@ -112,13 +112,13 @@ target_link_libraries("gldi4"
 	${PACKAGE_LIBRARIES}
 	${GTK_LIBRARIES}
 	${EGL_LIBRARIES}
+	implementations
+	${GTKLAYERSHELL_LIBRARIES}
 	${WAYLAND_LIBRARIES}
 	${WAYLAND_EGL_LIBRARIES}
 	${XEXTEND_LIBRARIES}
 	${XINERAMA_LIBRARIES}
 	${LIBCRYPT_LIBS}
-	implementations
-	${GTKLAYERSHELL_LIBRARIES}
 	${LIBDL_LIBRARIES}
 	${JSON_LIBRARIES}
 	${EVDEV_LIBRARIES})

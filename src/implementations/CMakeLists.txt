@@ -20,12 +20,12 @@ SET(impl_SRCS
 	cairo-dock-logout-backend.c          cairo-dock-logout-backend.h
 )
 
-if(HAVE_WAYLAND)
-	SET(impl_SRCS
-		${impl_SRCS}
-		cairo-dock-wayland-hotspots.c        cairo-dock-wayland-hotspots.h
-	)
-endif()
+# if(HAVE_WAYLAND)
+# 	SET(impl_SRCS
+# 		${impl_SRCS}
+# 		cairo-dock-wayland-hotspots.c        cairo-dock-wayland-hotspots.h
+# 	)
+# endif()
 
 if(WaylandScanner_FOUND)
 	SET(impl_SRCS
