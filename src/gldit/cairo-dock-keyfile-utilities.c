@@ -416,7 +416,7 @@ void cairo_dock_add_remove_element_to_key (const gchar *cConfFilePath, const gch
 	g_key_file_free (pKeyFile);
 }
 
-
+/*
 void cairo_dock_add_widget_to_conf_file (GKeyFile *pKeyFile, const gchar *cGroupName, const gchar *ckeyName, const gchar *cInitialValue, CairoDockGUIWidgetType iWidgetType, const gchar *cAuthorizedValues, const gchar *cDescription, const gchar *cTooltip)
 {
 	g_key_file_set_string (pKeyFile, cGroupName, ckeyName, cInitialValue);
@@ -424,6 +424,7 @@ void cairo_dock_add_widget_to_conf_file (GKeyFile *pKeyFile, const gchar *cGroup
 	g_key_file_set_comment (pKeyFile, cGroupName, ckeyName, Comment, NULL);
 	g_free (Comment);
 }
+*/
 
 void cairo_dock_remove_group_key_from_conf_file (GKeyFile *pKeyFile, const gchar *cGroupName, const gchar *ckeyName)
 {

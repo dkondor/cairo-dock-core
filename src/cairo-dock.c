@@ -77,8 +77,8 @@
 #include "cairo-dock-core.h"
 #include "cairo-dock-dbus-priv.h" // cairo_dock_dbus_own_name
 
-#include "cairo-dock-gui-manager.h"
-#include "cairo-dock-gui-backend.h"
+// #include "cairo-dock-gui-manager.h"
+// #include "cairo-dock-gui-backend.h"
 #include "cairo-dock-user-interaction.h"
 #include "cairo-dock-user-menu.h"
 #include "cairo-dock-wayland-manager.h" // gldi_wayland_manager_have_layer_shell
@@ -112,7 +112,6 @@ extern gboolean g_bDisableDbusActivation; // defined in cairo-dock-class-manager
 extern gboolean g_bGioLaunch; // defined in cairo-dock-class-manager.c
 
 extern GldiModuleInstance *g_pCurrentModule;
-extern GtkWidget *cairo_dock_build_simple_gui_window (void);
 
 gboolean g_bForceCairo = FALSE;
 gboolean g_bLocked;
@@ -746,7 +745,7 @@ int main (int argc, char** argv)
 	}
 	
 	//\___________________ define GUI backend.
-	cairo_dock_load_user_gui_backend (s_iGuiMode);
+	// cairo_dock_load_user_gui_backend (s_iGuiMode);
 	
 	//\___________________ register to the useful notifications.
 	gldi_object_register_notification (&myContainerObjectMgr,
@@ -849,7 +848,7 @@ int main (int argc, char** argv)
 	//\___________________ maintenance mode -> show the main config panel.
 	if (bMaintenance)
 	{
-		cairo_dock_load_user_gui_backend (1);  // force the advanced GUI, it can display the config before the theme is loaded.
+/*		cairo_dock_load_user_gui_backend (1);  // force the advanced GUI, it can display the config before the theme is loaded.
 		
 		GtkWidget *pWindow = cairo_dock_show_main_gui ();
 		gtk_window_set_title (GTK_WINDOW (pWindow), _("< Maintenance mode >"));
@@ -868,6 +867,8 @@ int main (int argc, char** argv)
 		
 		g_main_loop_unref (pBlockingLoop);
 		cairo_dock_load_user_gui_backend (s_iGuiMode);  // go back to the user GUI.
+		*/
+		cd_warning ("Need to show the maintenance mode, but GUI is disabled!");
 	}
 	
 	//\___________________ load the current theme.
