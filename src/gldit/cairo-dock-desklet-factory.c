@@ -49,7 +49,7 @@
 #include "cairo-dock-image-buffer.h"
 #include "cairo-dock-animations.h"
 #include "cairo-dock-launcher-manager.h"
-#include "cairo-dock-menu.h"
+// #include "cairo-dock-menu.h"
 #include "cairo-dock-desklet-manager.h"
 #include "cairo-dock-desklet-factory.h"
 
@@ -485,7 +485,7 @@ static gboolean on_button_press_desklet(G_GNUC_UNUSED GtkWidget *pWidget,
 	{
 		Icon *pClickedIcon = gldi_desklet_find_clicked_icon (pDesklet);
 		GtkWidget *menu = gldi_container_build_menu (CAIRO_CONTAINER (pDesklet), pClickedIcon);  // genere un CAIRO_DOCK_BUILD_ICON_MENU.
-		gldi_menu_popup (menu);
+		// gldi_menu_popup (menu);
 	}
 	else if (pButton->button == 2 && pButton->type == GDK_BUTTON_PRESS)  // clique milieu.
 	{

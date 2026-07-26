@@ -40,7 +40,7 @@
 #include "cairo-dock-utils.h"  // cairo_dock_property_is_present_on_root
 #include "cairo-dock-class-manager-priv.h"  // GldiAppInfo functions
 #include "cairo-dock-icon-manager.h"  // cairo_dock_free_icon
-#include "cairo-dock-menu.h" // gldi_menu_add_item
+// #include "cairo-dock-menu.h" // gldi_menu_add_item
 #include "cairo-dock-file-manager.h"
 #include "cairo-dock-module-manager.h" // myModuleObjectMgr, NOTIFICATION_LOGOUT
 
@@ -913,7 +913,7 @@ copy_end:
 	return ret;
 }
 
-
+/*
 struct _submenu_data {
 	GList *data_list; // struct _launch_with_data
 	gchar *cPath;
@@ -947,10 +947,14 @@ static void _submenu_launch_with (G_GNUC_UNUSED GtkMenuItem* pMenuItem, gpointer
 	
 	if (data->data->pCallback) data->data->pCallback (data->data->user_data);
 }
+*/
 
 gboolean cairo_dock_fm_add_open_with_submenu (GList *pAppList, const gchar *cPath, GtkWidget *pMenu, const gchar *cLabel,
 	const gchar *cImage, CairoDockFMOpenedWithCallback pCallback, gpointer user_data)
 {
+	cd_warning ("menus disabled");
+	return FALSE;
+	/*
 	if (! (pAppList && cPath) ) return FALSE;
 	struct _submenu_data *data = g_new0 (struct _submenu_data, 1);
 	data->cPath = g_strdup (cPath);
@@ -995,7 +999,7 @@ gboolean cairo_dock_fm_add_open_with_submenu (GList *pAppList, const gchar *cPat
 		gldi_menu_add_item (pSubMenu, g_app_info_get_name (app_info), cIconPath, G_CALLBACK(_submenu_launch_with), app_data);
 		g_free (cIconPath);
 	}
-	return TRUE;
+	return TRUE; */
 }
 
 

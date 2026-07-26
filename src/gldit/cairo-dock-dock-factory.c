@@ -43,7 +43,7 @@
 #include "cairo-dock-launcher-manager.h"
 #include "cairo-dock-config.h"  // cairo_dock_is_loading
 #include "cairo-dock-log.h"
-#include "cairo-dock-menu.h"  // gldi_menu_popup
+// #include "cairo-dock-menu.h"  // gldi_menu_popup
 #include "cairo-dock-themes-manager.h"  // cairo_dock_update_conf_file, cairo_dock_add_conf_file
 #include "cairo-dock-dock-visibility.h"  // gldi_dock_visibility_refresh
 #include "cairo-dock-backends-manager.h"
@@ -1147,7 +1147,7 @@ static gboolean _on_button_press (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventButt
 		}
 		GtkWidget *menu = gldi_container_build_menu (CAIRO_CONTAINER (pDock), icon);  // genere un CAIRO_DOCK_BUILD_CONTAINER_MENU et CAIRO_DOCK_BUILD_ICON_MENU.
 		
-		gldi_menu_popup (menu);
+		// gldi_menu_popup (menu);
 	}
 	else if (pButton->button == 2 && pButton->type == GDK_BUTTON_PRESS)  // clique milieu.
 	{

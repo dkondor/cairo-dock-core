@@ -36,7 +36,7 @@
 #include "cairo-dock-opengl-priv.h"
 #include "cairo-dock-animations.h"  // cairo_dock_animation_will_be_visible
 #include "cairo-dock-desktop-manager.h"  // gldi_desktop_get_width
-#include "cairo-dock-menu.h"  // gldi_menu_new
+// #include "cairo-dock-menu.h"  // gldi_menu_new
 #include "cdwindow.h"
 #define _MANAGER_DEF_
 #include "cairo-dock-container-priv.h"
