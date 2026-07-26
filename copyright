@@ -60,11 +60,6 @@ Files: src/gldit/cairo-dock-desktop-file-db.?
 Copyright: 2020-2025 Daniel Kondor <kondor.dani@gmail.com>
 License: GPL-3+
 
-Files: src/implementations/gdk-move-to-rect-hack.?
-Copyright: 2020 Sophie Winter
-           2020 Daniel Kondor
-License: Expat
-
 Files: data/systemd/*
 Copyright: 2024 Daniel Kondor <kondor.dani@gmail.com>
 License: MIT-no-advertising
