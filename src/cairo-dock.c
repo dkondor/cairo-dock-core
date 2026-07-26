@@ -583,7 +583,7 @@ int main (int argc, char** argv)
 	}
 	
 	//\___________________ try to own our DBus name
-	if (!bNoDBusName && !cairo_dock_dbus_own_name ())
+/*	if (!bNoDBusName && !cairo_dock_dbus_own_name ())
 	{
 		if (!cairo_dock_dbus_is_enabled ())
 			cd_warning ("DBus is unavailable, functions to communicate with apps and system components will not work!");
@@ -593,7 +593,7 @@ int main (int argc, char** argv)
 			cd_critical ("Cairo-Dock is already running, not starting another instance (use the \"-I\" command line option to override).");
 			return 1;
 		}
-	}
+	}*/
 	
 	//\___________________ get global config.
 	gboolean bFirstLaunch = FALSE;
