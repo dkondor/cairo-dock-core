@@ -3,10 +3,12 @@
 
 /*
  * cdwindow.vala
- * A simple GtkWindow subclass that emits a signal during unmap _before_ 
- * the underlying surfaces are destroyed.
+ * Simple GtkWindow and GtkPopover subclasses that allow custom drawing with Cairo.
  * 
- * Copyright 2024 Daniel Kondor <kondor.dani@gmail.com>
+ * compile with:
+ * valac --pkg gtk4 --pkg graphene-gobject-1.0 -c cdwindow.vala -C -H cdwindow.h
+ * 
+ * Copyright 2024-2026 Daniel Kondor <kondor.dani@gmail.com>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,6 +29,13 @@
 #include "cdwindow.h"
 #include <gtk/gtk.h>
 #include <glib-object.h>
+#include <glib.h>
+#include <gdk/gdk.h>
+#include <graphene-gobject.h>
+#include <string.h>
+#include <float.h>
+#include <math.h>
+#include <cairo-gobject.h>
 
 #if !defined(VALA_STRICT_C)
 #if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ >= 14)
@@ -42,30 +51,50 @@ enum  {
 	CD_WINDOW_NUM_PROPERTIES
 };
 static GParamSpec* cd_window_properties[CD_WINDOW_NUM_PROPERTIES];
+#define _cairo_destroy0(var) ((var == NULL) ? NULL : (var = (cairo_destroy (var), NULL)))
+#define _g_object_unref0(var) ((var == NULL) ? NULL : (var = (g_object_unref (var), NULL)))
 enum  {
 	CD_WINDOW_PENDING_UNMAP_SIGNAL,
+	CD_WINDOW_DRAW_SIGNAL,
 	CD_WINDOW_NUM_SIGNALS
 };
 static guint cd_window_signals[CD_WINDOW_NUM_SIGNALS] = {0};
+enum  {
+	CD_POPUP_0_PROPERTY,
+	CD_POPUP_NUM_PROPERTIES
+};
+static GParamSpec* cd_popup_properties[CD_POPUP_NUM_PROPERTIES];
+enum  {
+	CD_POPUP_PENDING_UNMAP_SIGNAL,
+	CD_POPUP_DRAW_SIGNAL,
+	CD_POPUP_NUM_SIGNALS
+};
+static guint cd_popup_signals[CD_POPUP_NUM_SIGNALS] = {0};
 
 static gpointer cd_window_parent_class = NULL;
+static gpointer cd_popup_parent_class = NULL;
 
 static void cd_window_real_unmap (GtkWidget* base);
+static void cd_window_real_snapshot (GtkWidget* base,
+                              GtkSnapshot* snapshot);
 static GType cd_window_get_type_once (void);
+static void cd_popup_real_unmap (GtkWidget* base);
+static void cd_popup_real_snapshot (GtkWidget* base,
+                             GtkSnapshot* snapshot);
+static GType cd_popup_get_type_once (void);
 
 CDWindow*
-cd_window_construct (GType object_type,
-                     GtkWindowType type)
+cd_window_construct (GType object_type)
 {
 	CDWindow * self = NULL;
-	self = (CDWindow*) g_object_new (object_type, "type", type, NULL);
+	self = (CDWindow*) g_object_new (object_type, NULL);
 	return self;
 }
 
 CDWindow*
-cd_window_new (GtkWindowType type)
+cd_window_new (void)
 {
-	return cd_window_construct (TYPE_CD_WINDOW, type);
+	return cd_window_construct (TYPE_CD_WINDOW);
 }
 
 static void
@@ -77,13 +106,48 @@ cd_window_real_unmap (GtkWidget* base)
 	GTK_WIDGET_CLASS (cd_window_parent_class)->unmap ((GtkWidget*) G_TYPE_CHECK_INSTANCE_CAST (self, gtk_window_get_type (), GtkWindow));
 }
 
+static gpointer
+_g_object_ref0 (gpointer self)
+{
+	return self ? g_object_ref (self) : NULL;
+}
+
+static void
+cd_window_real_snapshot (GtkWidget* base,
+                         GtkSnapshot* snapshot)
+{
+	CDWindow * self;
+	GdkSurface* surface = NULL;
+	GdkSurface* _tmp0_;
+	GdkSurface* _tmp1_;
+	graphene_rect_t rect = {0};
+	cairo_t* ctx = NULL;
+	graphene_rect_t _tmp2_;
+	cairo_t* _tmp3_;
+	self = (CDWindow*) base;
+	g_return_if_fail (snapshot != NULL);
+	_tmp0_ = gtk_native_get_surface ((GtkNative*) self);
+	_tmp1_ = _g_object_ref0 (_tmp0_);
+	surface = _tmp1_;
+	memset (&rect, 0, sizeof (graphene_rect_t));
+	graphene_rect_init (&rect, 0.0f, 0.0f, (gfloat) gdk_surface_get_width (surface), (gfloat) gdk_surface_get_height (surface));
+	_tmp2_ = rect;
+	_tmp3_ = gtk_snapshot_append_cairo (snapshot, &_tmp2_);
+	ctx = _tmp3_;
+	g_signal_emit (self, cd_window_signals[CD_WINDOW_DRAW_SIGNAL], 0, ctx);
+	_cairo_destroy0 (ctx);
+	_g_object_unref0 (surface);
+}
+
 static void
 cd_window_class_init (CDWindowClass * klass,
                       gpointer klass_data)
 {
 	cd_window_parent_class = g_type_class_peek_parent (klass);
 	((GtkWidgetClass *) klass)->unmap = (void (*) (GtkWidget*)) cd_window_real_unmap;
+	((GtkWidgetClass *) klass)->snapshot = (void (*) (GtkWidget*, GtkSnapshot*)) cd_window_real_snapshot;
 	cd_window_signals[CD_WINDOW_PENDING_UNMAP_SIGNAL] = g_signal_new ("pending-unmap", TYPE_CD_WINDOW, G_SIGNAL_RUN_LAST, 0, NULL, NULL, g_cclosure_marshal_VOID__VOID, G_TYPE_NONE, 0);
+	cd_window_signals[CD_WINDOW_DRAW_SIGNAL] = g_signal_new ("draw", TYPE_CD_WINDOW, G_SIGNAL_RUN_LAST, 0, NULL, NULL, g_cclosure_marshal_VOID__BOXED, G_TYPE_NONE, 1, cairo_gobject_context_get_type ());
 }
 
 static void
@@ -111,5 +175,93 @@ cd_window_get_type (void)
 		g_once_init_leave (&cd_window_type_id__once, cd_window_type_id);
 	}
 	return cd_window_type_id__once;
+}
+
+CDPopup*
+cd_popup_construct (GType object_type)
+{
+	CDPopup * self = NULL;
+	self = (CDPopup*) g_object_new (object_type, NULL);
+	return self;
+}
+
+CDPopup*
+cd_popup_new (void)
+{
+	return cd_popup_construct (TYPE_CD_POPUP);
+}
+
+static void
+cd_popup_real_unmap (GtkWidget* base)
+{
+	CDPopup * self;
+	self = (CDPopup*) base;
+	g_signal_emit (self, cd_popup_signals[CD_POPUP_PENDING_UNMAP_SIGNAL], 0);
+	GTK_WIDGET_CLASS (cd_popup_parent_class)->unmap ((GtkWidget*) G_TYPE_CHECK_INSTANCE_CAST (self, gtk_popover_get_type (), GtkPopover));
+}
+
+static void
+cd_popup_real_snapshot (GtkWidget* base,
+                        GtkSnapshot* snapshot)
+{
+	CDPopup * self;
+	GdkSurface* surface = NULL;
+	GdkSurface* _tmp0_;
+	GdkSurface* _tmp1_;
+	graphene_rect_t rect = {0};
+	cairo_t* ctx = NULL;
+	graphene_rect_t _tmp2_;
+	cairo_t* _tmp3_;
+	self = (CDPopup*) base;
+	g_return_if_fail (snapshot != NULL);
+	_tmp0_ = gtk_native_get_surface ((GtkNative*) self);
+	_tmp1_ = _g_object_ref0 (_tmp0_);
+	surface = _tmp1_;
+	memset (&rect, 0, sizeof (graphene_rect_t));
+	graphene_rect_init (&rect, 0.0f, 0.0f, (gfloat) gdk_surface_get_width (surface), (gfloat) gdk_surface_get_height (surface));
+	_tmp2_ = rect;
+	_tmp3_ = gtk_snapshot_append_cairo (snapshot, &_tmp2_);
+	ctx = _tmp3_;
+	g_signal_emit (self, cd_popup_signals[CD_POPUP_DRAW_SIGNAL], 0, ctx);
+	_cairo_destroy0 (ctx);
+	_g_object_unref0 (surface);
+}
+
+static void
+cd_popup_class_init (CDPopupClass * klass,
+                     gpointer klass_data)
+{
+	cd_popup_parent_class = g_type_class_peek_parent (klass);
+	((GtkWidgetClass *) klass)->unmap = (void (*) (GtkWidget*)) cd_popup_real_unmap;
+	((GtkWidgetClass *) klass)->snapshot = (void (*) (GtkWidget*, GtkSnapshot*)) cd_popup_real_snapshot;
+	cd_popup_signals[CD_POPUP_PENDING_UNMAP_SIGNAL] = g_signal_new ("pending-unmap", TYPE_CD_POPUP, G_SIGNAL_RUN_LAST, 0, NULL, NULL, g_cclosure_marshal_VOID__VOID, G_TYPE_NONE, 0);
+	cd_popup_signals[CD_POPUP_DRAW_SIGNAL] = g_signal_new ("draw", TYPE_CD_POPUP, G_SIGNAL_RUN_LAST, 0, NULL, NULL, g_cclosure_marshal_VOID__BOXED, G_TYPE_NONE, 1, cairo_gobject_context_get_type ());
+}
+
+static void
+cd_popup_instance_init (CDPopup * self,
+                        gpointer klass)
+{
+}
+
+static GType
+cd_popup_get_type_once (void)
+{
+	static const GTypeInfo g_define_type_info = { sizeof (CDPopupClass), (GBaseInitFunc) NULL, (GBaseFinalizeFunc) NULL, (GClassInitFunc) cd_popup_class_init, (GClassFinalizeFunc) NULL, NULL, sizeof (CDPopup), 0, (GInstanceInitFunc) cd_popup_instance_init, NULL };
+	GType cd_popup_type_id;
+	cd_popup_type_id = g_type_register_static (gtk_popover_get_type (), "CDPopup", &g_define_type_info, 0);
+	return cd_popup_type_id;
+}
+
+GType
+cd_popup_get_type (void)
+{
+	static volatile gsize cd_popup_type_id__once = 0;
+	if (g_once_init_enter (&cd_popup_type_id__once)) {
+		GType cd_popup_type_id;
+		cd_popup_type_id = cd_popup_get_type_once ();
+		g_once_init_leave (&cd_popup_type_id__once, cd_popup_type_id);
+	}
+	return cd_popup_type_id__once;
 }
 
