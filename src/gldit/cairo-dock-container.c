@@ -41,11 +41,6 @@
 #define _MANAGER_DEF_
 #include "cairo-dock-container-priv.h"
 
-#if (GTK_MAJOR_VERSION == 3 && GTK_MINOR_VERSION == 22)
-#include "gdk-move-to-rect-hack.h"
-#endif
-
-
 // public (manager, config, data)
 GldiContainersParam myContainersParam;
 GldiManager myContainersMgr;
