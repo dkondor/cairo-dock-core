@@ -101,7 +101,7 @@ GldiWindowActor* gldi_wayland_wm_get_active_window ();
 
 GldiWindowActor* gldi_wayland_wm_get_last_active_window ();
 
-GldiWindowActor* gldi_wayland_wm_pick_window (GtkWindow *pParentWindow);
+// GldiWindowActor* gldi_wayland_wm_pick_window (GtkWindow *pParentWindow);
 
 /** Change the stacking order such that actor is on top. Will schedule a
  * notification (NOTIFICATION_WINDOW_Z_ORDER_CHANGED) that will be emitted

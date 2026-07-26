@@ -372,8 +372,20 @@ void cairo_dock_get_double_list_key_value (GKeyFile *pKeyFile, const gchar *cGro
 
 void cairo_dock_get_color_key_value (GKeyFile *pKeyFile, const gchar *cGroupName, const gchar *cKeyName, gboolean *bFlushConfFileNeeded, GldiColor *fValueBuffer, GldiColor *fDefaultValues, const gchar *cDefaultGroupName, const gchar *cDefaultKeyName)
 {
-	fValueBuffer->rgba.alpha = 1.;  // in case it's an RGB color in conf
-	cairo_dock_get_double_list_key_value (pKeyFile, cGroupName, cKeyName, bFlushConfFileNeeded, (double*)&fValueBuffer->rgba, 4, (fDefaultValues ? (double*)&fDefaultValues->rgba : NULL), cDefaultGroupName, cDefaultKeyName);
+	double tmp[4] = {0.0, 0.0, 0.0, 1.0}; // alpha == 1 in case it's an RGB color in conf
+	double def1[4];
+	if (fDefaultValues)
+	{
+		def1[0] = fDefaultValues->rgba.red;
+		def1[1] = fDefaultValues->rgba.green;
+		def1[2] = fDefaultValues->rgba.blue;
+		def1[3] = fDefaultValues->rgba.alpha;
+	}
+	cairo_dock_get_double_list_key_value (pKeyFile, cGroupName, cKeyName, bFlushConfFileNeeded, tmp, 4, (fDefaultValues ? def1 : NULL), cDefaultGroupName, cDefaultKeyName);
+	fValueBuffer->rgba.red = tmp[0];
+	fValueBuffer->rgba.green = tmp[1];
+	fValueBuffer->rgba.blue = tmp[2];
+	fValueBuffer->rgba.alpha = tmp[3];
 }
 
 gchar **cairo_dock_get_string_list_key_value (GKeyFile *pKeyFile, const gchar *cGroupName, const gchar *cKeyName, gboolean *bFlushConfFileNeeded, gsize *length, const gchar *cDefaultValues, const gchar *cDefaultGroupName, const gchar *cDefaultKeyName)

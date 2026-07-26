@@ -27,7 +27,7 @@
 #include <gio/gio.h>
 
 #include <X11/Xatom.h>
-#include <gdk/gdkx.h>  // GDK_WINDOW_XID
+#include <gdk/x11/gdkx.h>  // gdk_x11_surface_get_xid
 
 #include "cairo-dock-desktop-manager.h"
 #include "cairo-dock-windows-manager.h"  // bIsHidden
@@ -294,7 +294,7 @@ static void _set_on_widget_layer (GldiContainer *pContainer, gboolean bOnWidgetL
 	static Atom s_aCompizWidget = None;
 	
 	cd_debug ("%s ()", __func__);
-	Window Xid = GDK_WINDOW_XID (gldi_container_get_gdk_window(pContainer));
+	Window Xid = gdk_x11_surface_get_xid (gldi_container_get_gdk_window(pContainer));
 	Display *dpy = cairo_dock_get_X_display ();
 	if (! dpy)
 		return;

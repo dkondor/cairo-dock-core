@@ -569,8 +569,8 @@ gboolean cairo_dock_begin_draw_image_buffer_opengl (CairoDockImageBuffer *pImage
 	else
 		return FALSE;
 	
-	GdkWindow* gdkwindow = gldi_container_get_gdk_window (pContainer ? pContainer : g_pPrimaryContainer);
-	gint scale = gdk_window_get_scale_factor (gdkwindow);
+	GdkSurface* gdkwindow = gldi_container_get_gdk_window (pContainer ? pContainer : g_pPrimaryContainer);
+	gint scale = gdk_surface_get_scale_factor (gdkwindow); //!! TODO: use fractional scale
 	
 	// set up an ortho view ourselves
 	glMatrixMode(GL_PROJECTION);

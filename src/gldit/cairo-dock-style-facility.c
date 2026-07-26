@@ -107,8 +107,12 @@ void gldi_style_color_shade (GldiColor *icolor, double shade, GldiColor *ocolor)
 	if (l > 1.) l = 1.;
 	if (l < 0.) l = 0.;
 	
-	hslToRgb (h, s, l, &ocolor->rgba.red, &ocolor->rgba.green, &ocolor->rgba.blue);
+	double red, green, blue;
+	hslToRgb (h, s, l, &red, &green, &blue);
 	ocolor->rgba.alpha = icolor->rgba.alpha;
+	ocolor->rgba.red = red;
+	ocolor->rgba.green = green;
+	ocolor->rgba.blue = blue;
 }
 
 gchar *_get_default_system_font (void)
@@ -179,9 +183,15 @@ void _get_color_from_pattern (cairo_pattern_t *pPattern, GldiColor *color)
 		}
 		break;
 		case CAIRO_PATTERN_TYPE_SOLID:
+		{
+			double r, g, b, a;
 			cairo_pattern_get_rgba (pPattern,
-				&color->rgba.red, &color->rgba.green,
-				&color->rgba.blue, &color->rgba.alpha);
+				&r, &g, &b, &a);
+			color->rgba.red = r;
+			color->rgba.green = g;
+			color->rgba.blue = b;
+			color->rgba.alpha = a;
+		}
 		break;
 		case CAIRO_PATTERN_TYPE_SURFACE:  // Note: we could cairo_pattern_get_surface() and then if it's an image surface , cairo_image_surface_get_data() and then take the mean value, but I think this case is unlikely (at least in GTK themes there seems to only be color patterns).
 		default:
@@ -247,8 +257,8 @@ void gldi_text_description_set_font (GldiTextDescription *pTextDescription, gcha
 		}
 		else
 		{
-			gdouble dpi = gdk_screen_get_resolution (gdk_screen_get_default ());
-			if (dpi < 0) dpi = 96.;
+			gdouble dpi = 96.0; //!! gdk_screen_get_resolution (gdk_screen_get_default ());
+			// if (dpi < 0) dpi = 96.;
 			pTextDescription->iSize = dpi * pango_font_description_get_size (pTextDescription->fd) / PANGO_SCALE / 72.;  // font_size in dots (pixels) = font_size in points / (72 points per inch) * (dpi dots per inch)
 		}
 	}

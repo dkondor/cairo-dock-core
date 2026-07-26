@@ -1109,9 +1109,10 @@ static void _show_dock_at_mouse (CairoDock *pDock, G_GNUC_UNUSED gpointer data)
 			iNewPositionY = H - pDock->container.iHeight;
 		
 		// show the dock
+		/** Is this necessary?
 		gtk_window_move (GTK_WINDOW (pDock->container.pWidget),
 			(pDock->container.bIsHorizontal ? iNewPositionX : iNewPositionY),
-			(pDock->container.bIsHorizontal ? iNewPositionY : iNewPositionX));
+			(pDock->container.bIsHorizontal ? iNewPositionY : iNewPositionX)); */
 		gtk_widget_show (pDock->container.pWidget);
 		
 		// schedule a hiding in a few seconds
@@ -1831,20 +1832,22 @@ static void init_object (GldiObject *obj, gpointer attr)
 		CairoDock *pParentDock = dattr->pParentDock;
 		if (pParentDock == NULL)
 			pParentDock = g_pMainDock;
-		gtk_window_set_transient_for (GTK_WINDOW (pDock->container.pWidget), GTK_WINDOW (pParentDock->container.pWidget));
+		gtk_widget_set_parent (pDock->container.pWidget, pParentDock->container.pWidget);
+		// set as not modal, otherwise, it will grab all input, including motion events
+		gtk_popover_set_autohide (GTK_POPOVER (pDock->container.pWidget), FALSE);
 		// need to set now, so that gldi_dock_init_internals () will not try to show this dock
 		pDock->iRefCount = 1;
 	}
-	{
-		gchar *cNamespace = (! dattr->bSubDock) ? g_strdup_printf ("cairo-dock-%s", dattr->cDockName) : NULL;
+	else { // only need to init layer-shell for main docks
+		gchar *cNamespace = g_strdup_printf ("cairo-dock-%s", dattr->cDockName);
 		gldi_container_init_layer (&(pDock->container), cNamespace);
 		g_free (cNamespace);
 	}
 	
 	//\__________________ init internals
 	gldi_dock_init_internals (pDock);
-	if (s_bKeepAbove)
-		gtk_window_set_keep_above (GTK_WINDOW (pDock->container.pWidget), s_bKeepAbove);
+	// if (s_bKeepAbove)
+	// 	gtk_window_set_keep_above (GTK_WINDOW (pDock->container.pWidget), s_bKeepAbove);
 	
 	//\__________________ initialize its parameters (it's a root dock by default)
 	pDock->cDockName = g_strdup (dattr->cDockName);

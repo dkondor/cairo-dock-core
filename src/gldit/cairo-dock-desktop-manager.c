@@ -419,7 +419,7 @@ static void _calculate_xscreen ()
 }
 
 // handle changes in screen / monitor configuration -- note: user_data is a boolean that determines if we should emit a signal
-static void _monitor_added (GdkDisplay *display, GdkMonitor* monitor, gpointer user_data)
+static void _monitor_added (G_GNUC_UNUSED GdkDisplay *display, GdkMonitor* monitor, gpointer user_data)
 {
 	int iNumScreen = 0;
 	if (!(g_desktopGeometry.pScreens && s_pMonitors && g_desktopGeometry.iNbScreens))
@@ -441,8 +441,7 @@ static void _monitor_added (GdkDisplay *display, GdkMonitor* monitor, gpointer u
 	s_pMonitors[iNumScreen] = monitor;
 	// note: GtkAllocation is the same as GdkRectangle
 	gdk_monitor_get_geometry (monitor, g_desktopGeometry.pScreens + iNumScreen);
-	if (monitor == gdk_display_get_primary_monitor (display))
-		s_pPrimaryMonitor = monitor;
+	if (!s_pPrimaryMonitor) s_pPrimaryMonitor = monitor;
 	_calculate_xscreen ();
 	
 	cd_debug ("iNbScreens: %d, Xscreen: %dx%d", g_desktopGeometry.iNbScreens,
@@ -455,7 +454,7 @@ static void _monitor_added (GdkDisplay *display, GdkMonitor* monitor, gpointer u
 }
 
 // handle if a monitor was removed
-static void _monitor_removed (GdkDisplay* display, GdkMonitor* monitor, G_GNUC_UNUSED gpointer user_data)
+static void _monitor_removed (G_GNUC_UNUSED GdkDisplay* display, GdkMonitor* monitor, G_GNUC_UNUSED gpointer user_data)
 {
 	if (!(g_desktopGeometry.pScreens && s_pMonitors && g_desktopGeometry.iNbScreens > 0))
 		cd_warning ("_monitor_removed() inconsistent state of screens / monitors\n");
@@ -474,9 +473,10 @@ static void _monitor_removed (GdkDisplay* display, GdkMonitor* monitor, G_GNUC_U
 			s_pMonitors[i] = s_pMonitors[i+1];
 			g_desktopGeometry.pScreens[i] = g_desktopGeometry.pScreens[i+1];
 		}
-		s_pPrimaryMonitor = gdk_display_get_primary_monitor (display);
-		if (!s_pPrimaryMonitor) s_pPrimaryMonitor = s_pMonitors[0];
+		
 		g_desktopGeometry.iNbScreens--;
+		if (s_pPrimaryMonitor == monitor)
+			s_pPrimaryMonitor = (g_desktopGeometry.iNbScreens > 0) ? s_pMonitors[0] : NULL;
 		s_pMonitors = g_renew (GdkMonitor*, s_pMonitors, g_desktopGeometry.iNbScreens);
 		g_desktopGeometry.pScreens = g_renew (GtkAllocation, g_desktopGeometry.pScreens, g_desktopGeometry.iNbScreens);
 		_calculate_xscreen ();
@@ -490,7 +490,7 @@ static void _monitor_removed (GdkDisplay* display, GdkMonitor* monitor, G_GNUC_U
 		gldi_object_notify (&myDesktopMgr, NOTIFICATION_DESKTOP_MONITOR_REMOVED, monitor);
 	}
 }
-
+/*
 // refresh the size of all monitors -- note: user_data is a boolean that determines if we should emit a signal
 static void _refresh_monitors_size(G_GNUC_UNUSED GdkScreen *screen, gpointer user_data)
 {
@@ -555,7 +555,7 @@ static void _refresh_monitors (GdkScreen *screen, gpointer user_data)
 	}
 	else _refresh_monitors_size (screen, user_data);
 }
-
+*/
 GdkMonitor *const *gldi_desktop_get_monitors (int *iNumMonitors)
 {
 	*iNumMonitors = g_desktopGeometry.iNbScreens;
@@ -609,14 +609,23 @@ void gldi_register_desktop_manager (void)
 	g_desktopGeometry.iNbScreens = 0;
 	g_desktopGeometry.pScreens = NULL;
 	GdkDisplay *dsp = gdk_display_get_default ();
-	GdkScreen *screen = gdk_display_get_default_screen (dsp);
+	// GdkScreen *screen = gdk_display_get_default_screen (dsp);
 	// fill out the list of screens / monitors
-	_refresh_monitors (screen, (gpointer)FALSE);
+	// _refresh_monitors (screen, (gpointer)FALSE);
 	// set up notifications for screens added / removed
-	g_signal_connect (G_OBJECT (screen), "monitors-changed", G_CALLBACK (_refresh_monitors), (gpointer)TRUE);
-	g_signal_connect (G_OBJECT (screen), "size-changed", G_CALLBACK (_refresh_monitors_size), (gpointer)TRUE);
+	// g_signal_connect (G_OBJECT (screen), "monitors-changed", G_CALLBACK (_refresh_monitors), (gpointer)TRUE);
+	// g_signal_connect (G_OBJECT (screen), "size-changed", G_CALLBACK (_refresh_monitors_size), (gpointer)TRUE);
 	g_signal_connect (G_OBJECT (dsp), "monitor-added", G_CALLBACK (_monitor_added), (gpointer)TRUE);
 	g_signal_connect (G_OBJECT (dsp), "monitor-removed", G_CALLBACK (_monitor_removed), (gpointer)TRUE);
+	
+	GListModel *pList = gdk_display_get_monitors (dsp);
+	guint i;
+	for (i = 0; ;i++)
+	{
+		gpointer x = g_list_model_get_item (pList, i);
+		if (!x) break;
+		_monitor_added (dsp, (GdkMonitor*)x, (gpointer)FALSE);
+	}
 	
 	// init
 	gldi_object_register_notification (&myDesktopMgr,

@@ -23,7 +23,7 @@
 #include "gldi-config.h"
 #ifdef HAVE_WAYLAND
 
-#include <gdk/gdkwayland.h>
+#include <gdk/wayland/gdkwayland.h>
 #include "wayland-wlr-foreign-toplevel-management-client-protocol.h"
 #include "cairo-dock-desktop-manager.h"
 #include "cairo-dock-windows-manager-priv.h"
@@ -98,12 +98,12 @@ static void _set_thumbnail_area (GldiWindowActor *actor, GldiContainer* pContain
 	if ( ! (actor && pContainer) ) return;
 	if (w < 0 || h < 0) return;
 	GldiWaylandWindowActor *wactor = (GldiWaylandWindowActor *)actor;
-	GdkWindow* window = gldi_container_get_gdk_window (pContainer);
+	GdkSurface* window = gldi_container_get_gdk_window (pContainer);
 	if (!window) return;
-	struct wl_surface* surface = gdk_wayland_window_get_wl_surface (window);
+	struct wl_surface* surface = gdk_wayland_surface_get_wl_surface (window);
 	if (!surface) return;
 	
-	zwlr_foreign_toplevel_handle_v1_set_rectangle(wactor->handle, surface, x, y, w, h);
+	zwlr_foreign_toplevel_handle_v1_set_rectangle (wactor->handle, surface, x, y, w, h);
 }
 
 static void _set_fullscreen (GldiWindowActor *actor, gboolean bFullScreen)
@@ -271,7 +271,7 @@ static void gldi_zwlr_foreign_toplevel_manager_init ()
 	wmb.set_sticky = gldi_wf_set_sticky;
 	wmb.can_minimize_maximize_close = _can_minimize_maximize_close;
 	// wmb.get_id = _get_id;
-	wmb.pick_window = gldi_wayland_wm_pick_window;
+	// wmb.pick_window = gldi_wayland_wm_pick_window;
 	wmb.get_supported_actions = _get_supported_actions;
 	wmb.name = "wlr";
 	gldi_windows_manager_register_backend (&wmb);

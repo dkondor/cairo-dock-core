@@ -87,7 +87,7 @@ void cairo_dock_freeze_docks (gboolean bFreeze)
 	s_bFrozenDock = bFreeze;  /// instead, try to connect to the motion-event and intercept it ...
 }
 
-
+/*
 void _dock_size_update_opengl (CairoDock *pDock)
 {
 	gldi_gl_container_set_ortho_view (CAIRO_CONTAINER (pDock));
@@ -109,16 +109,16 @@ void _dock_size_update_opengl (CairoDock *pDock)
 			h = pDock->container.iWidth;
 		}
 		_cairo_dock_delete_texture (pDock->iRedirectedTexture);
-		GdkWindow* gdkwindow = gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock));
-		gint scale = gdk_window_get_scale_factor (gdkwindow);
+		GdkSurface* gdkwindow = gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock));
+		gint scale = gdk_surface_get_scale_factor (gdkwindow);
 		pDock->iRedirectedTexture = cairo_dock_create_texture_from_raw_data (NULL,
 			w * scale, h * scale);
 	}
 	
 	pDock->bNeedSizeUpdate = FALSE;
-}
+} */
 
-static gboolean _on_expose (G_GNUC_UNUSED GtkWidget *pWidget, cairo_t *pCairoContext, CairoDock *pDock)
+static void _on_expose (G_GNUC_UNUSED GtkWidget *pWidget, cairo_t *pCairoContext, CairoDock *pDock)
 {
 	gboolean bIsLoading = cairo_dock_is_loading ();
 	
@@ -134,13 +134,13 @@ static gboolean _on_expose (G_GNUC_UNUSED GtkWidget *pWidget, cairo_t *pCairoCon
 		
 		if (pDock->bNeedSizeUpdate)
 		{
-			if (! gldi_gl_container_make_current (CAIRO_CONTAINER (pDock)))
-				return FALSE;
-			_dock_size_update_opengl (pDock);
+			// if (! gldi_gl_container_make_current (CAIRO_CONTAINER (pDock)))
+			// 	return;
+			// _dock_size_update_opengl (pDock);
 		}
 		
 		if (! gldi_gl_container_begin_draw_full (CAIRO_CONTAINER (pDock), area.x + area.y != 0 ? &area : NULL, TRUE))
-			return FALSE;
+			return;
 		
 		if (bIsLoading)
 		{
@@ -180,8 +180,6 @@ static gboolean _on_expose (G_GNUC_UNUSED GtkWidget *pWidget, cairo_t *pCairoCon
 		cairo_dock_trigger_set_WM_icons_geometry (pDock);
 		pDock->bWMIconsNeedUpdate = FALSE;
 	}
-	
-	return FALSE;
 }
 
 
@@ -361,21 +359,25 @@ static void _cairo_dock_make_icon_glide (Icon *pPointedIcon, Icon *pMovingicon, 
 		}
 	}
 }
-static gboolean _on_motion_notify (GtkWidget* pWidget,
-	GdkEventMotion* pMotion,
-	CairoDock *pDock)
+static void _on_motion_notify (GtkEventControllerMotion *pCtrl, gdouble x, gdouble y, CairoDock *pDock)
 {
-	static double fLastTime = 0;
-	if (s_bFrozenDock && pMotion != NULL && pMotion->time != 0)
-		return FALSE;
+	// cd_debug ("bIsMainDock : %d; bInside:%d; iState:%d; iRefCount:%d, pDock: %p, pCtrl: %p", pDock->bIsMainDock, pDock->container.bInside, pDock->iInputState, pDock->iRefCount, pDock, pCtrl);
+	
+	GtkWidget *pWidget = pDock->container.pWidget;
+	
+	if (s_bFrozenDock && pCtrl) return;
+	
 	Icon *pPointedIcon=NULL, *pLastPointedIcon = cairo_dock_get_pointed_icon (pDock->icons);
 	//g_print ("%s (%.2f;%.2f, %d)\n", __func__, pMotion->x, pMotion->y, pDock->iInputState);
 	
-	if (pMotion != NULL)
+	if (pCtrl) // real event
 	{
 		//g_print ("%s (%d,%d) (%d, %.2fms, bAtBottom:%d; bIsShrinkingDown:%d)\n", __func__, (int) pMotion->x, (int) pMotion->y, pMotion->is_hint, pMotion->time - fLastTime, pDock->bAtBottom, pDock->bIsShrinkingDown);
 		//\_______________ On deplace le dock si ALT est enfoncee.
-		if ((pMotion->state & GDK_MOD1_MASK) && (pMotion->state & GDK_BUTTON1_MASK) &&
+		
+		/* TODO: ALT + drag to move the window (on X11 only) !
+		GdkModifierType state = gtk_event_controller_get_current_event_state (pCtrl);
+		if ((pMotion->state & GDK_ALT_MASK) && (pMotion->state & GDK_BUTTON1_MASK) &&
 			!gldi_container_is_wayland_backend ())
 		{
 			if (pDock->container.bIsHorizontal)
@@ -395,36 +397,31 @@ static gboolean _on_motion_notify (GtkWidget* pWidget,
 					pDock->container.iWindowPositionX);
 			}
 			gdk_device_get_state (pMotion->device, pMotion->window, NULL, NULL);
-			return FALSE;
-		}
+			return;
+		} */
 		
 		//\_______________ On recupere la position de la souris.
 		if (pDock->container.bIsHorizontal)
 		{
-			pDock->container.iMouseX = (int) pMotion->x;
-			pDock->container.iMouseY = (int) pMotion->y;
+			pDock->container.iMouseX = (int) x;
+			pDock->container.iMouseY = (int) y;
 		}
 		else
 		{
-			pDock->container.iMouseX = (int) pMotion->y;
-			pDock->container.iMouseY = (int) pMotion->x;
-		}
-		
-		//\_______________ On elague le flux des MotionNotify, sinon X en envoie autant que le permet le CPU !
-		if (pMotion->time != 0 && pMotion->time - fLastTime < myBackendsParam.fRefreshInterval && s_pIconClicked == NULL)
-		{
-			gdk_device_get_state (pMotion->device, pMotion->window, NULL, NULL);
-			return FALSE;
+			pDock->container.iMouseX = (int) y;
+			pDock->container.iMouseY = (int) x;
 		}
 		
 		//\_______________ On recalcule toutes les icones et on redessine.
 		pPointedIcon = cairo_dock_calculate_dock_icons (pDock);
 		//g_print ("pPointedIcon: %s\n", pPointedIcon?pPointedIcon->cName:"none");
 		gtk_widget_queue_draw (pWidget);
-		fLastTime = pMotion->time;
 		
 		//\_______________ On tire l'icone cliquee.
-		if (s_pIconClicked != NULL && s_pIconClicked->iAnimationState != CAIRO_DOCK_STATE_REMOVE_INSERT && ! myDocksParam.bLockIcons && ! myDocksParam.bLockAll && (fabs (pMotion->x - s_iClickX) > CD_CLICK_ZONE || fabs (pMotion->y - s_iClickY) > CD_CLICK_ZONE) && ! pDock->bPreventDraggingIcons)
+		if (s_pIconClicked != NULL && s_pIconClicked->iAnimationState != CAIRO_DOCK_STATE_REMOVE_INSERT &&
+			! myDocksParam.bLockIcons && ! myDocksParam.bLockAll &&
+			(fabs (x - s_iClickX) > CD_CLICK_ZONE || fabs (y - s_iClickY) > CD_CLICK_ZONE) &&
+			! pDock->bPreventDraggingIcons)
 		{
 			s_bIconDragged = TRUE;
 			cairo_dock_mark_icon_as_following_mouse (s_pIconClicked);
@@ -435,9 +432,6 @@ static gboolean _on_motion_notify (GtkWidget* pWidget,
 			s_pIconClicked->fDrawY = pDock->container.iMouseY - s_pIconClicked->fHeight * s_pIconClicked->fScale / 2 ;
 			s_pIconClicked->fAlpha = 0.75;
 		}
-
-		//gdk_event_request_motions (pMotion);  // ce sera pour GDK 2.12.
-		gdk_device_get_state (pMotion->device, pMotion->window, NULL, NULL);  // pour recevoir d'autres MotionNotify.
 	}
 	else  // cas d'un drag and drop.
 	{
@@ -468,8 +462,6 @@ static gboolean _on_motion_notify (GtkWidget* pWidget,
 	gldi_object_notify (pDock, NOTIFICATION_MOUSE_MOVED, pDock, &bStartAnimation);
 	if (bStartAnimation)
 		cairo_dock_launch_animation (CAIRO_CONTAINER (pDock));
-	
-	return FALSE;
 }
 
 static gboolean _hide_child_docks (CairoDock *pDock)
@@ -518,37 +510,19 @@ static void _hide_parent_dock (CairoDock *pDock);
  *      pDock->iMousePositionType == CAIRO_DOCK_MOUSE_OUTSIDE (even though the mouse is really inside the container).
  *      In this case, we should not re-check the mouse position since our general functions for that only use the
  *      input shape.
- * Note: for cases (2)-(4), pEvent == NULL (and also pWidget == NULL, but that does not matter anyway). For cases
- * (1)-(3), bRecheckMouse == TRUE, for case (4) bRecheckMouse == FALSE.
+ * Note: for cases (2)-(4), pCtrl == NULL. For cases (1)-(3), bRecheckMouse == TRUE, for case (4) bRecheckMouse == FALSE.
  */
-static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCrossing* pEvent, CairoDock *pDock, gboolean bRecheckMouse)
+static void _on_leave_notify2 (GtkEventControllerMotion *pCtrl, CairoDock *pDock, gboolean bRecheckMouse)
 {
-	//cd_debug ("bIsMainDock : %d; bInside:%d; iState:%d; iRefCount:%d, pEvent: %p", pDock->bIsMainDock, pDock->container.bInside, pDock->iInputState, pDock->iRefCount, pEvent);
+	// cd_debug ("bIsMainDock : %d; bInside:%d; iState:%d; iRefCount:%d, pDock: %p, pCtrl: %p", pDock->bIsMainDock, pDock->container.bInside, pDock->iInputState, pDock->iRefCount, pDock, pCtrl);
 	//\_______________ On tire le dock => on ignore le signal.
-	if (pEvent != NULL && (pEvent->state & GDK_MOD1_MASK) && (pEvent->state & GDK_BUTTON1_MASK))
+	/* TODO: dragging the dock is not supported yet !!
+	if (pCtrl)
 	{
-		return FALSE;
+		GdkModifierType state = gtk_event_controller_get_current_event_state (pCtrl);
+		if ((state & GDK_ALT_MASK) && (state & GDK_BUTTON1_MASK)) return;
 	}
-	
-	//\_______________ Update the mouse coordinates if they are given
-	// (note: strange leave events occur (detail = GDK_NOTIFY_NONLINEAR, nil coordinates); let's ignore them!)
-	if (pEvent && (pEvent->x != 0 ||  pEvent->y != 0 || pEvent->x_root != 0 || pEvent->y_root != 0))
-	{
-		if (pDock->container.bIsHorizontal)
-		{
-			pDock->container.iMouseX = pEvent->x;
-			pDock->container.iMouseY = pEvent->y;
-		}
-		else
-		{
-			pDock->container.iMouseX = pEvent->y;
-			pDock->container.iMouseY = pEvent->x;
-		}
-	}
-	else
-	{
-		//g_print (" forced leave event: %d;%d\n", pDock->container.iMouseX, pDock->container.iMouseY);
-	}
+	*/
 	
 	// check that the mouse is really outside (the request might not come from the Window Manager, for
 	// instance if we deactivate the menu; this also works around buggy WM like KWin).
@@ -566,7 +540,7 @@ static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCro
 		 * have a way to verify them anyway). If pEvent == NULL, it just checks the already
 		 * set value of pDock->iMousePositionType.
 		 */
-		bReallyOutside = gldi_container_dock_handle_leave (pDock, pEvent);
+		bReallyOutside = gldi_container_dock_handle_leave (pDock, !!pCtrl);
 	}
 	else
 	{
@@ -579,7 +553,7 @@ static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCro
 	if (! bReallyOutside)
 	{
 		//g_print (" not really outside (%d;%d ; %d/%d)\n", pDock->container.iMouseX, pDock->container.iMouseY, pDock->iMaxDockHeight, pDock->iMinDockHeight);
-		if (pDock->iSidTestMouseOutside == 0 && pEvent && ! pDock->bHasModalWindow)
+		if (pDock->iSidTestMouseOutside == 0 && pCtrl && ! pDock->bHasModalWindow)
 		{
 			/* We had a "real" leave event from the WM / X11, but the mouse is still inside the dock.
 			 * This happens only on X11 (on Wayland, we always trust real leave events), e.g. when
@@ -592,11 +566,11 @@ static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCro
 			cd_debug ("start checking mouse\n");
 			pDock->iSidTestMouseOutside = g_timeout_add (500, (GSourceFunc)_check_mouse_outside, pDock);
 		}
-		return FALSE;
+		return; // FALSE; <-> propagate the event
 	}
 	
 	//\_______________ On retarde la sortie.
-	if (pEvent != NULL)  // sortie naturelle.
+	if (pCtrl != NULL)  // sortie naturelle.
 	{
 		if (pDock->iSidLeaveDemand == 0)  // pas encore de demande de sortie.
 		{
@@ -608,12 +582,12 @@ static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCro
 				{
 					//g_print (" on retarde la sortie du dock de %dms\n", MAX (myDocksParam.iLeaveSubDockDelay, 330));
 					pDock->iSidLeaveDemand = g_timeout_add (MAX (myDocksParam.iLeaveSubDockDelay, 250), (GSourceFunc) _emit_leave_signal_delayed, (gpointer) pDock);
-					return TRUE;
+					return; // TRUE; <-> consume the event (not supported?)
 				}
 				else if (pDock->bAutoHide)
 				{
 					pDock->iSidLeaveDemand = g_timeout_add (250, (GSourceFunc) _emit_leave_signal_delayed, (gpointer) pDock);
-					return TRUE;
+					return; // TRUE;
 				}
 			}
 			else/** if (myDocksParam.iLeaveSubDockDelay != 0)*/  // cas d'un sous-dock : on retarde le cachage.
@@ -621,13 +595,13 @@ static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCro
 				//g_print (" on retarde la sortie du sous-dock de %dms\n", myDocksParam.iLeaveSubDockDelay);
 				pDock->iSidLeaveDemand = g_timeout_add (MAX (myDocksParam.iLeaveSubDockDelay, 50), (GSourceFunc) _emit_leave_signal_delayed, (gpointer) pDock);
 				//g_print (" -> pDock->iSidLeaveDemand = %d\n", pDock->iSidLeaveDemand);
-				return TRUE;
+				return; // TRUE;
 			}
 		}
 		else  // deja une sortie en attente.
 		{
 			//g_print (" une sortie est deja programmee (%d)\n", pDock->iSidLeaveDemand);
-			return TRUE;
+			return;//  TRUE;
 		}
 	}  // sinon c'est nous qui avons explicitement demande cette sortie, donc on continue.
 	
@@ -647,7 +621,7 @@ static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCro
 	if (! _hide_child_docks (pDock))  // on quitte si l'un des sous-docks reste visible (on est entre dedans), pour rester en position "haute".
 	{
 		//g_print (" un des sous-docks reste visible");
-		return TRUE;
+		return; // TRUE;
 	}
 	
 	if (pDock->iRefCount != 0)  // sub-dock -> if the main icon is currently pointed, and doesn't have a dialog that would be in the way, stay visible
@@ -659,7 +633,7 @@ static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCro
 			if (pPointingIcon->bPointed && pParentDock->container.bInside && ! gldi_icon_has_dialog (pPointingIcon))
 			{
 				//g_print (" the main icon is currently pointed, stay visible\n");
-				return TRUE;
+				return; // TRUE;
 			}
 		}
 	}
@@ -674,7 +648,7 @@ static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCro
 	
 	//\_______________ If a modal window is raised, we discard the 'leave-event' to stay in the up position.
 	if (pDock->bHasModalWindow)
-		return TRUE;
+		return; // TRUE;
 	
 	//\_______________ On gere le drag d'une icone hors du dock.
 	if (s_pIconClicked != NULL
@@ -735,25 +709,25 @@ static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCro
 		_hide_parent_dock (pDock);
 	}
 
-	return TRUE;
+	return; // TRUE; <-> consume this event
 }
 
-static gboolean _on_leave_notify (GtkWidget* pWidget, GdkEventCrossing* pEvent, CairoDock *pDock)
+static void _on_leave_notify (GtkEventControllerMotion *pCtrl, CairoDock *pDock)
 {
-	return _on_leave_notify2 (pWidget, pEvent, pDock, TRUE);
+	_on_leave_notify2 (pCtrl, pDock, TRUE);
 }
 
 void gldi_dock_leave_synthetic (CairoDock *pDock)
 {
 	// actualize the coordinates of the pointer, since they are most probably out-dated (because the mouse has left the dock, or because a right-click generates an event with (0;0) coordinates)
 	gldi_container_update_mouse_position (&pDock->container);
-	_on_leave_notify2 (NULL, NULL, pDock, TRUE);
+	_on_leave_notify2 (NULL, pDock, TRUE);
 }
 
 void gldi_dock_leave_synthetic_full (CairoDock *pDock, gboolean bRecheck)
 {
 	if (bRecheck) gldi_container_update_mouse_position (&pDock->container);
-	_on_leave_notify2 (NULL, NULL, pDock, bRecheck);
+	_on_leave_notify2 (NULL, pDock, bRecheck);
 }
 
 static gboolean _hide_dock_idle (void *ptr)
@@ -764,7 +738,7 @@ static gboolean _hide_dock_idle (void *ptr)
 	return FALSE;
 }
 
-static gboolean _on_dock_unmap (GtkWidget* pWidget, G_GNUC_UNUSED GdkEvent* pEvent, CairoDock *pDock)
+static void _on_dock_unmap (G_GNUC_UNUSED GtkWidget* pWidget, CairoDock *pDock)
 {
 	// this event is only necessary on Wayland
 	// g_print ("_on_dock_unmap() for dock: %p (bIsMainDock : %d; bInside:%d)\n", pDock, pDock->bIsMainDock, pDock->container.bInside);
@@ -788,20 +762,19 @@ static gboolean _on_dock_unmap (GtkWidget* pWidget, G_GNUC_UNUSED GdkEvent* pEve
 			}
 		} while (pTargetIcon);
 	}
-	_on_leave_notify (pWidget, NULL, pDock);
-	return FALSE;
+	_on_leave_notify (NULL, pDock);
 }
 
-static gboolean _on_enter_notify (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCrossing* pEvent, CairoDock *pDock)
+static void _on_enter_notify (GtkEventControllerMotion *pCtrl, gdouble x, gdouble y, CairoDock *pDock)
 {
-	//g_print ("%s (bIsMainDock : %d; bInside:%d; state:%d; iMagnitudeIndex:%d; input shape:%p; event:%p)\n", __func__, pDock->bIsMainDock, pDock->container.bInside, pDock->iInputState, pDock->iMagnitudeIndex, pDock->pShapeBitmap, pEvent);
+	// cd_debug ("bIsMainDock : %d; bInside: %d; state: %d; pDock: %p, pCtrl: %p", pDock->bIsMainDock, pDock->container.bInside, pDock->iInputState, pDock, pCtrl);
 	if (! cairo_dock_entrance_is_allowed (pDock))
 	{
 		cd_message ("* entree non autorisee");
-		return FALSE;
+		return;
 	}
 	
-	gldi_container_dock_handle_enter (pDock, pEvent);
+	pDock->iMousePositionType = CAIRO_DOCK_MOUSE_INSIDE;
 
 	// stop les timers.
 	if (pDock->iSidLeaveDemand != 0)
@@ -884,20 +857,21 @@ static gboolean _on_enter_notify (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCros
 	
 	// if we've just entered the dock, the pointed icon has changed from none to the current one.
 	if (!bWasInside) {
-		if (pEvent != NULL)
+		if (pCtrl)
 		{
 			// first, update the mouse coordinates
 			if (pDock->container.bIsHorizontal)
 			{
-				pDock->container.iMouseX = (int) pEvent->x;
-				pDock->container.iMouseY = (int) pEvent->y;
+				pDock->container.iMouseX = x;
+				pDock->container.iMouseY = y;
 			}
 			else
 			{
-				pDock->container.iMouseX = (int) pEvent->y;
-				pDock->container.iMouseY = (int) pEvent->x;
+				pDock->container.iMouseX = y;
+				pDock->container.iMouseY = x;
 			}
 		}
+		
 		// then compute the icons (especially the pointed one).
 		Icon *icon = cairo_dock_calculate_dock_icons (pDock);  // returns the pointed icon
 		// trigger the change to trigger the animation and sub-dock popup
@@ -907,53 +881,33 @@ static gboolean _on_enter_notify (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCros
 		}
 	}
 	
-	return TRUE;
+	return; // TRUE; <-> consume the event (not supported?)
 }
 
 void gldi_dock_enter_synthetic (CairoDock *pDock)
 {
-	_on_enter_notify (NULL, NULL, pDock);
+	_on_enter_notify (NULL, 0.0, 0.0, pDock);
 }
 
 static void _rootdock_write_gaps (CairoDock *pDock);
 
-static gboolean _on_key_release (G_GNUC_UNUSED GtkWidget *pWidget,
-	GdkEventKey *pKey,
-	CairoDock *pDock)
+static gboolean _on_key_press (G_GNUC_UNUSED GtkEventControllerKey *pCtrl, guint keyval,
+	guint keycode, GdkModifierType state, CairoDock *pDock)
 {
-	cd_debug ("on a appuye sur une touche (%d/%d)", pKey->keyval, pKey->hardware_keycode);
-	if (pKey->type == GDK_KEY_PRESS)
-	{
-		gldi_object_notify (pDock, NOTIFICATION_KEY_PRESSED, pDock, pKey->keyval, pKey->state, pKey->string, pKey->hardware_keycode);
-	}
-	else if (pKey->type == GDK_KEY_RELEASE)
-	{
-		//g_print ("release : pKey->keyval = %d\n", pKey->keyval);
-		if ((pKey->state & GDK_MOD1_MASK) && pKey->keyval == 0)  // On relache la touche ALT, typiquement apres avoir fait un ALT + clique gauche + deplacement.
-		{
-			if (pDock->iRefCount == 0 && pDock->iVisibility != CAIRO_DOCK_VISI_SHORTKEY && !gldi_container_is_wayland_backend ())
-				_rootdock_write_gaps (pDock);
-		}
-	}
+	gldi_object_notify (pDock, NOTIFICATION_KEY_PRESSED, pDock, keyval, state, "", keycode); //!! TODO: string parameter (used for searching icons by Remote-Control) !!
 	return TRUE;
 }
 
-
-static gboolean _double_click_delay_over (Icon *icon)
+static void _on_key_release (G_GNUC_UNUSED GtkEventControllerKey *pCtrl, guint keyval,
+	G_GNUC_UNUSED guint keycode, GdkModifierType state, CairoDock *pDock)
 {
-	CairoDock *pDock = CAIRO_DOCK (cairo_dock_get_icon_container(icon));
-	if (pDock)
+	if ((state & GDK_ALT_MASK) && keyval == 0)  // On relache la touche ALT, typiquement apres avoir fait un ALT + clique gauche + deplacement.
 	{
-		gldi_icon_stop_attention (icon);  // we consider that clicking on the icon is an acknowledge of the demand of attention.
-		pDock->container.iMouseX = s_iFirstClickX;
-		pDock->container.iMouseY = s_iFirstClickY;
-		gldi_object_notify (pDock, NOTIFICATION_CLICK_ICON, icon, pDock, GDK_BUTTON1_MASK);
-		
-		gldi_icon_start_animation (icon);
+		if (pDock->iRefCount == 0 && pDock->iVisibility != CAIRO_DOCK_VISI_SHORTKEY && !gldi_container_is_wayland_backend ())
+			_rootdock_write_gaps (pDock);
 	}
-	icon->iSidDoubleClickDelay = 0;
-	return FALSE;
 }
+
 static gboolean _check_mouse_outside (CairoDock *pDock)  // ce test est principalement fait pour detecter les cas ou X nous envoit un signal leave errone alors qu'on est dedans (=> sortie refusee, bInside reste a TRUE), puis du coup ne nous en envoit pas de leave lorsqu'on quitte reellement le dock.
 {
 	// g_print (" %s (%d, %d, %d)\n", __func__, pDock->bIsShrinkingDown, pDock->iMagnitudeIndex, pDock->container.bInside);
@@ -969,174 +923,67 @@ static gboolean _check_mouse_outside (CairoDock *pDock)  // ce test est principa
 	cairo_dock_calculate_dock_icons (pDock);  // pour faire retrecir le dock si on n'est pas dedans, merci X de nous faire sortir du dock alors que la souris est toujours dedans :-/
 	return TRUE;
 }
-static gboolean _on_button_press (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventButton* pButton, CairoDock *pDock)
-{
-	//g_print ("+ %s (%d/%d, %x, %d)\n", __func__, pButton->type, pButton->button, pWidget, pButton->time);
-	static guint32 s_iLastTime = 0;  // time of the last event, in ms
-	static guint s_iLastButton = 0;  // button pressed in the last event
-	static GdkEventType s_eLastType = GDK_NOTHING; // type of last delivered event
-	// for some reason, with latest GTK3, we get all events twice; filter them
-	if (s_iLastTime != 0 && pButton->time == s_iLastTime &&
-		s_iLastButton != 0 && pButton->button == s_iLastButton &&
-		s_eLastType != GDK_NOTHING && pButton->type == s_eLastType)
-	{
-		return TRUE;  // discard and don't propagate
-	}
 
-	s_iLastTime = pButton->time;
-	s_iLastButton = pButton->button;
-	s_eLastType = pButton->type;
+static gboolean s_bNextRelease = FALSE;
+static void _on_button_stop (GtkGestureClick *pCtrl, CairoDock *pDock)
+{
+	if (s_bNextRelease)
+	{
+		Icon *icon = cairo_dock_get_pointed_icon (pDock->icons);
+		if (icon && ! cairo_dock_icon_is_being_removed (icon) && icon->iNbDoubleClickListeners > 0)
+		{
+			gldi_object_notify (pDock, NOTIFICATION_CLICK_ICON, icon, pDock,
+				gtk_event_controller_get_current_event_state (GTK_EVENT_CONTROLLER (pCtrl)));
+			gldi_icon_start_animation (icon);
+		}
+		s_bNextRelease = FALSE;
+	}
+}
+
+static void _on_button_press (GtkGestureClick *pCtrl, gint n_press, gdouble x, gdouble y, CairoDock *pDock)
+{
 	if (pDock->container.bIsHorizontal)  // utile ?
 	{
-		pDock->container.iMouseX = (int) pButton->x;
-		pDock->container.iMouseY = (int) pButton->y;
+		pDock->container.iMouseX = (int) x;
+		pDock->container.iMouseY = (int) y;
 	}
 	else
 	{
-		pDock->container.iMouseX = (int) pButton->y;
-		pDock->container.iMouseY = (int) pButton->x;
+		pDock->container.iMouseX = (int) y;
+		pDock->container.iMouseY = (int) x;
 	}
 
 	Icon *icon = cairo_dock_get_pointed_icon (pDock->icons);
-	if (pButton->button == 1)  // clic gauche.
+	guint button = gtk_gesture_single_get_current_button (GTK_GESTURE_SINGLE (pCtrl));
+	
+	if (button == 1 && n_press == 2) // double click
 	{
-		//g_print ("+ left click\n");
-		switch (pButton->type)
+		if (icon && ! cairo_dock_icon_is_being_removed (icon))
 		{
-			case GDK_BUTTON_RELEASE :
-				//g_print ("+ GDK_BUTTON_RELEASE (%d/%d sur %s/%s)\n", pButton->state, GDK_CONTROL_MASK | GDK_MOD1_MASK, icon ? icon->cName : "personne", icon ? icon->cCommand : "");  // 272 = 100010000
-				if (pDock->container.bIgnoreNextReleaseEvent)
-				{
-					pDock->container.bIgnoreNextReleaseEvent = FALSE;
-					s_pIconClicked = NULL;
-					s_bIconDragged = FALSE;
-					return TRUE;
-				}
-				
-				if ( ! (pButton->state & GDK_MOD1_MASK))
-				{
-					if (s_pIconClicked != NULL)
-					{
-						cd_debug ("activate %s (%s)", s_pIconClicked->cName, icon ? icon->cName : "none");
-						s_pIconClicked->iAnimationState = CAIRO_DOCK_STATE_REST;  // stoppe les animations de suivi du curseur.
-						pDock->iAvoidingMouseIconType = -1;
-						cairo_dock_stop_icon_glide (pDock);
-					}
-					if (icon != NULL && ! CAIRO_DOCK_ICON_TYPE_IS_SEPARATOR (icon) && icon == s_pIconClicked)  // released the button on the clicked icon => trigger the CLICK signal.
-					{
-						s_pIconClicked = NULL;  // il faut le faire ici au cas ou le clic induirait un dialogue bloquant qui nous ferait sortir du dock par exemple.
-						//g_print ("+ click on '%s' (%s)\n", icon->cName, icon->cCommand);
-						if (! s_bIconDragged)  // on ignore le drag'n'drop sur elle-meme.
-						{
-							if (icon->iNbDoubleClickListeners > 0)
-							{
-								if (icon->iSidDoubleClickDelay == 0)  // 1er release.
-								{
-									icon->iSidDoubleClickDelay = g_timeout_add (CD_DOUBLE_CLICK_DELAY, (GSourceFunc)_double_click_delay_over, icon);
-									s_iFirstClickX = pDock->container.iMouseX;  // the mouse can move between the first and the second clicks; since the event is triggered when the second click occurs, the coordinates may be wrong -> we have to remember the position of the first click.
-									s_iFirstClickY = pDock->container.iMouseY;
-								}
-							}
-							else
-							{
-								gldi_icon_stop_attention (icon);  // we consider that clicking on the icon is an acknowledge of the demand of attention.
-								
-								gldi_object_notify (pDock, NOTIFICATION_CLICK_ICON, icon, pDock, pButton->state);
-								
-								gldi_icon_start_animation (icon);
-							}
-						}
-					}
-					else if (s_pIconClicked != NULL && icon != NULL && icon != s_pIconClicked && ! myDocksParam.bLockIcons && ! myDocksParam.bLockAll && ! pDock->bPreventDraggingIcons)  // released the icon on another one.
-					{
-						//g_print ("deplacement de %s\n", s_pIconClicked->cName);
-						CairoDock *pOriginDock = CAIRO_DOCK (cairo_dock_get_icon_container (s_pIconClicked));
-						if (pOriginDock != NULL && pDock != pOriginDock)
-						{
-							gldi_icon_detach (s_pIconClicked);
-							
-							gldi_theme_icon_write_container_name_in_conf_file (s_pIconClicked, gldi_dock_get_name (pDock));
-							
-							gldi_icon_insert_in_container (s_pIconClicked, CAIRO_CONTAINER(pDock), CAIRO_DOCK_ANIMATE_ICON);
-						}
-						
-						Icon *prev_icon, *next_icon;
-						if (icon->fXAtRest > s_pIconClicked->fXAtRest)
-						{
-							prev_icon = icon;
-							next_icon = cairo_dock_get_next_icon (pDock->icons, icon);
-						}
-						else
-						{
-							prev_icon = cairo_dock_get_previous_icon (pDock->icons, icon);
-							next_icon = icon;
-						}
-						if (icon->iGroup != s_pIconClicked->iGroup
-						&& (prev_icon == NULL || prev_icon->iGroup != s_pIconClicked->iGroup)
-						&& (next_icon == NULL || next_icon->iGroup != s_pIconClicked->iGroup))
-						{
-							s_pIconClicked = NULL;
-							return FALSE;
-						}
-						//g_print ("deplacement de %s\n", s_pIconClicked->cName);
-						///if (prev_icon != NULL && prev_icon->iGroup != s_pIconClicked->iGroup)  // the previous icon is in a different group -> we'll be at the beginning of our group.
-						///	prev_icon = NULL;  // => move to the beginning of the group/dock
-						cairo_dock_move_icon_after_icon (pDock, s_pIconClicked, prev_icon);
-						
-						cairo_dock_calculate_dock_icons (pDock);
-						
-						if (! CAIRO_DOCK_ICON_TYPE_IS_SEPARATOR (s_pIconClicked))
-						{
-							gldi_icon_request_animation (s_pIconClicked, "bounce", 2);
-						}
-						gtk_widget_queue_draw (pDock->container.pWidget);
-					}
-				}
-				else
-				{
-					if (pDock->iRefCount == 0 && pDock->iVisibility != CAIRO_DOCK_VISI_SHORTKEY && !gldi_container_is_wayland_backend ())
-						_rootdock_write_gaps (pDock);
-				}
-				//g_print ("- apres clic : s_pIconClicked <- NULL\n");
-				s_pIconClicked = NULL;
-				s_bIconDragged = FALSE;
-			break ;
-			
-			case GDK_BUTTON_PRESS :
-				if ( ! (pButton->state & GDK_MOD1_MASK))
-				{
-					//g_print ("+ clic sur %s (%.2f)!\n", icon ? icon->cName : "rien", icon ? icon->fInsertRemoveFactor : 0.);
-					s_iClickX = pButton->x;
-					s_iClickY = pButton->y;
-					if (icon && ! cairo_dock_icon_is_being_removed (icon) && ! CAIRO_DOCK_IS_AUTOMATIC_SEPARATOR (icon))
-					{
-						s_pIconClicked = icon;  // on ne definit pas l'animation FOLLOW_MOUSE ici , on le fera apres le 1er mouvement, pour eviter que l'icone soit dessinee comme tel quand on clique dessus alors que le dock est en train de jouer une animation (ca provoque un flash desagreable).
-						cd_debug ("clicked on %s", icon->cName);
-					}
-					else
-						s_pIconClicked = NULL;
-				}
-			break ;
-
-			case GDK_2BUTTON_PRESS :
-				if (icon && ! cairo_dock_icon_is_being_removed (icon))
-				{
-					if (icon->iSidDoubleClickDelay != 0)
-					{
-						g_source_remove (icon->iSidDoubleClickDelay);
-						icon->iSidDoubleClickDelay = 0;
-					}
-					gldi_object_notify (pDock, NOTIFICATION_DOUBLE_CLICK_ICON, icon, pDock);
-					if (icon->iNbDoubleClickListeners > 0)
-						pDock->container.bIgnoreNextReleaseEvent = TRUE;
-				}
-			break ;
-
-			default :
-			break ;
+			if (icon->iNbDoubleClickListeners > 0)
+			{
+				gldi_object_notify (pDock, NOTIFICATION_DOUBLE_CLICK_ICON, icon, pDock);
+				pDock->container.bIgnoreNextReleaseEvent = TRUE;
+			}
 		}
 	}
-	else if (pButton->button == 3 && pButton->type == GDK_BUTTON_PRESS)  // clique droit.
+	else if (button == 1 && n_press == 1)
+	{
+		if ( ! (gtk_event_controller_get_current_event_state (GTK_EVENT_CONTROLLER (pCtrl)) & GDK_ALT_MASK))
+		{
+			//g_print ("+ clic sur %s (%.2f)!\n", icon ? icon->cName : "rien", icon ? icon->fInsertRemoveFactor : 0.);
+			s_iClickX = x;
+			s_iClickY = y;
+			if (icon && ! cairo_dock_icon_is_being_removed (icon) && ! CAIRO_DOCK_IS_AUTOMATIC_SEPARATOR (icon))
+			{
+				s_pIconClicked = icon;  // on ne definit pas l'animation FOLLOW_MOUSE ici , on le fera apres le 1er mouvement, pour eviter que l'icone soit dessinee comme tel quand on clique dessus alors que le dock est en train de jouer une animation (ca provoque un flash desagreable).
+				cd_debug ("clicked on %s", icon->cName);
+			}
+			else
+				s_pIconClicked = NULL;
+		}
+	}
+	else if (button == 3 && n_press == 1)  // clique droit.
 	{
 		if (s_iSidShowSubDockDemand && pDock == s_pDockShowingSubDock)
 		{
@@ -1149,29 +996,131 @@ static gboolean _on_button_press (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventButt
 		
 		// gldi_menu_popup (menu);
 	}
-	else if (pButton->button == 2 && pButton->type == GDK_BUTTON_PRESS)  // clique milieu.
+	else if (button == 2 && n_press == 1)  // clique milieu.
 	{
 		if (icon && ! cairo_dock_icon_is_being_removed (icon))
 		{
 			gldi_object_notify (pDock, NOTIFICATION_MIDDLE_CLICK_ICON, icon, pDock);
 		}
 	}
-
-	return FALSE;
 }
 
-
-static gboolean _on_scroll (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventScroll* pScroll, CairoDock *pDock)
+static void _on_button_release (GtkGestureClick *pCtrl, gint n_press, gdouble x, gdouble y, CairoDock *pDock)
 {
-	GdkScrollDirection dir = pScroll->direction;
-	if (dir == GDK_SCROLL_UP || dir == GDK_SCROLL_DOWN || dir == GDK_SCROLL_SMOOTH)
+	if (pDock->container.bIsHorizontal)  // utile ?
 	{
-		Icon *icon = cairo_dock_get_pointed_icon (pDock->icons);  // can be NULL
-		gldi_container_handle_scroll (CAIRO_CONTAINER (pDock), icon, pScroll);
+		pDock->container.iMouseX = (int) x;
+		pDock->container.iMouseY = (int) y;
 	}
-	return FALSE;
+	else
+	{
+		pDock->container.iMouseX = (int) y;
+		pDock->container.iMouseY = (int) x;
+	}
+
+	Icon *icon = cairo_dock_get_pointed_icon (pDock->icons);
+	guint button = gtk_gesture_single_get_current_button (GTK_GESTURE_SINGLE (pCtrl));
+	GdkModifierType state = gtk_event_controller_get_current_event_state (GTK_EVENT_CONTROLLER (pCtrl));
+	
+	if (button == 1 && n_press == 1)  // clic gauche.
+	{
+		if (pDock->container.bIgnoreNextReleaseEvent)
+		{
+			pDock->container.bIgnoreNextReleaseEvent = FALSE;
+			s_pIconClicked = NULL;
+			s_bIconDragged = FALSE;
+			return;
+		}
+		
+		if ( ! (state & GDK_ALT_MASK))
+		{
+			if (s_pIconClicked != NULL)
+			{
+				cd_debug ("activate %s (%s)", s_pIconClicked->cName, icon ? icon->cName : "none");
+				s_pIconClicked->iAnimationState = CAIRO_DOCK_STATE_REST;  // stoppe les animations de suivi du curseur.
+				pDock->iAvoidingMouseIconType = -1;
+				cairo_dock_stop_icon_glide (pDock);
+			}
+			if (icon != NULL && ! CAIRO_DOCK_ICON_TYPE_IS_SEPARATOR (icon) && icon == s_pIconClicked)  // released the button on the clicked icon => trigger the CLICK signal.
+			{
+				s_pIconClicked = NULL;  // il faut le faire ici au cas ou le clic induirait un dialogue bloquant qui nous ferait sortir du dock par exemple.
+				//g_print ("+ click on '%s' (%s)\n", icon->cName, icon->cCommand);
+				if (! s_bIconDragged)  // on ignore le drag'n'drop sur elle-meme.
+				{
+					if (icon->iNbDoubleClickListeners > 0) s_bNextRelease = TRUE;
+					else
+					{
+						gldi_icon_stop_attention (icon);  // we consider that clicking on the icon is an acknowledge of the demand of attention.
+						gldi_object_notify (pDock, NOTIFICATION_CLICK_ICON, icon, pDock, state);
+						gldi_icon_start_animation (icon);
+					}
+				}
+			}
+			else if (s_pIconClicked != NULL && icon != NULL && icon != s_pIconClicked && ! myDocksParam.bLockIcons && ! myDocksParam.bLockAll && ! pDock->bPreventDraggingIcons)  // released the icon on another one.
+			{
+				//g_print ("deplacement de %s\n", s_pIconClicked->cName);
+				CairoDock *pOriginDock = CAIRO_DOCK (cairo_dock_get_icon_container (s_pIconClicked));
+				if (pOriginDock != NULL && pDock != pOriginDock)
+				{
+					gldi_icon_detach (s_pIconClicked);
+					gldi_theme_icon_write_container_name_in_conf_file (s_pIconClicked, gldi_dock_get_name (pDock));
+					gldi_icon_insert_in_container (s_pIconClicked, CAIRO_CONTAINER(pDock), CAIRO_DOCK_ANIMATE_ICON);
+				}
+				
+				Icon *prev_icon, *next_icon;
+				if (icon->fXAtRest > s_pIconClicked->fXAtRest)
+				{
+					prev_icon = icon;
+					next_icon = cairo_dock_get_next_icon (pDock->icons, icon);
+				}
+				else
+				{
+					prev_icon = cairo_dock_get_previous_icon (pDock->icons, icon);
+					next_icon = icon;
+				}
+				if (icon->iGroup != s_pIconClicked->iGroup
+				&& (prev_icon == NULL || prev_icon->iGroup != s_pIconClicked->iGroup)
+				&& (next_icon == NULL || next_icon->iGroup != s_pIconClicked->iGroup))
+				{
+					s_pIconClicked = NULL;
+					return; // FALSE;
+				}
+				//g_print ("deplacement de %s\n", s_pIconClicked->cName);
+				///if (prev_icon != NULL && prev_icon->iGroup != s_pIconClicked->iGroup)  // the previous icon is in a different group -> we'll be at the beginning of our group.
+				///	prev_icon = NULL;  // => move to the beginning of the group/dock
+				cairo_dock_move_icon_after_icon (pDock, s_pIconClicked, prev_icon);
+				
+				cairo_dock_calculate_dock_icons (pDock);
+				
+				if (! CAIRO_DOCK_ICON_TYPE_IS_SEPARATOR (s_pIconClicked))
+				{
+					gldi_icon_request_animation (s_pIconClicked, "bounce", 2);
+				}
+				gtk_widget_queue_draw (pDock->container.pWidget);
+			}
+		}
+		else
+		{
+			if (pDock->iRefCount == 0 && pDock->iVisibility != CAIRO_DOCK_VISI_SHORTKEY && !gldi_container_is_wayland_backend ())
+				_rootdock_write_gaps (pDock);
+		}
+		//g_print ("- apres clic : s_pIconClicked <- NULL\n");
+		s_pIconClicked = NULL;
+		s_bIconDragged = FALSE;
+	}
 }
 
+static gboolean _on_scroll (GtkEventControllerScroll *pCtrl, gdouble dx, gdouble dy, CairoDock *pDock)
+{
+	Icon *icon = cairo_dock_get_pointed_icon (pDock->icons);  // can be NULL
+	gldi_container_handle_scroll (pCtrl, dx, dy, CAIRO_CONTAINER (pDock), icon);
+	return TRUE;
+}
+
+typedef struct _GdkEventConfigure {
+	gint x, y;
+	gint width, height;
+} GdkEventConfigure;
 
 static gboolean _on_configure (GtkWidget* pWidget, GdkEventConfigure* pEvent, CairoDock *pDock)
 {
@@ -1224,7 +1173,7 @@ static gboolean _on_configure (GtkWidget* pWidget, GdkEventConfigure* pEvent, Ca
 	pDock->container.iWindowPositionY = iNewY;
 	
 	// it is possible that the scale factor changes without the size -- we need to resize our EGLSurface on Wayland to avoid a crash
-	gint scale = gdk_window_get_scale_factor (gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock)));
+	gint scale = gdk_surface_get_scale_factor (gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock)));
 	if (scale != pDock->iScaleFactor)
 	{
 		bSizeUpdated = TRUE;
@@ -1262,15 +1211,15 @@ static gboolean _on_configure (GtkWidget* pWidget, GdkEventConfigure* pEvent, Ca
 		}
 		
 		// update the GL context
-		if (g_bUseOpenGL)
-		{
-			gldi_gl_container_resized (CAIRO_CONTAINER (pDock), pEvent->width, pEvent->height);
-			
-			if (! gldi_gl_container_make_current (CAIRO_CONTAINER (pDock)))
-				pDock->bNeedSizeUpdate = TRUE;
-			else
-				_dock_size_update_opengl (pDock);
-		}
+		// if (g_bUseOpenGL)
+		// {
+		// 	gldi_gl_container_resized (CAIRO_CONTAINER (pDock), pEvent->width, pEvent->height);
+		// 	
+		// 	if (! gldi_gl_container_make_current (CAIRO_CONTAINER (pDock)))
+		// 		pDock->bNeedSizeUpdate = TRUE;
+		// 	else
+		// 		_dock_size_update_opengl (pDock);
+		// }
 		
 		cairo_dock_calculate_dock_icons (pDock);
 		//g_print ("configure size %s\n", pDock->cDockName);
@@ -1278,7 +1227,7 @@ static gboolean _on_configure (GtkWidget* pWidget, GdkEventConfigure* pEvent, Ca
 		
 		// gldi_dialogs_replace_all ();
 		
-		if (/**bIsNowSized*/bSizeUpdated && g_bUseOpenGL)  // in OpenGL, the context is linked to the window; now that the window has a correct size, the context is ready -> draw things that couldn't be drawn until now.
+		if (bSizeUpdated && g_bUseOpenGL)  // in OpenGL, the context is linked to the window; now that the window has a correct size, the context is ready -> draw things that couldn't be drawn until now.
 		{
 			Icon *icon;
 			GList *ic;
@@ -1337,7 +1286,7 @@ static gboolean _on_configure (GtkWidget* pWidget, GdkEventConfigure* pEvent, Ca
 }
 
 
-
+/*
 static gboolean s_bCouldDrop = FALSE;
 
 void _on_drag_data_received (G_GNUC_UNUSED GtkWidget *pWidget, GdkDragContext *dc, gint x, gint y, GtkSelectionData *selection_data, G_GNUC_UNUSED guint info, guint time, CairoDock *pDock)
@@ -1348,8 +1297,8 @@ void _on_drag_data_received (G_GNUC_UNUSED GtkWidget *pWidget, GdkDragContext *d
 	
 	//\_________________ On calcule la position a laquelle on l'a lache.
 	cd_debug (">>> cReceivedData : (%d/%d)", s_bCouldDrop, pDock->bCanDrop);
-	/* icon => drop on icon
-	no icon => if order undefined: drop on dock; else: drop between 2 icons.*/
+	//    icon => drop on icon
+	// no icon => if order undefined: drop on dock; else: drop between 2 icons.
 	Icon *pPointedIcon = NULL;
 	double fOrder;
 	gboolean bMaybeUpdateOrder = FALSE;
@@ -1463,13 +1412,13 @@ void _on_drag_data_received (G_GNUC_UNUSED GtkWidget *pWidget, GdkDragContext *d
 	gtk_drag_finish (dc, TRUE, FALSE, time);
 }
 
-/*static gboolean _on_drag_drop (GtkWidget *pWidget, GdkDragContext *dc, gint x, gint y, guint time, G_GNUC_UNUSED CairoDock *pDock)
+static gboolean _on_drag_drop (GtkWidget *pWidget, GdkDragContext *dc, gint x, gint y, guint time, G_GNUC_UNUSED CairoDock *pDock)
 {
 	cd_message ("%s (%dx%d, %d)", __func__, x, y, time);
 	GdkAtom target = gtk_drag_dest_find_target (pWidget, dc, NULL);
 	gtk_drag_get_data (pWidget, dc, target, time);
 	return TRUE;  // in a drop zone.
-}*/
+}
 
 
 static gboolean _on_drag_motion (GtkWidget *pWidget, GdkDragContext *dc, gint x, gint y, guint time, CairoDock *pDock)
@@ -1494,10 +1443,10 @@ static gboolean _on_drag_motion (GtkWidget *pWidget, GdkDragContext *dc, gint x,
 		cd_debug ("start dragging");
 		pDock->bIsDragging = TRUE;
 		
-		/*GdkAtom gdkAtom = gdk_drag_get_selection (dc);
-		Atom xAtom = gdk_x11_atom_to_xatom (gdkAtom);
-		Window Xid = GDK_WINDOW_XID (dc->source_window);
-		cd_debug (" <%s>", cairo_dock_get_property_name_on_xwindow (Xid, xAtom));*/
+		// GdkAtom gdkAtom = gdk_drag_get_selection (dc);
+		// Atom xAtom = gdk_x11_atom_to_xatom (gdkAtom);
+		// Window Xid = GDK_WINDOW_XID (dc->source_window);
+		// cd_debug (" <%s>", cairo_dock_get_property_name_on_xwindow (Xid, xAtom));
 		
 		gboolean bStartAnimation = FALSE;
 		gldi_object_notify (pDock, NOTIFICATION_START_DRAG_DATA, pDock, &bStartAnimation);
@@ -1509,7 +1458,7 @@ static gboolean _on_drag_motion (GtkWidget *pWidget, GdkDragContext *dc, gint x,
 	else
 	{
 		//g_print ("move dragging\n");
-		_on_motion_notify (pWidget, NULL, pDock);
+		_on_motion_notify (NULL, 0.0, 0.0, pDock);
 	}
 	
 	int X, Y;
@@ -1618,7 +1567,7 @@ static gboolean _on_drag_failed (G_GNUC_UNUSED GtkWidget *widget, G_GNUC_UNUSED 
 	//!! TODO: animation? (likely not possible with GTK DnD)
 	return TRUE;
 }
-
+*/
   ///////////////////////
  /// CONTAINER IFACE ///
 ///////////////////////
@@ -2045,6 +1994,7 @@ static gboolean _cairo_dock_dock_animation_loop (GldiContainer *pContainer)
 		return TRUE;
 }
 
+/*
 static gboolean _on_dock_destroyed (GtkWidget *menu, GldiContainer *pContainer);
 static void _on_menu_deactivated (G_GNUC_UNUSED GtkMenuShell *menu, CairoDock *pDock)
 {
@@ -2116,7 +2066,7 @@ static void _setup_menu (GldiContainer *pContainer, G_GNUC_UNUSED Icon *pIcon, G
 			GLDI_RUN_AFTER, pMenu);  // the menu can stay alive even if the container disappear, so we need to ensure we won't call the callbacks then.
 	}
 }
-
+*/
 static gboolean _destroy_empty_dock (CairoDock *pDock)
 {
 	if (pDock->bIconIsFlyingAway)  // keep the dock alive for now, in case the user re-inserts the flying icon in it.
@@ -2369,62 +2319,56 @@ void gldi_dock_detach_applet (CairoDock *pDock, GldiModuleInstance *pInstance)
 void gldi_dock_init_internals (CairoDock *pDock)
 {
 	pDock->container.iface.animation_loop = _cairo_dock_dock_animation_loop;
-	pDock->container.iface.setup_menu = _setup_menu;
+	// pDock->container.iface.setup_menu = _setup_menu;
 	pDock->container.iface.detach_icon = _detach_icon;
 	pDock->container.iface.insert_icon = _insert_icon;
 	
 	//\__________________ set up its window
 	GtkWidget *pWindow = pDock->container.pWidget;
-	gtk_container_set_border_width (GTK_CONTAINER (pWindow), 0);
-	gtk_window_set_gravity (GTK_WINDOW (pWindow), GDK_GRAVITY_STATIC);
-	gtk_window_set_type_hint (GTK_WINDOW (pWindow), GDK_WINDOW_TYPE_HINT_DOCK);  // window must not be mapped
+	//!! gtk_container_set_border_width (GTK_CONTAINER (pWindow), 0);
+	//!! gtk_window_set_gravity (GTK_WINDOW (pWindow), GDK_GRAVITY_STATIC);
+	//!! gtk_window_set_type_hint (GTK_WINDOW (pWindow), GDK_WINDOW_TYPE_HINT_DOCK);  // window must not be mapped
 	
 	//\__________________ connect to events.
-	gtk_widget_add_events (pWindow,
-		GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_SCROLL_MASK |
-		GDK_ENTER_NOTIFY_MASK | GDK_LEAVE_NOTIFY_MASK |
-		GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK);
+	g_signal_connect (G_OBJECT (pWindow), "draw",
+		G_CALLBACK (_on_expose), pDock); // corresponds to snapshot() vfunc
 	
-	g_signal_connect (G_OBJECT (pWindow),
-		"draw",
-		G_CALLBACK (_on_expose),
-		pDock);
-	g_signal_connect (G_OBJECT (pWindow),
-		"configure-event",
-		G_CALLBACK (_on_configure),
-		pDock);
-	g_signal_connect (G_OBJECT (pWindow),
-		"key-release-event",
-		G_CALLBACK (_on_key_release),
-		pDock);
-	g_signal_connect (G_OBJECT (pWindow),
-		"key-press-event",
-		G_CALLBACK (_on_key_release),
-		pDock);
-	g_signal_connect (G_OBJECT (pWindow),
-		"button-press-event",
-		G_CALLBACK (_on_button_press),
-		pDock);
-	g_signal_connect (G_OBJECT (pWindow),
-		"button-release-event",
-		G_CALLBACK (_on_button_press),
-		pDock);
-	g_signal_connect (G_OBJECT (pWindow),
-		"scroll-event",
-		G_CALLBACK (_on_scroll),
-		pDock);
-	g_signal_connect (G_OBJECT (pWindow),
-		"motion-notify-event",
-		G_CALLBACK (_on_motion_notify),
-		pDock);
-	g_signal_connect (G_OBJECT (pWindow),
-		"enter-notify-event",
-		G_CALLBACK (_on_enter_notify),
-		pDock);
-	g_signal_connect (G_OBJECT (pWindow),
-		"leave-notify-event",
-		G_CALLBACK (_on_leave_notify),
-		pDock);
+	//!! TODO
+	//g_signal_connect (G_OBJECT (pWindow),
+	//	"configure-event",
+	//	G_CALLBACK (_on_configure),
+	//	pDock);  // -> ?? (need to override virtual function?)
+	
+	GtkEventController *pEventKey = gtk_event_controller_key_new ();
+	g_signal_connect (G_OBJECT (pEventKey), "key-released",
+		G_CALLBACK (_on_key_release), pDock);
+	g_signal_connect (G_OBJECT (pEventKey), "key-pressed",
+		G_CALLBACK (_on_key_press), pDock);
+	gtk_widget_add_controller (pWindow, pEventKey);
+	
+	GtkGesture *pEventClick = gtk_gesture_click_new ();
+	g_signal_connect (G_OBJECT (pEventClick), "pressed",
+		G_CALLBACK (_on_button_press), pDock);
+	g_signal_connect (G_OBJECT (pEventClick), "released",
+		G_CALLBACK (_on_button_release), pDock);
+	g_signal_connect (G_OBJECT (pEventClick), "stopped",
+		G_CALLBACK (_on_button_stop), pDock);
+	gtk_widget_add_controller (pWindow, GTK_EVENT_CONTROLLER (pEventClick));
+	
+	GtkEventController *pEventScroll = gtk_event_controller_scroll_new (GTK_EVENT_CONTROLLER_SCROLL_BOTH_AXES);
+	g_signal_connect (G_OBJECT (pEventScroll), "scroll",
+		G_CALLBACK (_on_scroll), pDock);
+	gtk_widget_add_controller (pWindow, pEventScroll);
+	
+	GtkEventController *pEventMotion = gtk_event_controller_motion_new ();
+	g_signal_connect (G_OBJECT (pEventMotion), "motion",
+		G_CALLBACK (_on_motion_notify), pDock);
+	g_signal_connect (G_OBJECT (pEventMotion), "enter",
+		G_CALLBACK (_on_enter_notify), pDock);
+	g_signal_connect (G_OBJECT (pEventMotion), "leave",
+		G_CALLBACK (_on_leave_notify), pDock);
+	gtk_widget_add_controller (pWindow, pEventMotion);
+	
 /*	gldi_container_enable_drop (CAIRO_CONTAINER (pDock),
 		G_CALLBACK (_on_drag_data_received),
 		pDock);
@@ -2450,12 +2394,11 @@ void gldi_dock_init_internals (CairoDock *pDock)
 		pDock);*/
 	// connect unmap signal -- on Wayland, the compositor might close
 	// the dock at any time, so we need to handle this possibility
-	g_signal_connect (G_OBJECT (pWindow),
-		"unmap-event",
-		G_CALLBACK (_on_dock_unmap),
-		pDock);
+	g_signal_connect (G_OBJECT (pWindow), "pending-unmap",
+		G_CALLBACK (_on_dock_unmap), pDock);
 	
-	if (!pDock->iRefCount) gtk_widget_show_all (pDock->container.pWidget);
+	if (!pDock->iRefCount) gtk_window_present (GTK_WINDOW (pWindow));
+		// gtk_widget_show (pDock->container.pWidget);
 }
 
 
@@ -2491,27 +2434,30 @@ CairoDock *gldi_subdock_new (const gchar *cDockName, const gchar *cRendererName,
 
 static gboolean _move_resize_dock (CairoDock *pDock)
 {
+	//!! TODO: according to gtk4-layer-shell, we should use 
+	/// gtk_window_set_default_size() instead
+	if (pDock->container.bIsHorizontal)
+		gtk_widget_set_size_request (pDock->container.pWidget, pDock->iMaxDockWidth, pDock->iMaxDockHeight);
+	else gtk_widget_set_size_request (pDock->container.pWidget, pDock->iMaxDockHeight, pDock->iMaxDockWidth);
+	
 	gldi_container_move_resize_dock (pDock);
+	
 	pDock->iSidMoveResize = 0;
-	if (gldi_container_is_wayland_backend () && gtk_widget_get_mapped (pDock->container.pWidget))
+	if (gtk_widget_get_mapped (pDock->container.pWidget))
 	{
-		/// On Wayland, the compositor is not required to send a configure
-		/// event if the position of a view changes but not its size:
-		/// at least KWin will not send such events when repositioning
-		/// layer-shell surfaces. We simulate a configure event to be
-		/// able to do any adjustments required.
+		/// We don't have configure events, emit a synthetic one instead
 		GdkEventConfigure event;
 		event.x = 0;
 		event.y = 0;
 		if (pDock->container.bIsHorizontal)
 		{
-			event.width = pDock->container.iWidth;
-			event.height = pDock->container.iHeight;
+			event.width = pDock->iMaxDockWidth;
+			event.height = pDock->iMaxDockHeight;
 		}
 		else
 		{
-			event.height = pDock->container.iWidth;
-			event.width = pDock->container.iHeight;
+			event.height = pDock->iMaxDockWidth;
+			event.width = pDock->iMaxDockHeight;
 		}
 		_on_configure (pDock->container.pWidget, &event, pDock);
 	}
@@ -2643,14 +2589,14 @@ void cairo_dock_create_redirect_texture_for_dock (CairoDock *pDock)
 		return ;
 	if (pDock->iRedirectedTexture == 0)
 	{
-		GdkWindow* gdkwindow = gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock));
-		gint scale = gdk_window_get_scale_factor (gdkwindow);
+		GdkSurface* gdkwindow = gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock));
+		gint scale = gdk_surface_get_scale_factor (gdkwindow);
 		pDock->iRedirectedTexture = cairo_dock_create_texture_from_raw_data (NULL,
 			scale * (pDock->container.bIsHorizontal ? pDock->container.iWidth : pDock->container.iHeight),
 			scale * (pDock->container.bIsHorizontal ? pDock->container.iHeight : pDock->container.iWidth));
 	}
-	if (pDock->iFboId == 0)
-		glGenFramebuffersEXT(1, &pDock->iFboId);
+	// if (pDock->iFboId == 0)
+	// 	glGenFramebuffersEXT(1, &pDock->iFboId);
 }
 
 

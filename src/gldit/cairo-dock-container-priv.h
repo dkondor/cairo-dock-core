@@ -78,8 +78,7 @@ struct _GldiContainerManagerBackend {
 	/// backend-specific handling of leave / enter events on a dock
 	/// on Wayland, these update iMousePositionType (this is the only place we can do this)
 	/// the leave event handler should return if the mouse is really outside the dock
-	gboolean (*dock_handle_leave) (CairoDock *pDock, GdkEventCrossing *pEvent);
-	void (*dock_handle_enter) (CairoDock *pDock, GdkEventCrossing *pEvent);
+	gboolean (*dock_handle_leave) (CairoDock *pDock, gboolean bRealEvent);
 	/// check if the mouse is inside the dock (basic case) and update iMousePositionType
 	/// only supported on X11
 	void (*dock_check_if_mouse_inside_linear) (CairoDock *pDock);
@@ -97,10 +96,8 @@ struct _GldiContainerManagerBackend {
 
 void cairo_dock_set_containers_non_sticky (void);
 
-void cairo_dock_enable_containers_opacity (void);
-
 /* Accumulate smooth scroll events and emit signals. */
-void gldi_container_handle_scroll (GldiContainer *pContainer, Icon *pIcon, GdkEventScroll* pScroll);
+void gldi_container_handle_scroll (GtkEventControllerScroll *pCtrl, gdouble dx, gdouble dy, GldiContainer *pContainer, Icon *pIcon);
 
 /** Reserve a space on the screen for a Container; other windows won't overlap this space when maximised.
 *@param pContainer the container
@@ -161,32 +158,13 @@ void gldi_container_set_screen (GldiContainer* pContainer, int iNumScreen);
 
 void gldi_container_manager_register_backend (GldiContainerManagerBackend *pBackend);
 
-
-/** Wrapper around gdk_window_move_to_rect() that can be called anytime.
- * 	Originally, gdk_window_move_to_rect() can only be called after
- * 	the container's window has been realized (has been associated with a
- * 	GdkWindow). On the other hand, on Wayland with layer-shell, this needs
- * 	to be set up before the container's window is mapped (it is not possible
- * 	to move a popup after it was mapped).
- *  See https://developer.gnome.org/gdk3/stable/gdk3-Windows.html#gdk-window-move-to-rect
- * 	for the description of the parameters used, except for the anchors which
- *  are interpreted as relative values compared to the width and height of
- *  the corresponding GdkWindow. */
-void gldi_container_move_to_rect (GldiContainer *pContainer,
-									const GdkRectangle *rect,
-									GdkGravity rect_anchor,
-									GdkGravity window_anchor,
-									GdkAnchorHints anchor_hints,
-									gdouble rel_anchor_dx,
-									gdouble rel_anchor_dy);
-
 /** Calculate the parameters to pass to gldi_container_move_to_rect() to
  * 	position a child container on the given pContainer, pointing to pPointedIcon.
  * 	This can be used for subdocks, dialogs and menus.
  *  The bSkipLabel parameter controls whether to leave space for an icon's label on a horizontal dock
  *  (should be TRUE for subdocks and dialogs, FALSE for menus). */
 void gldi_container_calculate_rect (const GldiContainer* pContainer, const Icon* pPointedIcon,
-			GdkRectangle *rect, GdkGravity* rect_anchor, GdkGravity* window_anchor, gboolean bSkipLabel);
+	GdkRectangle *rect, GtkPositionType *pos, gboolean bSkipLabel);
 
 /** Calculate the aimed point of sub-containers (menus and dialogs), based on
  * 	relative positioning. This can be used to point an arrow to the corresponding
@@ -222,8 +200,7 @@ void gldi_container_set_keep_below (GldiContainer *pContainer, gboolean bKeepBel
 /// backend-specific handling of leave / enter events on a dock
 /// on Wayland, these update iMousePositionType (this is the only place we can do this)
 /// the leave event handler should return if the mouse is really outside the dock
-gboolean gldi_container_dock_handle_leave (CairoDock *pDock, GdkEventCrossing *pEvent);
-void gldi_container_dock_handle_enter (CairoDock *pDock, GdkEventCrossing *pEvent);
+gboolean gldi_container_dock_handle_leave (CairoDock *pDock, gboolean bRealEvent);
 
 /// check if the mouse is inside the dock (basic case) and update iMousePositionType
 /// only supported on X11
@@ -233,8 +210,6 @@ void gldi_container_dock_check_if_mouse_inside_linear (CairoDock *pDock);
   ////////////
  // REDRAW //
 ////////////
-
-void cairo_dock_set_default_rgba_visual (GtkWidget *pWidget);
 
 /** Enable a Container to accept drag-and-drops.
 * @param pContainer a container.
@@ -246,7 +221,7 @@ void cairo_dock_set_default_rgba_visual (GtkWidget *pWidget);
 void gldi_container_disable_drop (GldiContainer *pContainer); // not used at all
 
 /// Get the GdkAtom used internally from dragging icons between docks
-GdkAtom gldi_container_icon_dnd_atom (void);
+// GdkAtom gldi_container_icon_dnd_atom (void);
 
 /** Notify everybody that a drop has just occurred.
 * @param cReceivedData the dropped data.

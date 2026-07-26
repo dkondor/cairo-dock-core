@@ -90,6 +90,7 @@ static guint s_iIdle = 0;
 static void (*s_fNotify)(void) = NULL;
 
 /* Facility to ask the user to pick a window */
+/*
 struct wft_pick_window_response {
 	GldiWaylandWindowActor* wactor;
 	GtkDialog* dialog;
@@ -109,6 +110,7 @@ static void _pick_window_cb (GldiWaylandWindowActor* wactor, void* data)
 	gtk_dialog_response(res->dialog, 0);
 }
 
+
 GldiWindowActor* gldi_wayland_wm_pick_window (GtkWindow *pParentWindow)
 {
 	struct wft_pick_window_response res;
@@ -127,7 +129,7 @@ GldiWindowActor* gldi_wayland_wm_pick_window (GtkWindow *pParentWindow)
 	if (s_pSelf) gldi_window_show(s_pSelf);
 	return (GldiWindowActor*)res.wactor;
 }
-
+*/
 
 
 void gldi_wayland_wm_title_changed (GldiWaylandWindowActor *wactor, const char *title, gboolean notify)

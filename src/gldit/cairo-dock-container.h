@@ -186,7 +186,7 @@ struct _GldiContainer {
 ///////////
 
 
-#define gldi_container_get_gdk_window(pContainer) gtk_widget_get_window ((pContainer)->pWidget)
+#define gldi_container_get_gdk_window(pContainer) gtk_native_get_surface (gtk_widget_get_native ((pContainer)->pWidget))
 
 #define gldi_container_is_visible(pContainer) gtk_widget_get_visible ((pContainer)->pWidget)
 

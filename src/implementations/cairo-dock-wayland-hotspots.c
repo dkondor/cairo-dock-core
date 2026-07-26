@@ -28,10 +28,10 @@
 #include "cairo-dock-dock-priv.h"
 #include "cairo-dock-log.h"
 #include <gdk/gdk.h>
-#include <gdk/gdkwayland.h>
+#include <gdk/wayland/gdkwayland.h>
 
 #ifdef HAVE_GTK_LAYER_SHELL
-#include <gtk-layer-shell.h>
+#include <gtk4-layer-shell.h>
 extern gboolean g_bDisableLayerShell;
 #endif
 

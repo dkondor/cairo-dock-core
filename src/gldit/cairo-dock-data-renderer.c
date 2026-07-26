@@ -193,7 +193,7 @@ void cairo_dock_render_overlays_to_texture (CairoDataRenderer *pRenderer, int iN
 	{
 		CairoDataRendererTextParam *pText;
 		pText = &pRenderer->pValuesText[iNumValue];
-		if (pText->fWidth != 0 && pText->fHeight != 0)
+	/*	if (pText->fWidth != 0 && pText->fHeight != 0)
 		{
 			cairo_data_renderer_format_value (pRenderer, iNumValue);
 			
@@ -215,7 +215,7 @@ void cairo_dock_render_overlays_to_texture (CairoDataRenderer *pRenderer, int iN
 			
 			glPopMatrix ();
 			glColor3f (1.0, 1.0, 1.0);
-		}
+		}*/
 	}
 	glPopMatrix ();
 }

@@ -98,7 +98,7 @@ gchar *cairo_dock_get_theme_path_for_module (const gchar *cAppletConfFilePath, G
 void cairo_dock_play_sound (const gchar *cSoundPath);
 
 
-void cairo_dock_pop_up_about_applet (GtkMenuItem *menu_item, GldiModuleInstance *pModuleInstance);
+// void cairo_dock_pop_up_about_applet (GtkMenuItem *menu_item, GldiModuleInstance *pModuleInstance);
 
 void cairo_dock_open_module_config_on_demand (int iClickedButton, GtkWidget *pInteractiveWidget, GldiModuleInstance *pModuleInstance, CairoDialog *pDialog);
 

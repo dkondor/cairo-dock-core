@@ -32,9 +32,9 @@ gboolean cairo_dock_notification_middle_click_icon (gpointer pUserData, Icon *ic
 
 gboolean cairo_dock_notification_scroll_icon (gpointer pUserData, Icon *icon, GldiContainer *pContainer, int iDirection, gboolean);
 
-gboolean cairo_dock_notification_drop_data_selection (gpointer pUserData,
-	GtkSelectionData *selection_data, Icon *icon, double fOrder,
-	GldiContainer *pContainer, gboolean *bHandled);
+// gboolean cairo_dock_notification_drop_data_selection (gpointer pUserData,
+// 	GtkSelectionData *selection_data, Icon *icon, double fOrder,
+// 	GldiContainer *pContainer, gboolean *bHandled);
 
 
 void cairo_dock_set_custom_icon_on_appli (const gchar *cFilePath, Icon *icon, GldiContainer *pContainer);

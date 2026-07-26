@@ -31,7 +31,6 @@
 #include "cairo-dock-backends-manager.h"
 #include "cairo-dock-container-priv.h"
 #include "cairo-dock-image-buffer.h"
-#include "cairo-dock-desktop-manager.h"  // g_pFakeTransparencyDesktopBg
 #include "cairo-dock-windows-manager.h"
 #include "cairo-dock-style-manager.h"
 #include "cairo-dock-draw-opengl.h"  // pour cairo_dock_render_one_icon
@@ -39,11 +38,9 @@
 #include "cairo-dock-draw.h"
 
 extern CairoDockImageBuffer g_pVisibleZoneBuffer;
-
-extern GldiDesktopBackground *g_pFakeTransparencyDesktopBg;
 extern gboolean g_bUseOpenGL;
 
-
+/*
 cairo_t * cairo_dock_create_drawing_context_generic (GldiContainer *pContainer)
 {
 	return gdk_cairo_create (gldi_container_get_gdk_window (pContainer));
@@ -58,24 +55,16 @@ cairo_t *cairo_dock_create_drawing_context_on_container (GldiContainer *pContain
 	
 	return pCairoContext;
 }
-
+*/
 void cairo_dock_init_drawing_context_on_container (GldiContainer *pContainer, cairo_t *pCairoContext)
 {
-	if (g_pFakeTransparencyDesktopBg && g_pFakeTransparencyDesktopBg->pSurface)
-	{
-		if (pContainer->bIsHorizontal)
-			cairo_set_source_surface (pCairoContext, g_pFakeTransparencyDesktopBg->pSurface, - pContainer->iWindowPositionX, - pContainer->iWindowPositionY);
-		else
-			cairo_set_source_surface (pCairoContext, g_pFakeTransparencyDesktopBg->pSurface, - pContainer->iWindowPositionY, - pContainer->iWindowPositionX);
-	}
-	else
-		cairo_set_source_rgba (pCairoContext, 0.0, 0.0, 0.0, 0.0);
+	cairo_set_source_rgba (pCairoContext, 0.0, 0.0, 0.0, 0.0);
 	cairo_set_operator (pCairoContext, CAIRO_OPERATOR_SOURCE);
 	cairo_paint (pCairoContext);
 	
 	cairo_set_operator (pCairoContext, CAIRO_OPERATOR_OVER);
 }
-
+/*
 cairo_t *cairo_dock_create_drawing_context_on_area (GldiContainer *pContainer, GdkRectangle *pArea, double *fBgColor)
 {
 	cairo_t *pCairoContext = cairo_dock_create_drawing_context_generic (pContainer);
@@ -91,19 +80,7 @@ cairo_t *cairo_dock_create_drawing_context_on_area (GldiContainer *pContainer, G
 		cairo_clip (pCairoContext);
 	}
 	
-	///if (myContainersParam.bUseFakeTransparency)
-	///{
-		if (g_pFakeTransparencyDesktopBg && g_pFakeTransparencyDesktopBg->pSurface)
-		{
-			if (pContainer->bIsHorizontal)
-				cairo_set_source_surface (pCairoContext, g_pFakeTransparencyDesktopBg->pSurface, - pContainer->iWindowPositionX, - pContainer->iWindowPositionY);
-			else
-				cairo_set_source_surface (pCairoContext, g_pFakeTransparencyDesktopBg->pSurface, - pContainer->iWindowPositionY, - pContainer->iWindowPositionX);
-		}
-		/**else
-			cairo_set_source_rgba (pCairoContext, 0.8, 0.8, 0.8, 0.0);
-	}*/
-	else if (fBgColor != NULL)
+	if (fBgColor != NULL)
 		cairo_set_source_rgba (pCairoContext, fBgColor[0], fBgColor[1], fBgColor[2], fBgColor[3]);
 	else
 		cairo_set_source_rgba (pCairoContext, 0.0, 0.0, 0.0, 0.0);
@@ -113,7 +90,7 @@ cairo_t *cairo_dock_create_drawing_context_on_area (GldiContainer *pContainer, G
 	cairo_set_operator (pCairoContext, CAIRO_OPERATOR_OVER);
 	return pCairoContext;
 }
-
+*/
 
 
 
