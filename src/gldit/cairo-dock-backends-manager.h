@@ -27,7 +27,7 @@
 #include "cairo-dock-object.h"
 #include "cairo-dock-desklet-factory.h"
 #include "cairo-dock-dock-factory.h"
-#include "cairo-dock-dialog-factory.h"
+// #include "cairo-dock-dialog-factory.h"
 G_BEGIN_DECLS
 
 // manager
@@ -96,20 +96,20 @@ void cairo_dock_set_default_renderer (CairoDock *pDock);
 
 void cairo_dock_set_desklet_renderer (CairoDesklet *pDesklet, CairoDeskletRenderer *pRenderer, CairoDeskletRendererConfigPtr pConfig);
 void cairo_dock_set_desklet_renderer_by_name (CairoDesklet *pDesklet, const gchar *cRendererName, CairoDeskletRendererConfigPtr pConfig);
-
+/*
 void cairo_dock_set_dialog_renderer (CairoDialog *pDialog, CairoDialogRenderer *pRenderer, CairoDialogRendererConfigPtr pConfig);
 void cairo_dock_set_dialog_renderer_by_name (CairoDialog *pDialog, const gchar *cRendererName, CairoDialogRendererConfigPtr pConfig);
-
+*/
 // Dialog decorator
 CairoDialogDecorator *cairo_dock_get_dialog_decorator (const gchar *cDecoratorName);
 void cairo_dock_register_dialog_decorator (const gchar *cDecoratorName, CairoDialogDecorator *pDecorator);
 void cairo_dock_remove_dialog_decorator (const gchar *cDecoratorName);
-void cairo_dock_set_dialog_decorator (CairoDialog *pDialog, CairoDialogDecorator *pDecorator);
-void cairo_dock_set_dialog_decorator_by_name (CairoDialog *pDialog, const gchar *cDecoratorName);
+// void cairo_dock_set_dialog_decorator (CairoDialog *pDialog, CairoDialogDecorator *pDecorator);
+// void cairo_dock_set_dialog_decorator_by_name (CairoDialog *pDialog, const gchar *cDecoratorName);
 
 
 void cairo_dock_render_desklet_with_new_data (CairoDesklet *pDesklet, CairoDeskletRendererDataPtr pNewData);
-void cairo_dock_render_dialog_with_new_data (CairoDialog *pDialog, CairoDialogRendererDataPtr pNewData);
+// void cairo_dock_render_dialog_with_new_data (CairoDialog *pDialog, CairoDialogRendererDataPtr pNewData);
 
 
 void cairo_dock_foreach_dock_renderer (GHFunc pFunction, gpointer data);

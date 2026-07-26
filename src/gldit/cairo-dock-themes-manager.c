@@ -34,7 +34,7 @@
 #include "cairo-dock-dock-manager.h"
 #include "cairo-dock-module-manager.h"  // gldi_module_foreach
 #include "cairo-dock-backends-manager.h"
-#include "cairo-dock-dialog-manager.h"
+// #include "cairo-dock-dialog-manager.h"
 #include "cairo-dock-icon-facility.h"  // gldi_icons_get_any_without_dialog
 #include "cairo-dock-task.h"
 #include "cairo-dock-log.h"
@@ -204,9 +204,9 @@ gboolean cairo_dock_export_current_theme (const gchar *cNewThemeName, gboolean b
 		if (pIcon == NULL || cairo_dock_get_icon_container (pIcon) == NULL)  // if not available, get any icon
 			pIcon = gldi_icons_get_any_without_dialog ();
 		cd_debug ("%s", pIcon->cName);
-		int iClickedButton = gldi_dialog_show_and_wait (cQuestion,
+		int iClickedButton = 0; /* gldi_dialog_show_and_wait (cQuestion,
 			pIcon, CAIRO_CONTAINER (g_pMainDock),
-			GLDI_SHARE_DATA_DIR"/"CAIRO_DOCK_ICON, NULL);
+			GLDI_SHARE_DATA_DIR"/"CAIRO_DOCK_ICON, NULL); */
 		g_free (cQuestion);
 		if (iClickedButton == 0 || iClickedButton == -1)  // ok button or Enter.
 		{
@@ -334,12 +334,12 @@ gboolean cairo_dock_package_current_theme (const gchar *cThemeName, const gchar 
 
 	if (bSuccess)
 	{
-		gchar *cGeneralMessage = g_strdup_printf ("%s %s", _("Your theme should now be available in this directory:"), cDirPath);
-		gldi_dialog_show_general_message (cGeneralMessage, 8000);
-		g_free (cGeneralMessage);
+		// gchar *cGeneralMessage = g_strdup_printf ("%s %s", _("Your theme should now be available in this directory:"), cDirPath);
+		// gldi_dialog_show_general_message (cGeneralMessage, 8000);
+		// g_free (cGeneralMessage);
 	}
-	else
-		gldi_dialog_show_general_message (_("Error when launching 'cairo-dock-package-theme' script"), 8000);
+	// else
+	// 	gldi_dialog_show_general_message (_("Error when launching 'cairo-dock-package-theme' script"), 8000);
 
 	g_free (cNewThemeName);
 	return bSuccess;
@@ -360,7 +360,7 @@ gchar *cairo_dock_depackage_theme (const gchar *cPackagePath)
 		cNewThemePath = cairo_dock_download_archive (cPackagePath, g_cThemesDirPath);
 		if (cNewThemePath == NULL)
 		{
-			gldi_dialog_show_temporary_with_icon_printf (_("Could not access remote file %s. Maybe the server is down.\nPlease retry later or contact us at https://github.com/Cairo-Dock/cairo-dock-core/issues"), NULL, NULL, 0, NULL, cPackagePath);
+			// gldi_dialog_show_temporary_with_icon_printf (_("Could not access remote file %s. Maybe the server is down.\nPlease retry later or contact us at https://github.com/Cairo-Dock/cairo-dock-core/issues"), NULL, NULL, 0, NULL, cPackagePath);
 		}
 	}
 	return cNewThemePath;
@@ -380,9 +380,9 @@ gboolean cairo_dock_delete_themes (gchar **cThemesList)
 	Icon *pIcon = cairo_dock_get_current_active_icon ();  // it's most probably the icon corresponding to the configuration window
 	if (pIcon == NULL || cairo_dock_get_icon_container (pIcon) == NULL)  // if not available, get any icon
 		pIcon = gldi_icons_get_any_without_dialog ();
-	int iClickedButton = gldi_dialog_show_and_wait (sCommand->str,
+	int iClickedButton = 0; /*gldi_dialog_show_and_wait (sCommand->str,
 		pIcon, cairo_dock_get_icon_container (pIcon),
-		GLDI_SHARE_DATA_DIR"/"CAIRO_DOCK_ICON, NULL);
+		GLDI_SHARE_DATA_DIR"/"CAIRO_DOCK_ICON, NULL);*/
 	if (iClickedButton == 0 || iClickedButton == -1)  // ok button or Enter.
 	{
 		gchar *cThemeName;

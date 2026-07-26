@@ -26,7 +26,7 @@
 #include "cairo-dock-applet-manager.h"
 #include "cairo-dock-class-icon-manager.h"
 #include "cairo-dock-dock-facility.h"
-#include "cairo-dock-dialog-factory.h"  // gldi_dialog_show_temporary_with_default_icon
+// #include "cairo-dock-dialog-factory.h"  // gldi_dialog_show_temporary_with_default_icon
 #include "cairo-dock-themes-manager.h"  // cairo_dock_update_conf_file
 #include "cairo-dock-file-manager.h"  // cairo_dock_copy_file
 #include "cairo-dock-log.h"
@@ -198,7 +198,7 @@ static gboolean _present_class_icon_destroy_cb (G_GNUC_UNUSED gpointer data, Gld
 }
 static void _present_class_cb (gboolean bSuccess, G_GNUC_UNUSED gpointer user_data)
 {
-	if (! bSuccess && ! s_bWarningShown)
+/*	if (! bSuccess && ! s_bWarningShown)
 	{
 		s_bWarningShown = TRUE;
 		Icon *pIcon = s_pLastPresentIcon;
@@ -207,7 +207,7 @@ static void _present_class_cb (gboolean bSuccess, G_GNUC_UNUSED gpointer user_da
 _("Cannot show preview of application windows. Check if your window manager / compositor supports this feature \
 (it is usually called \"scale\" or \"overview\").\nIf this happens only for a particular app, please open a bug report on our Github page."),
 			pIcon, pIcon->pContainer ? pIcon->pContainer : CAIRO_CONTAINER (g_pMainDock), 10000);
-	}
+	} */
 	if (s_pLastPresentIcon) gldi_object_remove_notification (s_pLastPresentIcon, NOTIFICATION_DESTROY,
 		(GldiNotificationFunc) _present_class_icon_destroy_cb, NULL);
 }
@@ -461,14 +461,14 @@ void cairo_dock_set_custom_icon_on_appli (const gchar *cFilePath, Icon *icon, Gl
 	cd_debug ("%s (%s - %s)", __func__, cFilePath, icon->cFileName);
 	if ((strcmp (ext, ".png") == 0 || strcmp (ext, ".svg") == 0) && !myDocksParam.bLockAll) // && ! myDocksParam.bLockIcons) // or if we have to hide the option...
 	{
-		if (!myTaskbarParam.bOverWriteXIcons)
+/*		if (!myTaskbarParam.bOverWriteXIcons)
 		{
 			myTaskbarParam.bOverWriteXIcons = TRUE;
 			cairo_dock_update_conf_file (g_cConfFile,
 				G_TYPE_BOOLEAN, "TaskBar", "overwrite xicon", myTaskbarParam.bOverWriteXIcons,
 				G_TYPE_INVALID);
 			gldi_dialog_show_temporary_with_default_icon (_("The option 'overwrite X icons' has been automatically enabled in the config.\nIt is located in the 'Taskbar' module."), icon, pContainer, 6000);
-		}
+		}*/
 		
 		gchar *cPath = NULL;
 		if (strncmp (cFilePath, "file://", 7) == 0)

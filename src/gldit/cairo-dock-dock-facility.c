@@ -30,7 +30,7 @@
 #include "cairo-dock-log.h"
 #include "cairo-dock-style-manager.h"
 #include "cairo-dock-dock-manager.h"
-#include "cairo-dock-dialog-priv.h"  // gldi_dialogs_replace_all
+// #include "cairo-dock-dialog-priv.h"  // gldi_dialogs_replace_all
 #include "cairo-dock-indicator-manager.h"  // myIndicators.bUseClassIndic
 #include "cairo-dock-animations.h"
 #include "cairo-dock-desktop-manager.h"  // gldi_desktop_get*
@@ -1001,7 +1001,7 @@ void cairo_dock_show_subdock (Icon *pPointedIcon, CairoDock *pParentDock)
 	gldi_object_notify (pPointedIcon, NOTIFICATION_UNFOLD_SUBDOCK, pPointedIcon);
 	pSubDock->bWMIconsNeedUpdate = TRUE; // will update minimize positions when the dock's content actually gets drawn
 	
-	gldi_dialogs_replace_all ();
+	// gldi_dialogs_replace_all ();
 }
 
 

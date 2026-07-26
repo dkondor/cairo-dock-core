@@ -25,9 +25,9 @@ SET(core_lib_SRCS
 	cairo-dock-container.c 				cairo-dock-container.h                  cairo-dock-container-priv.h
 	cairo-dock-desklet-manager.c 		cairo-dock-desklet-manager.h
 	cairo-dock-desklet-factory.c 		cairo-dock-desklet-factory.h
-	cairo-dock-dialog-factory.c 		cairo-dock-dialog-factory.h
-	cairo-dock-dialog-manager.c 		cairo-dock-dialog-manager.h
-	cairo-dock-dialog-priv.h
+	# cairo-dock-dialog-factory.c 		cairo-dock-dialog-factory.h
+	# cairo-dock-dialog-manager.c 		cairo-dock-dialog-manager.h
+	# cairo-dock-dialog-priv.h
 	cairo-dock-dock-manager.c 			cairo-dock-dock-manager.h
 	cairo-dock-dock-factory.c 			cairo-dock-dock-factory.h
 	cairo-dock-dock-facility.c 			cairo-dock-dock-facility.h
@@ -152,7 +152,7 @@ install(FILES
 	cairo-dock-data-renderer-manager.h
 	cairo-dock-dock-manager.h		
 	cairo-dock-desklet-manager.h
-	cairo-dock-dialog-manager.h
+	# cairo-dock-dialog-manager.h
 	cairo-dock-indicator-manager.h
 	cairo-dock-themes-manager.h
 	# cairo-dock-gui-manager.h
@@ -168,7 +168,7 @@ install(FILES
 	cairo-dock-container.h
 	cairo-dock-dock-factory.h
 	cairo-dock-desklet-factory.h
-	cairo-dock-dialog-factory.h
+	# cairo-dock-dialog-factory.h
 	
 	cairo-dock-applet-multi-instance.h 	cairo-dock-applet-single-instance.h
 	cairo-dock-applet-canvas.h			cairo-dock-applet-facility.h

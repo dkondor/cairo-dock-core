@@ -56,7 +56,7 @@
 #include "cairo-dock-dock-facility.h"
 #include "cairo-dock-dock-manager.h"
 #include "cairo-dock-dock-priv.h" // also includes dock-factory
-#include "cairo-dock-dialog-manager.h" // myDialogObjectMgr
+// #include "cairo-dock-dialog-manager.h" // myDialogObjectMgr
 #include "cairo-dock-windows-manager.h"
 
 
@@ -1145,7 +1145,7 @@ static gboolean _on_screen_geometry_changed (G_GNUC_UNUSED gpointer data, gboole
 		s_sidDesktopGeom = g_idle_add (_reposition_root_docks_idle, NULL);
 	return GLDI_NOTIFICATION_LET_PASS;
 }
-
+/*
 static gboolean _on_new_dialog (G_GNUC_UNUSED gpointer data, CairoDialog *pDialog)
 {
 	//\________________ hide sub-dock or label that would overlap it
@@ -1160,7 +1160,7 @@ static gboolean _on_new_dialog (G_GNUC_UNUSED gpointer data, CairoDialog *pDialo
 	
 	return GLDI_NOTIFICATION_LET_PASS;
 }
-
+*/
 static gboolean _render_dock_notification (G_GNUC_UNUSED gpointer pUserData, CairoDock *pDock, cairo_t *pCairoContext)
 {
 	if (pCairoContext)  // cairo
@@ -1792,10 +1792,10 @@ static void init (void)
 		NOTIFICATION_DESKTOP_GEOMETRY_CHANGED,
 		(GldiNotificationFunc) _on_screen_geometry_changed,
 		GLDI_RUN_FIRST, NULL);
-	gldi_object_register_notification (&myDialogObjectMgr,
+/*	gldi_object_register_notification (&myDialogObjectMgr,
 		NOTIFICATION_NEW,
 		(GldiNotificationFunc) _on_new_dialog,
-		GLDI_RUN_AFTER, NULL);
+		GLDI_RUN_AFTER, NULL); */
 	gldi_object_register_notification (&myStyleMgr,
 		NOTIFICATION_STYLE_CHANGED,
 		(GldiNotificationFunc) on_style_changed,

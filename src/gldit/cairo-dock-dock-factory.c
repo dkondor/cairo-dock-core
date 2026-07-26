@@ -52,7 +52,7 @@
 #include "cairo-dock-container-priv.h"
 #include "cairo-dock-dock-facility.h"
 #include "cairo-dock-dock-manager.h"
-#include "cairo-dock-dialog-priv.h" //gldi_dialogs_refresh_all, gldi_dialogs_replace_all
+// #include "cairo-dock-dialog-priv.h" //gldi_dialogs_refresh_all, gldi_dialogs_replace_all
 #include "cairo-dock-dock-priv.h" // also includes dock-factory
 
 // dependencies
@@ -246,7 +246,7 @@ static void _on_change_icon (Icon *pLastPointedIcon, Icon *pPointedIcon, CairoDo
 	}
 	
 	// replace dialogs
-	gldi_dialogs_refresh_all ();
+	// gldi_dialogs_refresh_all ();
 	
 	// hide the sub-dock of the previous pointed icon
 	if (pLastPointedIcon != NULL && pLastPointedIcon->pSubDock != NULL)  // on a quitte une icone ayant un sous-dock.
@@ -1276,7 +1276,7 @@ static gboolean _on_configure (GtkWidget* pWidget, GdkEventConfigure* pEvent, Ca
 		//g_print ("configure size %s\n", pDock->cDockName);
 		cairo_dock_trigger_set_WM_icons_geometry (pDock);  // changement de position ou de taille du dock => on replace les icones.
 		
-		gldi_dialogs_replace_all ();
+		// gldi_dialogs_replace_all ();
 		
 		if (/**bIsNowSized*/bSizeUpdated && g_bUseOpenGL)  // in OpenGL, the context is linked to the window; now that the window has a correct size, the context is ready -> draw things that couldn't be drawn until now.
 		{
@@ -1325,7 +1325,7 @@ static gboolean _on_configure (GtkWidget* pWidget, GdkEventConfigure* pEvent, Ca
 		//g_print ("configure x,y\n");
 		cairo_dock_trigger_set_WM_icons_geometry (pDock);  // changement de position de la fenetre du dock => on replace les icones.
 		
-		gldi_dialogs_replace_all ();
+		// gldi_dialogs_replace_all ();
 	}
 	
 	if (pDock->iRefCount == 0 && (bSizeUpdated || bPositionUpdated))
@@ -1386,7 +1386,7 @@ void _on_drag_data_received (G_GNUC_UNUSED GtkWidget *pWidget, GdkDragContext *d
 		}
 		if (myDocksParam.bLockAll)  // locked, can't add anything.
 		{
-			gldi_dialog_show_temporary_with_default_icon (_("Sorry but the dock is locked"), icon, CAIRO_CONTAINER (pDock), 5000);
+//			gldi_dialog_show_temporary_with_default_icon (_("Sorry but the dock is locked"), icon, CAIRO_CONTAINER (pDock), 5000);
 			gtk_drag_finish (dc, FALSE, FALSE, time);
 			return ;
 		}
@@ -1658,7 +1658,7 @@ static gboolean _cairo_dock_grow_up (CairoDock *pDock)
 
 	if (pDock->iMagnitudeIndex == CAIRO_DOCK_NB_MAX_ITERATIONS && pDock->fFoldingFactor == 0)  // fin de grossissement et de depliage.
 	{
-		gldi_dialogs_replace_all ();
+		// gldi_dialogs_replace_all ();
 		return FALSE;
 	}
 	else
@@ -1766,8 +1766,8 @@ static gboolean _cairo_dock_shrink_down (CairoDock *pDock)
 		{
 			cairo_dock_calculate_dock_icons (pDock);  // relance le grossissement si on est dedans.
 		}
-		if (!pDock->bIsGrowingUp)
-			gldi_dialogs_replace_all ();
+		// if (!pDock->bIsGrowingUp)
+		// 	gldi_dialogs_replace_all ();
 		return (!pDock->bIsGrowingUp && (pDock->fDecorationsOffsetX != 0 || (pDock->fFoldingFactor != 0 && pDock->fFoldingFactor != 1)));
 	}
 	else
@@ -1815,7 +1815,7 @@ static gboolean _cairo_dock_hide (CairoDock *pDock)
 			
 			pDock->pRenderer->calculate_icons (pDock);
 			
-			gldi_dialogs_replace_all ();
+			// gldi_dialogs_replace_all ();
 			
 			if (bVisibleIconsPresent)  // il y'a des icones a montrer progressivement, on reste dans la boucle.
 			{
@@ -1849,7 +1849,7 @@ static gboolean _cairo_dock_show (CairoDock *pDock)
 	if (pDock->fHideOffset < 0.01)
 	{
 		pDock->fHideOffset = 0;
-		gldi_dialogs_replace_all ();  // we need it here so that a modal dialog is replaced when the dock unhides (else it would stay behind).
+		// gldi_dialogs_replace_all ();  // we need it here so that a modal dialog is replaced when the dock unhides (else it would stay behind).
 		gldi_container_update_polling_screen_edge ();
 		cairo_dock_set_icons_geometry_for_window_manager (pDock); // set back the normal minimize locations
 		return FALSE;

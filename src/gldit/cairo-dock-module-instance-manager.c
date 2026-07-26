@@ -28,7 +28,7 @@
 #include "cairo-dock-launcher-manager.h"
 #include "cairo-dock-stack-icon-manager.h"
 #include "cairo-dock-separator-manager.h"
-#include "cairo-dock-dialog-factory.h"  // gldi_dialog_new
+// #include "cairo-dock-dialog-factory.h"  // gldi_dialog_new
 #include "cairo-dock-config.h"  // cairo_dock_get_string_key_value
 #include "cairo-dock-icon-facility.h"  // cairo_dock_set_icon_container
 #include "cairo-dock-dock-priv.h"
@@ -355,14 +355,14 @@ void gldi_module_instance_popup_description (GldiModuleInstance *pModuleInstance
 		dgettext (pModuleInstance->pModule->pVisitCard->cGettextDomain,
 		pModuleInstance->pModule->pVisitCard->cDescription));
 	
-	CairoDialogAttr attr;
+/*	CairoDialogAttr attr;
 	memset (&attr, 0, sizeof (CairoDialogAttr));
 	attr.cText = cDescription;
 	attr.cImageFilePath = pModuleInstance->pModule->pVisitCard->cIconFilePath;
 	attr.bUseMarkup = TRUE;
 	attr.pIcon = pModuleInstance->pIcon;
 	attr.pContainer = pModuleInstance->pContainer;
-	gldi_dialog_new (&attr);
+	gldi_dialog_new (&attr); */
 	
 	g_free (cDescription);
 }

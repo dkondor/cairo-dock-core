@@ -33,7 +33,7 @@
 #include "cairo-dock-icon-factory.h"
 #include "cairo-dock-image-buffer.h"
 #include "cairo-dock-draw.h"
-#include "cairo-dock-dialog-factory.h"  // gldi_dialog_show_temporary
+// #include "cairo-dock-dialog-factory.h"  // gldi_dialog_show_temporary
 #include "cairo-dock-log.h"
 #include "cairo-dock-dock-manager.h"
 #include "cairo-dock-container-priv.h"
@@ -672,7 +672,7 @@ gboolean cairo_dock_fm_move_into_directory (const gchar *cURI, Icon *icon, GldiC
 	{
 		cd_warning ("couldn't copy this file.\nCheck that you have writing rights, and that the new does not already exist.");
 		gchar *cMessage = g_strdup_printf ("Warning : couldn't copy %s into %s.\nCheck that you have writing rights, and that the name does not already exist.", cURI, icon->cBaseURI);
-		gldi_dialog_show_temporary (cMessage, icon, pContainer, 4000);
+		// gldi_dialog_show_temporary (cMessage, icon, pContainer, 4000);
 		g_free (cMessage);
 	}
 	return bSuccess;
