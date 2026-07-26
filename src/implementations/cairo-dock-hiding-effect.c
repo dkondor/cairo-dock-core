@@ -35,7 +35,7 @@ static void _init_opengl (CairoDock *pDock)
 	if (g_bUseOpenGL)
 		cairo_dock_create_redirect_texture_for_dock (pDock);
 }
-
+/*
 static void _pre_render_opengl (CairoDock *pDock, G_GNUC_UNUSED double fOffset)
 {
 	if (pDock->iFboId == 0)
@@ -57,7 +57,7 @@ static void _pre_render_opengl (CairoDock *pDock, G_GNUC_UNUSED double fOffset)
 	}
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
-
+*/
   ///////////////
  // MOVE DOWN //
 ///////////////
@@ -89,6 +89,7 @@ static void _pre_render_move_down (CairoDock *pDock, double fOffset, cairo_t *pC
 }*/
 
 #define NB_POINTS 11  // 5 carres de part et d'autre.
+/*
 static void _post_render_move_down_opengl (CairoDock *pDock, double fOffset)
 {
 	if (pDock->iFboId == 0)
@@ -193,6 +194,7 @@ static void _post_render_move_down_opengl (CairoDock *pDock, double fOffset)
 	}
 	_cairo_dock_disable_texture ();
 }
+*/
 
   //////////////
  // FADE OUT //
@@ -203,7 +205,7 @@ static void _init_fade_out (CairoDock *pDock)
 	if (g_bUseOpenGL && ! g_openglConfig.bAccumBufferAvailable)
 		cairo_dock_create_redirect_texture_for_dock (pDock);
 }
-
+/*
 static void _pre_render_fade_out_opengl (CairoDock *pDock, double fOffset)
 {
 	if (! g_openglConfig.bAccumBufferAvailable && pDock->iFboId != 0)  // pas de glAccum.
@@ -211,7 +213,7 @@ static void _pre_render_fade_out_opengl (CairoDock *pDock, double fOffset)
 		_pre_render_opengl (pDock, fOffset);
 	}
 }
-
+*/
 static void _post_render_fade_out (CairoDock *pDock, double fOffset, cairo_t *pCairoContext)
 {
 	double fAlpha = 1 - fOffset;
@@ -224,7 +226,7 @@ static void _post_render_fade_out (CairoDock *pDock, double fOffset, cairo_t *pC
 	cairo_set_source_rgba (pCairoContext, 0.0, 0.0, 0.0, 1. - fAlpha);
 	cairo_fill (pCairoContext);
 }
-
+/*
 static void _post_render_fade_out_opengl (CairoDock *pDock, double fOffset)
 {
 	double fAlpha = 1 - fOffset;
@@ -271,7 +273,7 @@ static void _post_render_fade_out_opengl (CairoDock *pDock, double fOffset)
 		_cairo_dock_disable_texture ();
 	}
 }
-
+*/
   //////////////////////
  // SEMI TRANSPARENT //
 //////////////////////
@@ -289,7 +291,7 @@ static void _post_render_semi_transparent (CairoDock *pDock, double fOffset, cai
 	cairo_set_source_rgba (pCairoContext, 0.0, 0.0, 0.0, fAlpha);
 	cairo_fill (pCairoContext);
 }
-
+/*
 static void _post_render_semi_transparent_opengl (CairoDock *pDock, double fOffset)
 {
 	double fAlpha = 1 - (1 - CD_SEMI_ALPHA)*fOffset;
@@ -337,7 +339,7 @@ static void _post_render_semi_transparent_opengl (CairoDock *pDock, double fOffs
 		_cairo_dock_disable_texture ();
 	}
 }
-
+*/
   //////////////
  // ZOOM OUT //
 //////////////
@@ -388,7 +390,7 @@ static void _pre_render_zoom (CairoDock *pDock, double fOffset, cairo_t *pCairoC
 		}
 	}
 }
-
+/*
 static void _post_render_zoom_opengl (CairoDock *pDock, double fOffset)
 {
 	if (pDock->iFboId == 0)
@@ -455,7 +457,7 @@ static void _post_render_zoom_opengl (CairoDock *pDock, double fOffset)
 	
 	_cairo_dock_disable_texture ();
 }
-
+*/
   /////////////
  // FOLDING //
 /////////////
@@ -481,7 +483,7 @@ static void _pre_render_folding (CairoDock *pDock, double fOffset, cairo_t *pCai
 		cairo_translate (pCairoContext, -0., -iHeight/2);
 	}
 }
-
+/*
 #define NB_POINTS2 20  // 20 points de pliage.
 static void _post_render_folding_opengl (CairoDock *pDock, double fOffset)
 {
@@ -586,32 +588,32 @@ static void _post_render_folding_opengl (CairoDock *pDock, double fOffset)
 	}
 	_cairo_dock_disable_texture ();
 }
-
+*/
 void cairo_dock_register_hiding_effects (void)
 {
 	CairoDockHidingEffect *p;
 	p = g_new0 (CairoDockHidingEffect, 1);
 	p->cDisplayedName = _("Move down");
-	p->init = _init_opengl;
+	// p->init = _init_opengl;
 	p->pre_render = _pre_render_move_down;
-	p->pre_render_opengl = _pre_render_opengl;
-	p->post_render_opengl = _post_render_move_down_opengl;
+	// p->pre_render_opengl = _pre_render_opengl;
+	// p->post_render_opengl = _post_render_move_down_opengl;
 	cairo_dock_register_hiding_effect ("Move down", p);
 	
 	p = g_new0 (CairoDockHidingEffect, 1);
 	p->cDisplayedName = _("Fade out");
 	p->init = _init_fade_out;
-	p->pre_render_opengl = _pre_render_fade_out_opengl;
+	// p->pre_render_opengl = _pre_render_fade_out_opengl;
 	p->post_render = _post_render_fade_out;
-	p->post_render_opengl = _post_render_fade_out_opengl;
+	// p->post_render_opengl = _post_render_fade_out_opengl;
 	cairo_dock_register_hiding_effect ("Fade out", p);
 	
 	p = g_new0 (CairoDockHidingEffect, 1);
 	p->cDisplayedName = _("Semi transparent");
 	p->init = _init_fade_out;
-	p->pre_render_opengl = _pre_render_fade_out_opengl;
+	// p->pre_render_opengl = _pre_render_fade_out_opengl;
 	p->post_render = _post_render_semi_transparent;
-	p->post_render_opengl = _post_render_semi_transparent_opengl;
+	// p->post_render_opengl = _post_render_semi_transparent_opengl;
 	p->bCanDisplayHiddenDock = TRUE;
 	cairo_dock_register_hiding_effect ("Semi transparent", p);
 	
@@ -619,15 +621,15 @@ void cairo_dock_register_hiding_effects (void)
 	p->cDisplayedName = _("Zoom out");
 	p->init = _init_opengl;
 	p->pre_render = _pre_render_zoom;
-	p->pre_render_opengl = _pre_render_opengl;
-	p->post_render_opengl = _post_render_zoom_opengl;
+	// p->pre_render_opengl = _pre_render_opengl;
+	// p->post_render_opengl = _post_render_zoom_opengl;
 	cairo_dock_register_hiding_effect ("Zoom out", p);
 	
 	p = g_new0 (CairoDockHidingEffect, 1);
 	p->cDisplayedName = _("Folding");
 	p->init = _init_opengl;
 	p->pre_render = _pre_render_folding;
-	p->pre_render_opengl = _pre_render_opengl;
-	p->post_render_opengl = _post_render_folding_opengl;
+	// p->pre_render_opengl = _pre_render_opengl;
+	// p->post_render_opengl = _post_render_folding_opengl;
 	cairo_dock_register_hiding_effect ("Folding", p);
 }
