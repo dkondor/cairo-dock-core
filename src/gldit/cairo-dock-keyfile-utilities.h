@@ -23,7 +23,7 @@
 
 #include <glib.h>
 #include "cairo-dock-struct.h"
-#include "cairo-dock-gui-factory.h"  // CairoDockGUIWidgetType
+// #include "cairo-dock-gui-factory.h"  // CairoDockGUIWidgetType
 G_BEGIN_DECLS
 
 
@@ -80,7 +80,7 @@ void cairo_dock_add_remove_element_to_key (const gchar *cConfFilePath, const gch
 
 /** Add a key to a conf file, so that it can be parsed by the GUI manager.
 */
-void cairo_dock_add_group_key_to_conf_file (GKeyFile *pKeyFile, const gchar *cGroupName, const gchar *ckeyName, const gchar *cInitialValue, CairoDockGUIWidgetType iWidgetType, const gchar *cAuthorizedValues, const gchar *cDescription, const gchar *cTooltip);
+// void cairo_dock_add_group_key_to_conf_file (GKeyFile *pKeyFile, const gchar *cGroupName, const gchar *ckeyName, const gchar *cInitialValue, CairoDockGUIWidgetType iWidgetType, const gchar *cAuthorizedValues, const gchar *cDescription, const gchar *cTooltip);
 
 /** Remove a key from a conf file.
 */

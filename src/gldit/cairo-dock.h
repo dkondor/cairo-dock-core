@@ -71,8 +71,8 @@
 #include <gldit/cairo-dock-dock-facility.h>
 #include <gldit/cairo-dock-animations.h>
 // GUI
-#include <gldit/cairo-dock-gui-manager.h>
-#include <gldit/cairo-dock-gui-factory.h>
+// #include <gldit/cairo-dock-gui-manager.h>
+// #include <gldit/cairo-dock-gui-factory.h>
 // used by applets
 #include <gldit/cairo-dock-applet-facility.h>
 #include <gldit/cairo-dock-applet-canvas.h>

@@ -51,8 +51,8 @@ SET(core_lib_SRCS
 	cairo-dock-draw-opengl.c 			cairo-dock-draw-opengl.h
 	# utilities
 	cairo-dock-log.c 					cairo-dock-log.h
-	cairo-dock-gui-manager.c 			cairo-dock-gui-manager.h
-	cairo-dock-gui-factory.c 			cairo-dock-gui-factory.h
+	# cairo-dock-gui-manager.c 			cairo-dock-gui-manager.h
+	# cairo-dock-gui-factory.c 			cairo-dock-gui-factory.h
 	cairo-dock-keybinder.c 				cairo-dock-keybinder.h
 	cairo-dock-dbus.c 					cairo-dock-dbus.h                       cairo-dock-dbus-priv.h
 	cairo-dock-keyfile-utilities.c 		cairo-dock-keyfile-utilities.h
@@ -155,7 +155,7 @@ install(FILES
 	cairo-dock-dialog-manager.h
 	cairo-dock-indicator-manager.h
 	cairo-dock-themes-manager.h
-	cairo-dock-gui-manager.h
+	# cairo-dock-gui-manager.h
 	cairo-dock-file-manager.h
 	cairo-dock-desktop-manager.h
 	cairo-dock-windows-manager.h
@@ -182,7 +182,7 @@ install(FILES
 	cairo-dock-dock-facility.h
 	cairo-dock-task.h
 	cairo-dock-animations.h
-	cairo-dock-gui-factory.h
+	# cairo-dock-gui-factory.h
 	cairo-dock-menu.h
 	cairo-dock-style-manager.h
 	cairo-dock-style-facility.h

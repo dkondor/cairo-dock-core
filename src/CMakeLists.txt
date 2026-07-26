@@ -6,18 +6,18 @@ SET(cairo_dock_SRCS
 	cairo-dock.c
 	cairo-dock-user-menu.c 				cairo-dock-user-menu.h 
 	cairo-dock-user-interaction.c 		cairo-dock-user-interaction.h 
-	cairo-dock-gui-advanced.c 			cairo-dock-gui-advanced.h
-	cairo-dock-gui-simple.c 			cairo-dock-gui-simple.h
-	cairo-dock-gui-backend.c 			cairo-dock-gui-backend.h
-	cairo-dock-gui-commons.c 			cairo-dock-gui-commons.h
-	cairo-dock-widget.c 				cairo-dock-widget.h
-	cairo-dock-widget-themes.c 			cairo-dock-widget-themes.h
-	cairo-dock-widget-items.c 			cairo-dock-widget-items.h
-	cairo-dock-widget-config.c 			cairo-dock-widget-config.h
-	cairo-dock-widget-plugins.c 		cairo-dock-widget-plugins.h
-	cairo-dock-widget-module.c			cairo-dock-widget-module.h
-	cairo-dock-widget-config-group.c 	cairo-dock-widget-config-group.h
-	cairo-dock-widget-shortkeys.c		cairo-dock-widget-shortkeys.h
+#	cairo-dock-gui-advanced.c 			cairo-dock-gui-advanced.h
+#	cairo-dock-gui-simple.c 			cairo-dock-gui-simple.h
+#	cairo-dock-gui-backend.c 			cairo-dock-gui-backend.h
+#	cairo-dock-gui-commons.c 			cairo-dock-gui-commons.h
+#	cairo-dock-widget.c 				cairo-dock-widget.h
+#	cairo-dock-widget-themes.c 			cairo-dock-widget-themes.h
+#	cairo-dock-widget-items.c 			cairo-dock-widget-items.h
+#	cairo-dock-widget-config.c 			cairo-dock-widget-config.h
+#	cairo-dock-widget-plugins.c 		cairo-dock-widget-plugins.h
+#	cairo-dock-widget-module.c			cairo-dock-widget-module.h
+#	cairo-dock-widget-config-group.c 	cairo-dock-widget-config-group.h
+#	cairo-dock-widget-shortkeys.c		cairo-dock-widget-shortkeys.h
 )
 
 ########### compilation ###############

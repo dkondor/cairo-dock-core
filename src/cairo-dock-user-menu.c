@@ -55,8 +55,8 @@
 #include "cairo-dock-windows-manager-priv.h"
 #include "cairo-dock-wayland-manager.h" // gldi_wayland_manager_have_layer_shell
 #include "cairo-dock-user-interaction.h"  // set_custom_icon_on_appli
-#include "cairo-dock-gui-backend.h"
-#include "cairo-dock-gui-commons.h"
+// #include "cairo-dock-gui-backend.h"
+// #include "cairo-dock-gui-commons.h"
 #include "cairo-dock-applet-facility.h"  // cairo_dock_pop_up_about_applet
 #include "cairo-dock-menu.h"
 #include "cairo-dock-user-menu.h"
@@ -106,7 +106,8 @@ void _menu_destroy_notify (gpointer data, G_GNUC_UNUSED GObject* pObj)
 
 static void _cairo_dock_edit_and_reload_conf (G_GNUC_UNUSED GtkMenuItem *pMenuItem, G_GNUC_UNUSED gpointer data)
 {
-	cairo_dock_show_main_gui ();
+	// cairo_dock_show_main_gui ();
+	cd_warning ("GUI is disabled");
 }
 
 static void _cairo_dock_configure_root_dock (G_GNUC_UNUSED GtkMenuItem *pMenuItem, gpointer ptr)
@@ -114,7 +115,8 @@ static void _cairo_dock_configure_root_dock (G_GNUC_UNUSED GtkMenuItem *pMenuIte
 	CairoDock *pDock = (CairoDock*)ptr;
 	g_return_if_fail (pDock->iRefCount == 0 && ! pDock->bIsMainDock);
 	
-	cairo_dock_show_items_gui (NULL, CAIRO_CONTAINER (pDock), NULL, 0);
+	// cairo_dock_show_items_gui (NULL, CAIRO_CONTAINER (pDock), NULL, 0);
+	cd_warning ("GUI is disabled");
 }
 static void _on_answer_delete_dock (int iClickedButton, G_GNUC_UNUSED GtkWidget *pInteractiveWidget, CairoDock *pDock, G_GNUC_UNUSED CairoDialog *pDialog)
 {
@@ -134,11 +136,12 @@ static void _cairo_dock_delete_dock (G_GNUC_UNUSED GtkMenuItem *pMenuItem, Cairo
 		CAIRO_DOCK_SHARE_DATA_DIR"/"CAIRO_DOCK_ICON,
 		(CairoDockActionOnAnswerFunc)_on_answer_delete_dock, pDock, (GFreeFunc)NULL);
 }
+/*
 static void _cairo_dock_initiate_theme_management (G_GNUC_UNUSED GtkMenuItem *pMenuItem, G_GNUC_UNUSED gpointer data)
 {
 	cairo_dock_show_themes ();
 }
-
+*/
 static void _cairo_dock_add_about_page_with_widget (GtkWidget *pNoteBook, const gchar *cPageLabel, GtkWidget *pWidget)
 {
 	GtkWidget *pVBox, *pScrolledWindow;
@@ -228,10 +231,10 @@ static void _cairo_dock_about (G_GNUC_UNUSED GtkMenuItem *pMenuItem, GldiContain
 	gtk_widget_set_tooltip_text (pLink, _("Find the latest version of Cairo-Dock here !"));
 	gtk_box_pack_start (GTK_BOX (pVBox), pLink, FALSE, FALSE, 0);
 	
-	gchar *cLink = cairo_dock_get_third_party_applets_link ();
+/*	gchar *cLink = cairo_dock_get_third_party_applets_link ();
 	pLink = gtk_link_button_new_with_label (cLink, _("Get more applets!"));
 	g_free (cLink);
-	gtk_box_pack_start (GTK_BOX (pVBox), pLink, FALSE, FALSE, 0);
+	gtk_box_pack_start (GTK_BOX (pVBox), pLink, FALSE, FALSE, 0); */
 	
 	gchar *cLabel = g_strdup_printf ("%s (Flattr)", _("Donate"));
 	pLink = gtk_link_button_new_with_label (CAIRO_DOCK_FLATTR_URL, cLabel);
@@ -367,19 +370,21 @@ static void _cairo_dock_about (G_GNUC_UNUSED GtkMenuItem *pMenuItem, GldiContain
 
 static void _cairo_dock_show_third_party_applets (G_GNUC_UNUSED GtkMenuItem *pMenuItem, G_GNUC_UNUSED gpointer data)
 {
-	gchar *cLink = cairo_dock_get_third_party_applets_link ();
+/*	gchar *cLink = cairo_dock_get_third_party_applets_link ();
 	cairo_dock_fm_launch_uri (cLink);
-	g_free (cLink);
+	g_free (cLink); */
+	cd_warning ("GUI has been disabled!");
 }
 
 static void _cairo_dock_present_help (G_GNUC_UNUSED GtkMenuItem *pMenuItem, G_GNUC_UNUSED gpointer data)
 {
-	int iMode = cairo_dock_gui_backend_get_mode ();
+/*	int iMode = cairo_dock_gui_backend_get_mode ();
 	if (iMode == 0)
 		cairo_dock_load_user_gui_backend (1); // load the advanced mode (it seems it's currently not possible to open the Help with the Simple mode)
 	cairo_dock_show_module_gui ("Help");
 	if (iMode == 0)
-		cairo_dock_load_user_gui_backend (0);
+		cairo_dock_load_user_gui_backend (0); */
+	cd_warning ("GUI has been disabled!");
 }
 
 static void _cairo_dock_quick_hide (G_GNUC_UNUSED GtkMenuItem *pMenuItem, G_GNUC_UNUSED gpointer data)
@@ -531,6 +536,9 @@ static double _get_next_order (Icon *icon, CairoDock *pDock)
 
 static void _cairo_dock_add_launcher (G_GNUC_UNUSED GtkMenuItem *pMenuItem, gpointer data)
 {
+	cd_warning ("GUI is disabled");
+	return;
+	/*
 	struct _MenuParams *params = (struct _MenuParams*) data;
 	Icon *icon = params->pIcon;
 	CairoDock *pDock = CAIRO_DOCK (params->pContainer);
@@ -540,6 +548,7 @@ static void _cairo_dock_add_launcher (G_GNUC_UNUSED GtkMenuItem *pMenuItem, gpoi
 		cd_warning ("Couldn't create create the icon.\nCheck that you have writing permissions on ~/.config/cairo-dock and its sub-folders");
 	else
 		cairo_dock_show_items_gui (pNewIcon, NULL, NULL, -1);  // open the config so that the user can complete its fields
+	*/
 }
 
 static void _cairo_dock_add_sub_dock (G_GNUC_UNUSED GtkMenuItem *pMenuItem, gpointer data)
@@ -566,7 +575,7 @@ static void _cairo_dock_add_main_dock (G_GNUC_UNUSED GtkMenuItem *pMenuItem, G_G
 	gchar *cDockName = gldi_dock_add_conf_file ();
 	gldi_dock_new (cDockName);
 	
-	cairo_dock_gui_trigger_reload_items ();  // we could also connect to the signal "new-object" on docks...
+	// cairo_dock_gui_trigger_reload_items ();  // we could also connect to the signal "new-object" on docks...
 	
 	g_timeout_add_seconds (1, (GSourceFunc)_show_new_dock_msg, cDockName);  // delai, car sa fenetre n'est pas encore bien placee (0,0).
 }
@@ -584,7 +593,8 @@ static void _cairo_dock_add_separator (G_GNUC_UNUSED GtkMenuItem *pMenuItem, gpo
 
 static void _cairo_dock_add_applet (G_GNUC_UNUSED GtkMenuItem *pMenuItem, G_GNUC_UNUSED gpointer *data)
 {
-	cairo_dock_show_addons ();
+	cd_warning ("GUI is disabled");
+	// cairo_dock_show_addons ();
 }
 
 static void _add_add_entry (GtkWidget *pMenu, struct _MenuParams *params)
@@ -665,7 +675,8 @@ static void _cairo_dock_modify_launcher (G_GNUC_UNUSED GtkMenuItem *pMenuItem, g
 		return ;
 	}
 	
-	cairo_dock_show_items_gui (icon, NULL, NULL, -1);
+	// cairo_dock_show_items_gui (icon, NULL, NULL, -1);
+	cd_warning ("GUI is disabled");
 }
 
 static void _cairo_dock_move_launcher_to_dock (GtkMenuItem *pMenuItem, const gchar *cDockName)
@@ -795,7 +806,8 @@ static void _cairo_dock_initiate_config_module (G_GNUC_UNUSED GtkMenuItem *pMenu
 		icon = (CAIRO_DESKLET (pContainer))->pIcon;  // l'icone cliquee du desklet n'est pas forcement celle qui contient le module.
 	g_return_if_fail (CAIRO_DOCK_IS_APPLET (icon));
 	
-	cairo_dock_show_items_gui (icon, NULL, NULL, -1);
+	// cairo_dock_show_items_gui (icon, NULL, NULL, -1);
+	cd_warning ("GUI is disabled");
 }
 
 static void _cairo_dock_detach_module (G_GNUC_UNUSED GtkMenuItem *pMenuItem, gpointer data)
@@ -1053,7 +1065,7 @@ gboolean cairo_dock_notification_build_container_menu (G_GNUC_UNUSED gpointer *p
 		}
 
 		// themes
-		if (cairo_dock_can_manage_themes ())
+/*		if (cairo_dock_can_manage_themes ())
 		{
 			gldi_menu_add_item_with_tooltip (pSubMenu,
 				_("Manage themes"),
@@ -1061,7 +1073,7 @@ gboolean cairo_dock_notification_build_container_menu (G_GNUC_UNUSED gpointer *p
 				_("Choose from amongst many themes on the server or save your current theme."),
 				_cairo_dock_initiate_theme_management,
 				NULL);
-		}
+		}*/
 
 		// add new item
 		if (CAIRO_DOCK_IS_DOCK (pContainer))
@@ -1587,7 +1599,7 @@ static void _cairo_dock_move_class_to_current_desktop (G_GNUC_UNUSED GtkMenuItem
 static inline void _cairo_dock_set_desklet_accessibility (CairoDesklet *pDesklet, CairoDeskletVisibility iVisibility)
 {
 	gldi_desklet_set_accessibility (pDesklet, iVisibility, TRUE);  // TRUE <=> save state in conf.
-	cairo_dock_gui_update_desklet_visibility (pDesklet);
+	// cairo_dock_gui_update_desklet_visibility (pDesklet);
 }
 static void _cairo_dock_keep_below (GtkCheckMenuItem *pMenuItem, gpointer data)
 {
@@ -1635,7 +1647,7 @@ static void _cairo_dock_set_on_all_desktop (GtkCheckMenuItem *pMenuItem, gpointe
 	CairoDesklet *pDesklet = CAIRO_DESKLET (params->pContainer);
 	gboolean bSticky = gtk_check_menu_item_get_active (GTK_CHECK_MENU_ITEM (pMenuItem));
 	gldi_desklet_set_sticky (pDesklet, bSticky);
-	cairo_dock_gui_update_desklet_visibility (pDesklet);
+	// cairo_dock_gui_update_desklet_visibility (pDesklet);
 }
 
 static void _cairo_dock_lock_position (GtkMenuItem *pMenuItem, gpointer data)
@@ -1644,7 +1656,7 @@ static void _cairo_dock_lock_position (GtkMenuItem *pMenuItem, gpointer data)
 	CairoDesklet *pDesklet = CAIRO_DESKLET (params->pContainer);
 	gboolean bLocked = gtk_check_menu_item_get_active (GTK_CHECK_MENU_ITEM (pMenuItem));
 	gldi_desklet_lock_position (pDesklet, bLocked);
-	cairo_dock_gui_update_desklet_visibility (pDesklet);
+	// cairo_dock_gui_update_desklet_visibility (pDesklet);
 }
 
 

@@ -39,7 +39,7 @@
 #include "cairo-dock-draw-opengl.h"
 #include "cairo-dock-icon-factory.h"
 #include "cairo-dock-container-priv.h"
-#include "cairo-dock-gui-manager.h"
+// #include "cairo-dock-gui-manager.h"
 #include "cairo-dock-backends-manager.h"
 #include "cairo-dock-dock-facility.h"
 #include "cairo-dock-dock-priv.h"
@@ -323,7 +323,7 @@ void cairo_dock_open_module_config_on_demand (int iClickedButton, G_GNUC_UNUSED 
 {
 	if (iClickedButton == 0 || iClickedButton == -1)  // bouton OK ou touche Entree.
 	{
-		cairo_dock_show_module_instance_gui (pModuleInstance, -1);
+		// cairo_dock_show_module_instance_gui (pModuleInstance, -1);
 	}
 }
 

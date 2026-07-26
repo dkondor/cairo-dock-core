@@ -368,13 +368,13 @@ add_subdirectory (po)
 ############# HELP #################
 # this is actually a plug-in for cairo-dock, not for gldi
 # it uses some functions of cairo-dock (they are binded dynamically), that's why it can't go with other plug-ins
-set (GETTEXT_HELP ${GETTEXT_PACKAGE})
-set (VERSION_HELP "0.11.1")
-set (PACKAGE_HELP "cd-Help")
-set (helpdatadir "${pkgdatadir}/plug-ins/Help")
-set (dock_version "${VERSION}")
-configure_file (${CMAKE_CURRENT_SOURCE_DIR}/Help/data/Help.conf.in ${CMAKE_CURRENT_BINARY_DIR}/Help/data/Help.conf)
-add_subdirectory (Help)
+# set (GETTEXT_HELP ${GETTEXT_PACKAGE})
+# set (VERSION_HELP "0.11.1")
+# set (PACKAGE_HELP "cd-Help")
+# set (helpdatadir "${pkgdatadir}/plug-ins/Help")
+# set (dock_version "${VERSION}")
+# configure_file (${CMAKE_CURRENT_SOURCE_DIR}/Help/data/Help.conf.in ${CMAKE_CURRENT_BINARY_DIR}/Help/data/Help.conf)
+# add_subdirectory (Help)
 
 ########### file generation ###############
 

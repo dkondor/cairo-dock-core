@@ -36,7 +36,7 @@
 #include "cairo-dock-class-manager-priv.h"
 #include "cairo-dock-desktop-manager.h"
 #include "cairo-dock-windows-manager.h"
-#include "cairo-dock-gui-backend.h"
+// #include "cairo-dock-gui-backend.h"
 #include "cairo-dock-user-interaction.h"
 
 extern gboolean g_bLocked;
@@ -494,7 +494,7 @@ void cairo_dock_set_custom_icon_on_appli (const gchar *cFilePath, Icon *icon, Gl
 gboolean cairo_dock_notification_configure_desklet (G_GNUC_UNUSED gpointer pUserData, CairoDesklet *pDesklet)
 {
 	//g_print ("desklet %s configured\n", pDesklet->pIcon?pDesklet->pIcon->cName:"unknown");
-	cairo_dock_gui_update_desklet_params (pDesklet);
+	// cairo_dock_gui_update_desklet_params (pDesklet);
 	
 	return GLDI_NOTIFICATION_LET_PASS;
 }
@@ -502,13 +502,13 @@ gboolean cairo_dock_notification_configure_desklet (G_GNUC_UNUSED gpointer pUser
 gboolean cairo_dock_notification_icon_moved (G_GNUC_UNUSED gpointer pUserData, Icon *pIcon, G_GNUC_UNUSED CairoDock *pDock)
 {
 	//g_print ("icon %s moved\n", pIcon?pIcon->cName:"unknown");
-	
+	/*
 	if (CAIRO_DOCK_ICON_TYPE_IS_LAUNCHER (pIcon)
 	|| CAIRO_DOCK_ICON_TYPE_IS_CONTAINER (pIcon)
 	|| (CAIRO_DOCK_ICON_TYPE_IS_SEPARATOR (pIcon) && pIcon->cDesktopFileName)
 	|| CAIRO_DOCK_ICON_TYPE_IS_APPLET (pIcon))
 		cairo_dock_gui_trigger_reload_items ();
-	
+	*/
 	return GLDI_NOTIFICATION_LET_PASS;
 }
 
@@ -517,13 +517,13 @@ gboolean cairo_dock_notification_icon_inserted (G_GNUC_UNUSED gpointer pUserData
 	//g_print ("icon %s inserted (%.2f)\n", pIcon?pIcon->cName:"unknown", pIcon->fInsertRemoveFactor);
 	//if (pIcon->fInsertRemoveFactor == 0)
 	//	return GLDI_NOTIFICATION_LET_PASS;
-	
+	/*
 	if ( ( (CAIRO_DOCK_ICON_TYPE_IS_LAUNCHER (pIcon)
 	|| CAIRO_DOCK_ICON_TYPE_IS_CONTAINER (pIcon)
 	|| CAIRO_DOCK_ICON_TYPE_IS_SEPARATOR (pIcon)) && pIcon->cDesktopFileName)
 	|| CAIRO_DOCK_ICON_TYPE_IS_APPLET (pIcon))
 		cairo_dock_gui_trigger_reload_items ();
-	
+	*/
 	return GLDI_NOTIFICATION_LET_PASS;
 }
 
@@ -532,13 +532,13 @@ gboolean cairo_dock_notification_icon_removed (G_GNUC_UNUSED gpointer pUserData,
 	//g_print ("icon %s removed (%.2f)\n", pIcon?pIcon->cName:"unknown", pIcon->fInsertRemoveFactor);
 	//if (pIcon->fInsertRemoveFactor == 0)
 	//	return GLDI_NOTIFICATION_LET_PASS;
-	
+	/*
 	if ( ( (CAIRO_DOCK_ICON_TYPE_IS_LAUNCHER (pIcon)
 	|| CAIRO_DOCK_ICON_TYPE_IS_CONTAINER (pIcon)
 	|| CAIRO_DOCK_ICON_TYPE_IS_SEPARATOR (pIcon)) && pIcon->cDesktopFileName)
 	|| CAIRO_DOCK_ICON_TYPE_IS_APPLET (pIcon))
 		cairo_dock_gui_trigger_reload_items ();
-	
+	*/
 	return GLDI_NOTIFICATION_LET_PASS;
 }
 
@@ -547,7 +547,7 @@ gboolean cairo_dock_notification_desklet_added_removed (G_GNUC_UNUSED gpointer p
 	//Icon *pIcon = pDesklet->pIcon;
 	//g_print ("desklet %s removed\n", pIcon?pIcon->cName:"unknown");
 	
-	cairo_dock_gui_trigger_reload_items ();
+	// cairo_dock_gui_trigger_reload_items ();
 	
 	return GLDI_NOTIFICATION_LET_PASS;
 }
@@ -555,7 +555,7 @@ gboolean cairo_dock_notification_desklet_added_removed (G_GNUC_UNUSED gpointer p
 gboolean cairo_dock_notification_dock_destroyed (G_GNUC_UNUSED gpointer pUserData, G_GNUC_UNUSED CairoDock *pDock)
 {
 	//g_print ("dock destroyed\n");
-	cairo_dock_gui_trigger_reload_items ();
+	// cairo_dock_gui_trigger_reload_items ();
 	
 	return GLDI_NOTIFICATION_LET_PASS;
 }
@@ -563,9 +563,9 @@ gboolean cairo_dock_notification_dock_destroyed (G_GNUC_UNUSED gpointer pUserDat
 gboolean cairo_dock_notification_module_activated (G_GNUC_UNUSED gpointer pUserData, const gchar *cModuleName, G_GNUC_UNUSED gboolean bActivated)
 {
 	//g_print ("module %s (de)activated (%d)\n", cModuleName, bActivated);
-	cairo_dock_gui_trigger_update_module_state (cModuleName);
+	// cairo_dock_gui_trigger_update_module_state (cModuleName);
 	
-	cairo_dock_gui_trigger_reload_items ();  // for plug-ins that don't have an applet, like Cairo-Pinguin.
+	// cairo_dock_gui_trigger_reload_items ();  // for plug-ins that don't have an applet, like Cairo-Pinguin.
 	
 	return GLDI_NOTIFICATION_LET_PASS;
 }
@@ -573,7 +573,7 @@ gboolean cairo_dock_notification_module_activated (G_GNUC_UNUSED gpointer pUserD
 gboolean cairo_dock_notification_module_registered (G_GNUC_UNUSED gpointer pUserData, G_GNUC_UNUSED const gchar *cModuleName, G_GNUC_UNUSED gboolean bRegistered)
 {
 	//g_print ("module %s (un)registered (%d)\n", cModuleName, bRegistered);
-	cairo_dock_gui_trigger_update_modules_list ();
+	// cairo_dock_gui_trigger_update_modules_list ();
 	
 	return GLDI_NOTIFICATION_LET_PASS;
 }
@@ -581,16 +581,16 @@ gboolean cairo_dock_notification_module_registered (G_GNUC_UNUSED gpointer pUser
 gboolean cairo_dock_notification_module_detached (G_GNUC_UNUSED gpointer pUserData, GldiModuleInstance *pInstance, gboolean bIsDetached)
 {
 	//g_print ("module %s (de)tached (%d)\n", pInstance->pModule->pVisitCard->cModuleName, bIsDetached);
-	cairo_dock_gui_trigger_update_module_container (pInstance, bIsDetached);
+	// cairo_dock_gui_trigger_update_module_container (pInstance, bIsDetached);
 	
-	cairo_dock_gui_trigger_reload_items ();
+	// cairo_dock_gui_trigger_reload_items ();
 	
 	return GLDI_NOTIFICATION_LET_PASS;
 }
 
 gboolean cairo_dock_notification_shortkey_added_removed_changed (G_GNUC_UNUSED gpointer pUserData, G_GNUC_UNUSED GldiShortkey *pShortkey)
 {
-	cairo_dock_gui_trigger_reload_shortkeys ();
+	// cairo_dock_gui_trigger_reload_shortkeys ();
 	
 	return GLDI_NOTIFICATION_LET_PASS;
 }
