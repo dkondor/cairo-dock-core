@@ -35,7 +35,7 @@
 #include "cairo-dock-icon-facility.h"  // cairo_dock_set_icon_container
 #include "cairo-dock-module-instance-manager.h"  // gldi_module_instance_detach
 #include "cairo-dock-module-manager.h"  // GldiModule, GldiVisitCard
-#include "cairo-dock-dialog-priv.h"
+// #include "cairo-dock-dialog-priv.h"
 #include "cairo-dock-icon-factory.h"
 #include "cairo-dock-icon-facility.h"
 #include "cairo-dock-themes-manager.h"  // cairo_dock_update_conf_file
@@ -224,7 +224,7 @@ static gboolean _cairo_dock_write_desklet_position (CairoDesklet *pDesklet)
 	}
 	if (pDesklet->pIcon && gldi_icon_has_dialog (pDesklet->pIcon))
 	{
-		gldi_dialogs_replace_all ();
+		// gldi_dialogs_replace_all ();
 	}
 	pDesklet->iSidWritePosition = 0;
 	return FALSE;
@@ -1108,6 +1108,18 @@ void gldi_desklet_set_margin (CairoDesklet *pDesklet, int iRightMargin)
 	}
 }
 
+static GtkWidget *_steal_widget_from_its_container (GtkWidget *pWidget)
+{
+	g_return_val_if_fail (pWidget != NULL, NULL);
+	GtkWidget *pContainer = gtk_widget_get_parent (pWidget);
+	if (pContainer != NULL)
+	{
+		g_object_ref (G_OBJECT (pWidget));
+		gtk_container_remove (GTK_CONTAINER (pContainer), pWidget);
+	}
+	return pWidget;
+}
+
 GtkWidget *gldi_desklet_steal_interactive_widget (CairoDesklet *pDesklet)
 {
 	if (pDesklet == NULL)
@@ -1116,7 +1128,7 @@ GtkWidget *gldi_desklet_steal_interactive_widget (CairoDesklet *pDesklet)
 	GtkWidget *pInteractiveWidget = pDesklet->pInteractiveWidget;
 	if (pInteractiveWidget != NULL)
 	{
-		pInteractiveWidget = cairo_dock_steal_widget_from_its_container (pInteractiveWidget);
+		pInteractiveWidget = _steal_widget_from_its_container (pInteractiveWidget);
 		pDesklet->pInteractiveWidget = NULL;
 		GtkWidget *pBox = gtk_bin_get_child (GTK_BIN (pDesklet->container.pWidget));
 		if (pBox != NULL)

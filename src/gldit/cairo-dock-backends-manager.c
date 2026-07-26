@@ -26,7 +26,7 @@
 #include "cairo-dock-dock-factory.h"
 #include "cairo-dock-log.h"
 #include "cairo-dock-animations.h"
-#include "cairo-dock-dialog-manager.h"
+// #include "cairo-dock-dialog-manager.h"
 #include "cairo-dock-desklet-manager.h"
 #include "cairo-dock-dock-manager.h"
 #include "cairo-dock-container-priv.h"
@@ -332,7 +332,7 @@ void cairo_dock_set_desklet_renderer_by_name (CairoDesklet *pDesklet, const gcha
 	cairo_dock_set_desklet_renderer (pDesklet, pRenderer, pConfig);
 }
 
-
+/*
 void cairo_dock_set_dialog_renderer (CairoDialog *pDialog, CairoDialogRenderer *pRenderer, CairoDialogRendererConfigPtr pConfig)
 {
 	g_return_if_fail (pDialog != NULL);
@@ -359,7 +359,7 @@ void cairo_dock_set_dialog_renderer_by_name (CairoDialog *pDialog, const gchar *
 	
 	cairo_dock_set_dialog_renderer (pDialog, pRenderer, pConfig);
 }
-
+*/
 
 void cairo_dock_render_desklet_with_new_data (CairoDesklet *pDesklet, CairoDeskletRendererDataPtr pNewData)
 {
@@ -368,7 +368,7 @@ void cairo_dock_render_desklet_with_new_data (CairoDesklet *pDesklet, CairoDeskl
 	
 	gtk_widget_queue_draw (pDesklet->container.pWidget);
 }
-
+/*
 void cairo_dock_render_dialog_with_new_data (CairoDialog *pDialog, CairoDialogRendererDataPtr pNewData)
 {
 	if (pDialog->pRenderer != NULL && pDialog->pRenderer->update != NULL)
@@ -379,7 +379,7 @@ void cairo_dock_render_dialog_with_new_data (CairoDialog *pDialog, CairoDialogRe
 	else
 		gtk_widget_queue_draw (pDialog->container.pWidget);
 }
-
+*/
 
 CairoDialogDecorator *cairo_dock_get_dialog_decorator (const gchar *cDecoratorName)
 {
@@ -399,7 +399,7 @@ void cairo_dock_remove_dialog_decorator (const gchar *cDecoratorName)
 {
 	g_hash_table_remove (s_hDialogDecoratorTable, cDecoratorName);
 }
-
+/*
 void cairo_dock_set_dialog_decorator (CairoDialog *pDialog, CairoDialogDecorator *pDecorator)
 {
 	pDialog->pDecorator = pDecorator;
@@ -411,7 +411,7 @@ void cairo_dock_set_dialog_decorator_by_name (CairoDialog *pDialog, const gchar 
 	
 	cairo_dock_set_dialog_decorator (pDialog, pDecorator);
 }
-
+*/
 
 void cairo_dock_foreach_dock_renderer (GHFunc pFunction, gpointer data)
 {

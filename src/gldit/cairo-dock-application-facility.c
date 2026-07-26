@@ -18,7 +18,7 @@
 */
 
 #include "cairo-dock-icon-facility.h"  // gldi_icon_set_name
-#include "cairo-dock-dialog-priv.h"
+// #include "cairo-dock-dialog-priv.h"
 #include "cairo-dock-animations.h"
 #include "cairo-dock-surface-factory.h"
 #include "cairo-dock-applications-manager.h"
@@ -49,7 +49,7 @@ static void _gldi_appli_icon_demands_attention (Icon *icon, CairoDock *pDock, gb
 	//\____________________ On montre le dialogue.
 	if (myTaskbarParam.bDemandsAttentionWithDialog)
 	{
-		CairoDialog *pDialog;
+/*		CairoDialog *pDialog;
 		if (pHiddenIcon == NULL)
 		{
 			pDialog = gldi_dialog_show_temporary_with_icon (icon->cName, icon, CAIRO_CONTAINER (pDock), 1000*myTaskbarParam.iDialogDuration, "same icon");
@@ -67,7 +67,7 @@ static void _gldi_appli_icon_demands_attention (Icon *icon, CairoDock *pDock, gb
 				cairo_dock_pop_up (pDock);
 			gtk_window_set_keep_above (GTK_WINDOW (pDialog->container.pWidget), TRUE);
 			gtk_window_set_type_hint (GTK_WINDOW (pDialog->container.pWidget), GDK_WINDOW_TYPE_HINT_DOCK);  // pour passer devant les fenetres plein ecran; depend du WM.
-		}
+		} */
 	}
 	//\____________________ On montre l'icone avec une animation.
 	if (myTaskbarParam.cAnimationOnDemandsAttention && ! pHiddenIcon)  // on ne l'anime pas si elle n'est pas dans un dock.
@@ -126,8 +126,8 @@ static void _gldi_appli_icon_stop_demanding_attention (Icon *icon, CairoDock *pD
 {
 	if (CAIRO_DOCK_IS_APPLET (icon))  // cf remarque plus haut.
 		return ;
-	if (myTaskbarParam.bDemandsAttentionWithDialog)
-		gldi_dialogs_remove_on_icon (icon);
+	// if (myTaskbarParam.bDemandsAttentionWithDialog)
+	// 	gldi_dialogs_remove_on_icon (icon);
 	if (myTaskbarParam.cAnimationOnDemandsAttention)
 	{
 		gldi_icon_stop_attention (icon);  // arrete l'animation precedemment lancee par la demande.

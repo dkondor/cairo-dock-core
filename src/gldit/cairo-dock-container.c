@@ -29,7 +29,7 @@
 #include "cairo-dock-dock-facility.h" // cairo_dock_is_hidden
 #include "cairo-dock-dock-manager.h"
 #include "cairo-dock-dock-priv.h"
-#include "cairo-dock-dialog-manager.h"
+// #include "cairo-dock-dialog-manager.h"
 #include "cairo-dock-log.h"
 #include "cairo-dock-config.h"
 #include "cairo-dock-utils.h"  // cairo_dock_string_is_address

@@ -28,7 +28,7 @@
 #include "cairo-dock-draw.h"  // for transitions
 #include "cairo-dock-draw-opengl.h"  // idem
 #include "cairo-dock-desklet-manager.h"  // CAIRO_CONTAINER_IS_OPENGL
-#include "cairo-dock-dialog-priv.h"  // gldi_dialogs_replace_all
+// #include "cairo-dock-dialog-priv.h"  // gldi_dialogs_replace_all
 #include "cairo-dock-dock-manager.h"
 #include "cairo-dock-dock-priv.h"
 #include "cairo-dock-applications-priv.h"  // myTaskbarParam.cAnimationOnDemandsAttention
@@ -233,7 +233,7 @@ void cairo_dock_start_showing (CairoDock *pDock)
 			cairo_dock_set_input_shape_at_rest (pDock);
 			pDock->iInputState = CAIRO_DOCK_INPUT_AT_REST;
 			
-			gldi_dialogs_replace_all ();
+			// gldi_dialogs_replace_all ();
 		}
 		
 		// init the animation

@@ -31,7 +31,7 @@
 #include "cairo-dock-image-buffer.h"
 #include "cairo-dock-desktop-manager.h"
 #include "cairo-dock-icon-manager.h"  // cairo_dock_search_icon_s_path
-#include "cairo-dock-dialog-manager.h"
+// #include "cairo-dock-dialog-manager.h"
 #include "cairo-dock-style-manager.h"
 #include "cairo-dock-surface-factory.h"
 

@@ -30,7 +30,7 @@
 
 
 #include "cairo-dock-struct.h"
-#include "cairo-dock-dialog-priv.h"
+// #include "cairo-dock-dialog-priv.h"
 #include "cairo-dock-module-instance-manager.h"  // GldiModuleInstance
 #include "cairo-dock-dock-facility.h"
 #include "cairo-dock-dock-manager.h"
@@ -346,15 +346,16 @@ Icon *cairo_dock_get_icon_with_subdock (GList *pIconList, CairoDock *pSubDock)
 	}
 	return NULL;
 }
-
+/*
 static gboolean _has_dialog (CairoDialog *pDialog, Icon *pIcon)
 {
 	return (pDialog->pIcon == pIcon);
-}
+}*/
 gboolean gldi_icon_has_dialog (Icon *pIcon)
 {
-	CairoDialog *pDialog = gldi_dialogs_foreach ((GCompareFunc)_has_dialog, pIcon);
-	return (pDialog != NULL);
+/*	CairoDialog *pDialog = gldi_dialogs_foreach ((GCompareFunc)_has_dialog, pIcon);
+	return (pDialog != NULL);*/
+	return FALSE;
 }
 
 Icon *gldi_icons_get_without_dialog (GList *pIconList)
