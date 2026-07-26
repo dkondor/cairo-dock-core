@@ -34,7 +34,7 @@
 #include <gdk/gdk.h>
 #include "gldi-config.h"
 #ifdef HAVE_X11
-#include <gdk/gdkx.h>
+#include <gdk/x11/gdkx.h>
 #include <X11/Xlib.h>
 #include <X11/XKBlib.h>  // we should check for XkbQueryExtension...
 #endif
@@ -64,6 +64,7 @@ static void do_grab_key (GldiShortkey *binding, CairoDockGrabKeyResult cb)
 	guint keysym = 0;
 	guint *accelerator_codes = NULL;
 	gtk_accelerator_parse_with_keycode (binding->keystring,
+		gdk_display_get_default (),
 		&keysym,
 		&accelerator_codes,
 		&binding->modifiers);
@@ -226,6 +227,7 @@ gboolean cairo_dock_trigger_shortkey (const gchar *cKeyString)  // the idea was 
 	guint keysym = 0;
 	guint *accelerator_codes = NULL;
 	gtk_accelerator_parse_with_keycode (cKeyString,
+		gdk_display_get_default (),
 		&keysym,
 		&accelerator_codes,
 		&modifiers);
@@ -238,7 +240,7 @@ gboolean cairo_dock_trigger_shortkey (const gchar *cKeyString)  // the idea was 
 		pKeySyms[i++] = XStringToKeysym ("Shift_L");
 	if (modifiers & GDK_CONTROL_MASK)
 		pKeySyms[i++] = XStringToKeysym ("Control_L");
-	if (modifiers & GDK_MOD1_MASK)
+	if (modifiers & GDK_ALT_MASK)
 		pKeySyms[i++] = XStringToKeysym ("Alt_L");
 	if (modifiers & GDK_SUPER_MASK)
 		pKeySyms[i++] = XStringToKeysym ("Super_L");

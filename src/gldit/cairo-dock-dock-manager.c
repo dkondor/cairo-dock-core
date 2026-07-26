@@ -1233,9 +1233,10 @@ static void _show_dock_at_mouse (CairoDock *pDock, G_GNUC_UNUSED gpointer data)
 			iNewPositionY = H - pDock->container.iHeight;
 		
 		// show the dock
+		/** Is this necessary?
 		gtk_window_move (GTK_WINDOW (pDock->container.pWidget),
 			(pDock->container.bIsHorizontal ? iNewPositionX : iNewPositionY),
-			(pDock->container.bIsHorizontal ? iNewPositionY : iNewPositionX));
+			(pDock->container.bIsHorizontal ? iNewPositionY : iNewPositionX)); */
 		gtk_widget_show (pDock->container.pWidget);
 		
 		// schedule a hiding in a few seconds
@@ -1836,7 +1837,7 @@ static void _load_custom_widget (GKeyFile *pKeyFile, GSList *pWidgetList)
 	else if (iCurrent >= 0) gtk_combo_box_set_active (GTK_COMBO_BOX (pOneWidget), iCurrent); // screen set and found
 	// note: if there is no setting, the combo box will be blank, since we don't have access to which screen the dock is actually on
 	
-	CairoDockGroupKeyWidget *pGroupKeyWidget = cairo_dock_gui_find_group_key_widget_in_list (pWidgetList, cGroup, "num_screen");
+	CairoDockGroupKeyWidget *pGroupKeyWidget = NULL; //!! TODO: cairo_dock_gui_find_group_key_widget_in_list (pWidgetList, cGroup, "num_screen");
 	if (!pGroupKeyWidget)
 	{
 		cd_warning ("Cannot find widget for dock position");
@@ -1844,7 +1845,7 @@ static void _load_custom_widget (GKeyFile *pKeyFile, GSList *pWidgetList)
 		return;
 	}
 	
-	gtk_box_pack_end (GTK_BOX (pGroupKeyWidget->pKeyBox), pOneWidget, FALSE, FALSE, 0);
+	// gtk_box_append (GTK_BOX (pGroupKeyWidget->pKeyBox), pOneWidget);
 }
 
 static void _save_custom_widget (GKeyFile *pKeyFile, GSList *pWidgetList)
@@ -1860,14 +1861,14 @@ static void _save_custom_widget (GKeyFile *pKeyFile, GSList *pWidgetList)
 		}
 	}
 	
-	CairoDockGroupKeyWidget *pGroupKeyWidget = cairo_dock_gui_find_group_key_widget_in_list (pWidgetList, cGroup, "num_screen");
+	CairoDockGroupKeyWidget *pGroupKeyWidget = NULL; // cairo_dock_gui_find_group_key_widget_in_list (pWidgetList, cGroup, "num_screen");
 	if (!pGroupKeyWidget)
 	{
 		cd_warning ("Widget not found!");
 		return;
 	}
 	
-	GList *l = gtk_container_get_children (GTK_CONTAINER (pGroupKeyWidget->pKeyBox));
+	GList *l = NULL; //!! TODO gtk_container_get_children (GTK_CONTAINER (pGroupKeyWidget->pKeyBox));
 	GList *l2 = l ? g_list_last (l) : NULL;
 	GtkWidget *pCombo = (l2 && l2->data) ? (GtkWidget*)l2->data : NULL;
 	if (l) g_list_free (l);
@@ -2226,20 +2227,22 @@ static void init_object (GldiObject *obj, gpointer attr)
 		CairoDock *pParentDock = dattr->pParentDock;
 		if (pParentDock == NULL)
 			pParentDock = g_pMainDock;
-		gtk_window_set_transient_for (GTK_WINDOW (pDock->container.pWidget), GTK_WINDOW (pParentDock->container.pWidget));
+		gtk_widget_set_parent (pDock->container.pWidget, pParentDock->container.pWidget);
+		// set as not modal, otherwise, it will grab all input, including motion events
+		gtk_popover_set_autohide (GTK_POPOVER (pDock->container.pWidget), FALSE);
 		// need to set now, so that gldi_dock_init_internals () will not try to show this dock
 		pDock->iRefCount = 1;
 	}
-	{
-		gchar *cNamespace = (! dattr->bSubDock) ? g_strdup_printf ("cairo-dock-%s", dattr->cDockName) : NULL;
+	else { // only need to init layer-shell for main docks
+		gchar *cNamespace = g_strdup_printf ("cairo-dock-%s", dattr->cDockName);
 		gldi_container_init_layer (&(pDock->container), cNamespace);
 		g_free (cNamespace);
 	}
 	
 	//\__________________ init internals
 	gldi_dock_init_internals (pDock);
-	if (s_bKeepAbove)
-		gtk_window_set_keep_above (GTK_WINDOW (pDock->container.pWidget), s_bKeepAbove);
+	// if (s_bKeepAbove)
+	// 	gtk_window_set_keep_above (GTK_WINDOW (pDock->container.pWidget), s_bKeepAbove);
 	
 	//\__________________ initialize its parameters (it's a root dock by default)
 	pDock->cDockName = g_strdup (dattr->cDockName);

@@ -25,7 +25,7 @@
 
 #include <gdk/gdk.h>
 #ifdef GDK_WINDOWING_WAYLAND
-#include <gdk/gdkwayland.h>
+#include <gdk/wayland/gdkwayland.h>
 #endif
 
 #include <wayland-client.h>
@@ -51,13 +51,13 @@
 #include "cairo-dock-ext-workspaces.h"
 #include "cairo-dock-wayland-wm.h"
 #endif
-#include "cairo-dock-wayland-hotspots.h"
+// #include "cairo-dock-wayland-hotspots.h"
 #define _MANAGER_DEF_
 #include "cairo-dock-wayland-manager-priv.h"
 
 #include "gldi-config.h"
 #ifdef HAVE_GTK_LAYER_SHELL
-#include <gtk-layer-shell.h>
+#include <gtk4-layer-shell.h>
 #endif
 gboolean g_bDisableLayerShell = FALSE;
 
@@ -118,6 +118,7 @@ CairoDockPositionType gldi_wayland_get_edge_for_dock (const CairoDock *pDock)
 // Wayland-specific stuff here
 static void _set_input_shape(GldiContainer *pContainer, cairo_region_t *pShape)
 {
+	//!! TODO: check if this is still necessary and remove it !!
 	// note: we only do this if this container is using EGL
 #ifdef HAVE_EGL
 	if (!pContainer->eglwindow) return;
@@ -126,7 +127,7 @@ static void _set_input_shape(GldiContainer *pContainer, cairo_region_t *pShape)
 		cd_warning ("wayland-manager: No valid Wayland compositor interface available!\n");
 		return;
 	}
-	struct wl_surface *wls = gdk_wayland_window_get_wl_surface (
+	struct wl_surface *wls = gdk_wayland_surface_get_wl_surface (
 		gldi_container_get_gdk_window (pContainer));
 	if (!wls)
 	{
@@ -176,48 +177,27 @@ static void _set_keep_below (GldiContainer *pContainer, gboolean bKeepBelow)
 static void _layer_shell_init_for_window (GldiContainer *pContainer, const gchar *cNamespace)
 {
 	GtkWindow* window = GTK_WINDOW (pContainer->pWidget);
-	if (gtk_window_get_transient_for (window))
-	{
-		// subdock or other surface with a parent
-		// we need to call gdk_move_to_rect(), but specifically
-		// (1) before the window is mapped, but (2) during it is realized
-		// A dummy call to gdk_window_move_to_rect() causes the gtk-layer-shell
-		// internals related to this window to be initialized properly (note:
-		// this is important if the parent is a "proper" layer-shell window).
-		// This _has_ to happen before the GtkWindow is mapped first, but also
-		// has to happen after some initial setup. Doing this as a response to
-		// a "realize" signal seems to be a good way, but there should be some
-		// less hacky solution for this as well. Maybe I'm missing something here?
-		// g_signal_connect (window, "realize", G_CALLBACK (sublayer_realize_cb), NULL);
-		
-		// gldi_container_move_to_rect() will ensure this
-		GdkRectangle rect = {0, 0, 1, 1};
-		gldi_container_move_to_rect (pContainer, &rect, GDK_GRAVITY_SOUTH,
-			GDK_GRAVITY_NORTH_WEST, GDK_ANCHOR_SLIDE, 0, 0);
-	}
-	else
-	{
-		gtk_layer_init_for_window (window);
-		// Note: to enable receiving any keyboard events, we need both the compositor
-		// and gtk-layer-shell to support version >= 4 of the layer-shell protocol.
-		// Here we test if we are compiling against a version of gtk-layer-shell that
-		// has this functionality. Setting keyboard interactivity may still fail at
-		// runtime if the compositor does not support this. In this case, the dock
-		// will not receive keyboard events at all.
-		// We do not set this on KWin, since newer versions will then include our
-		// windows in tracking focus and send a deactivated event for the active
-		// window when the dock is clicked (this will confuse our tracking of the
-		// active window, see: https://github.com/Cairo-Dock/cairo-dock-core/issues/140).
-		// Also, there seems to be no downside, as we still get keyboard modifiers
-		// for clicks and popups also still get keyboard focus.
-		if (s_CompositorType == WAYLAND_COMPOSITOR_UNKNOWN) _try_detect_compositor ();
-		gtk_layer_set_keyboard_mode (window,
-			(s_CompositorType == WAYLAND_COMPOSITOR_KWIN) ?
-			GTK_LAYER_SHELL_KEYBOARD_MODE_NONE :
-			GTK_LAYER_SHELL_KEYBOARD_MODE_ON_DEMAND
-		);
-		gtk_layer_set_namespace (window, cNamespace ? cNamespace : "cairo-dock");
-	}
+	
+	gtk_layer_init_for_window (window);
+	// Note: to enable receiving any keyboard events, we need both the compositor
+	// and gtk-layer-shell to support version >= 4 of the layer-shell protocol.
+	// Here we test if we are compiling against a version of gtk-layer-shell that
+	// has this functionality. Setting keyboard interactivity may still fail at
+	// runtime if the compositor does not support this. In this case, the dock
+	// will not receive keyboard events at all.
+	// We do not set this on KWin, since newer versions will then include our
+	// windows in tracking focus and send a deactivated event for the active
+	// window when the dock is clicked (this will confuse our tracking of the
+	// active window, see: https://github.com/Cairo-Dock/cairo-dock-core/issues/140).
+	// Also, there seems to be no downside, as we still get keyboard modifiers
+	// for clicks and popups also still get keyboard focus.
+	if (s_CompositorType == WAYLAND_COMPOSITOR_UNKNOWN) _try_detect_compositor ();
+	gtk_layer_set_keyboard_mode (window,
+		(s_CompositorType == WAYLAND_COMPOSITOR_KWIN) ?
+		GTK_LAYER_SHELL_KEYBOARD_MODE_NONE :
+		GTK_LAYER_SHELL_KEYBOARD_MODE_ON_DEMAND
+	);
+	gtk_layer_set_namespace (window, cNamespace ? cNamespace : "cairo-dock");
 }
 
 static void _layer_shell_move_to_monitor (GldiContainer *pContainer, int iNumScreen)
@@ -236,23 +216,11 @@ static void _layer_shell_move_to_monitor (GldiContainer *pContainer, int iNumScr
 
 static void _move_resize_dock (CairoDock *pDock)
 {
-	int iNewWidth = pDock->iMaxDockWidth;
-	int iNewHeight = pDock->iMaxDockHeight;
-	
-	if (pDock->container.bIsHorizontal)
-	{
-		gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock)), iNewWidth, iNewHeight);
-	}
-	else
-	{
-		gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock)), iNewHeight, iNewWidth);
-	}
-
 #ifdef HAVE_GTK_LAYER_SHELL
 	if (s_bHave_Layer_Shell)
 	{
 		GtkWindow* window = GTK_WINDOW (pDock->container.pWidget);
-		if (gtk_window_get_transient_for (window)) return; // can only use this for main docks
+		if (!window) return; // GtkPopover for subdocks
 		// Reset old anchors
 		gtk_layer_set_anchor (window, GTK_LAYER_SHELL_EDGE_BOTTOM, FALSE);
 		gtk_layer_set_anchor (window, GTK_LAYER_SHELL_EDGE_TOP, FALSE);
@@ -404,63 +372,20 @@ void gldi_wayland_release_keyboard (GldiContainer *pContainer, GldiWaylandReleas
 	}
 }
 
-static gboolean _dock_handle_leave (CairoDock *pDock, GdkEventCrossing *pEvent)
+static gboolean _dock_handle_leave (CairoDock *pDock, gboolean bRealEvent)
 {
-	if (pEvent) pDock->iMousePositionType = CAIRO_DOCK_MOUSE_OUTSIDE;
+	if (bRealEvent) pDock->iMousePositionType = CAIRO_DOCK_MOUSE_OUTSIDE;
 	else
 	{
 		GdkSeat *pSeat = gdk_display_get_default_seat (gdk_display_get_default());
 		GdkDevice *pDevice = gdk_seat_get_pointer (pSeat);
-		int tmpx, tmpy;
-		GdkWindow *win = gdk_device_get_window_at_position (pDevice, &tmpx, &tmpy);
+		double tmpx, tmpy;
+		GdkSurface *win = gdk_device_get_surface_at_position (pDevice, &tmpx, &tmpy);
 		if (win != gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock)))
 			pDock->iMousePositionType = CAIRO_DOCK_MOUSE_OUTSIDE;
 	}
 	return (pDock->iMousePositionType == CAIRO_DOCK_MOUSE_OUTSIDE);
 }
-
-static void _dock_handle_enter (CairoDock *pDock, G_GNUC_UNUSED GdkEventCrossing *pEvent)
-{
-	pDock->iMousePositionType = CAIRO_DOCK_MOUSE_INSIDE;
-}
-
-static void _adjust_aimed_point (const Icon *pIcon, G_GNUC_UNUSED GtkWidget *pWidget, int w, int h,
-	int iMarginPosition, gdouble fAlign, int *iAimedX, int *iAimedY)
-{
-	// gtk-layer-shell < 8.2.0: no relative position is available, we use
-	// heuristics to decide if the container was slided on the screen
-	gldi_container_calculate_aimed_point_base (w, h, iMarginPosition, fAlign, iAimedX, iAimedY);
-	
-	GldiContainer *pContainer = (pIcon ? cairo_dock_get_icon_container (pIcon) : NULL);
-	if (! (pIcon && pContainer) ) return;
-	if (!CAIRO_DOCK_IS_DOCK (pContainer)) return;
-	
-	CairoDock* pDock = (CairoDock*)pContainer;
-	int W = cairo_dock_get_screen_width (pDock->iNumScreen);
-	int H = cairo_dock_get_screen_height (pDock->iNumScreen);
-	int dockX = 0;
-	gint dockW, dockH;
-	gtk_window_get_size (GTK_WINDOW (pContainer->pWidget), &dockW, &dockH);
-	
-	if (pContainer->bIsHorizontal) dockX = (W - dockW) / 2;
-	else dockX = (H - dockH) / 2;
-	if (dockX < 0) dockX = 0;
-	
-	// see if the new container is likely to be slided and adjust aimed points
-	if (iMarginPosition == 0 || iMarginPosition == 1)
-	{
-		int x0 = dockX + pIcon->fDrawX + pIcon->fWidth * pIcon->fScale / 2.0;
-		if (x0 < w * fAlign) *iAimedX = x0;
-		else if (W - x0 < w * (1 - fAlign)) *iAimedX = w - (W - x0);
-	}
-	else
-	{
-		int y0 = dockX + pIcon->fDrawX + pIcon->fWidth * pIcon->fScale / 2.0;
-		if (y0 < h * fAlign) *iAimedY = y0;
-		else if (y0 > H - h * (1 - fAlign)) *iAimedY += y0 - (H - h / 2);
-	}
-}
-
 
 ////////////////////////////////////////////////////////////////////////
 // Registry
@@ -546,24 +471,16 @@ static void init (void)
 		cmb.init_layer = _layer_shell_init_for_window;
 		cmb.set_keep_below = _set_keep_below;
 		cmb.set_monitor = _layer_shell_move_to_monitor;
-		guint major = gtk_layer_get_major_version ();
-		if (!major)
-		{
-			guint minor = gtk_layer_get_minor_version ();
-			guint micro = gtk_layer_get_micro_version ();
-			if (minor < 8 || (minor == 8 && micro < 2))
-				cmb.adjust_aimed_point = _adjust_aimed_point;
-		}
 	}
 #endif
-	GldiWaylandHotspotsType hotspots_type = gldi_wayland_hotspots_try_init (registry);
+/*	GldiWaylandHotspotsType hotspots_type = gldi_wayland_hotspots_try_init (registry);
 
 	if (hotspots_type != GLDI_WAYLAND_HOTSPOTS_NONE)
 	{
 		cmb.update_polling_screen_edge = gldi_wayland_hotspots_update;
 		if (hotspots_type == GLDI_WAYLAND_HOTSPOTS_WAYFIRE)
 			s_CompositorType = WAYLAND_COMPOSITOR_WAYFIRE;
-	}
+	}*/
 #ifdef HAVE_WAYLAND_PROTOCOLS
 	gboolean bCosmic = gldi_cosmic_toplevel_try_init (registry);
 	if (bCosmic)
@@ -591,7 +508,6 @@ static void init (void)
 	cmb.is_wayland = _is_wayland;
 	cmb.move_resize_dock = _move_resize_dock;
 	cmb.dock_handle_leave = _dock_handle_leave;
-	cmb.dock_handle_enter = _dock_handle_enter;
 	gldi_container_manager_register_backend (&cmb);
 }
 

@@ -64,7 +64,7 @@ static void _trigger_move_desklet (CairoDesklet *pDesklet);
  /// SIGNALS ///
 ///////////////
 
-static gboolean on_expose_desklet(G_GNUC_UNUSED GtkWidget *pWidget, G_GNUC_UNUSED cairo_t *pCairoContext, CairoDesklet *pDesklet)
+static gboolean on_expose_desklet (G_GNUC_UNUSED GtkWidget *pWidget, cairo_t *pCairoContext, CairoDesklet *pDesklet)
 {
 	if (pDesklet->iDesiredWidth != 0 && pDesklet->iDesiredHeight != 0 && (pDesklet->iKnownWidth != pDesklet->iDesiredWidth || pDesklet->iKnownHeight != pDesklet->iDesiredHeight))  // skip the drawing until the desklet has reached its size, only make it transparent.
 	{
@@ -229,6 +229,10 @@ static gboolean _cairo_dock_write_desklet_position (CairoDesklet *pDesklet)
 	pDesklet->iSidWritePosition = 0;
 	return FALSE;
 }
+
+
+
+/*
 static gboolean on_configure_desklet (G_GNUC_UNUSED GtkWidget* pWidget,
 	GdkEventConfigure* pEvent,
 	CairoDesklet *pDesklet)
@@ -321,23 +325,16 @@ static gboolean on_configure_desklet (G_GNUC_UNUSED GtkWidget* pWidget,
 
 	return FALSE;
 }
+*/
 
-static gboolean on_scroll_desklet (G_GNUC_UNUSED GtkWidget* pWidget,
-	GdkEventScroll* pScroll,
-	CairoDesklet *pDesklet)
+static gboolean _on_scroll_desklet (GtkEventControllerScroll *pCtrl, gdouble dx, gdouble dy, CairoDesklet *pDesklet)
 {
-	GdkScrollDirection dir = pScroll->direction;
-	if (dir == GDK_SCROLL_UP || dir == GDK_SCROLL_DOWN || dir == GDK_SCROLL_SMOOTH)
-	{
-		Icon *icon = gldi_desklet_find_clicked_icon (pDesklet);  // can be NULL
-		gldi_container_handle_scroll (CAIRO_CONTAINER (pDesklet), icon, pScroll);
-	}
-	return FALSE;
+	Icon *icon = gldi_desklet_find_clicked_icon (pDesklet);  // can be NULL
+	gldi_container_handle_scroll (pCtrl, dx, dy, CAIRO_CONTAINER (pDesklet), icon);
+	return TRUE;
 }
 
-static gboolean on_unmap_desklet (GtkWidget* pWidget,
-	G_GNUC_UNUSED GdkEvent *pEvent,
-	CairoDesklet *pDesklet)
+static gboolean on_unmap_desklet (GtkWidget* pWidget, CairoDesklet *pDesklet)
 {
 	cd_debug ("unmap desklet (bAllowMinimize:%d)", pDesklet->bAllowMinimize);
 	if (pDesklet->iVisibility == CAIRO_DESKLET_ON_WIDGET_LAYER)  // on the widget layer, let pass the unmap event..
@@ -364,132 +361,58 @@ static gboolean on_unmap_desklet (GtkWidget* pWidget,
 	return TRUE;  // stops other handlers from being invoked for the event.
 }
 
-static gboolean on_button_press_desklet(G_GNUC_UNUSED GtkWidget *pWidget,
-	GdkEventButton *pButton,
-	CairoDesklet *pDesklet)
+static void _on_button_press_desklet (GtkGestureClick *pCtrl, gint n_press, gdouble x, gdouble y, CairoDesklet *pDesklet)
 {
-	if (pButton->button == 1)  // clic gauche.
+	pDesklet->container.iMouseX = x;
+	pDesklet->container.iMouseY = y;
+	
+	guint button = gtk_gesture_single_get_current_button (GTK_GESTURE_SINGLE (pCtrl));
+	if (button == 1)
 	{
-		pDesklet->container.iMouseX = pButton->x;
-		pDesklet->container.iMouseY = pButton->y;
-		if (pButton->type == GDK_BUTTON_PRESS)
+		if (n_press == 1)
 		{
 			pDesklet->bClicked = TRUE;
 			if (cairo_dock_desklet_is_free (pDesklet))
 			{
-				///pDesklet->container.iMouseX = pButton->x;  // pour le deplacement manuel.
-				///pDesklet->container.iMouseY = pButton->y;
-				if (pButton->x < myDeskletsParam.iDeskletButtonSize && pButton->y < myDeskletsParam.iDeskletButtonSize)
+				if (x < myDeskletsParam.iDeskletButtonSize && y < myDeskletsParam.iDeskletButtonSize)
 					pDesklet->rotating = TRUE;
-				else if (pButton->x > pDesklet->container.iWidth - myDeskletsParam.iDeskletButtonSize && pButton->y < myDeskletsParam.iDeskletButtonSize)
+				else if (x > pDesklet->container.iWidth - myDeskletsParam.iDeskletButtonSize && y < myDeskletsParam.iDeskletButtonSize)
 					pDesklet->retaching = TRUE;
-				else if (pButton->x > (pDesklet->container.iWidth - myDeskletsParam.iDeskletButtonSize)/2 && pButton->x < (pDesklet->container.iWidth + myDeskletsParam.iDeskletButtonSize)/2 && pButton->y < myDeskletsParam.iDeskletButtonSize)
+				else if (x > (pDesklet->container.iWidth - myDeskletsParam.iDeskletButtonSize)/2 &&
+						x < (pDesklet->container.iWidth + myDeskletsParam.iDeskletButtonSize)/2 &&
+						y < myDeskletsParam.iDeskletButtonSize)
 					pDesklet->rotatingY = TRUE;
-				else if (pButton->y > (pDesklet->container.iHeight - myDeskletsParam.iDeskletButtonSize)/2 && pButton->y < (pDesklet->container.iHeight + myDeskletsParam.iDeskletButtonSize)/2 && pButton->x < myDeskletsParam.iDeskletButtonSize)
+				else if (y > (pDesklet->container.iHeight - myDeskletsParam.iDeskletButtonSize)/2 &&
+						y < (pDesklet->container.iHeight + myDeskletsParam.iDeskletButtonSize)/2 &&
+						x < myDeskletsParam.iDeskletButtonSize)
 					pDesklet->rotatingX = TRUE;
 				else
-					pDesklet->time = pButton->time;
+					pDesklet->time = gtk_event_controller_get_current_event_time (GTK_EVENT_CONTROLLER (pCtrl));
 			}
-			if (pDesklet->bAllowNoClickable && pButton->x > pDesklet->container.iWidth - myDeskletsParam.iDeskletButtonSize && pButton->y > pDesklet->container.iHeight - myDeskletsParam.iDeskletButtonSize)
+			if (pDesklet->bAllowNoClickable && x > pDesklet->container.iWidth - myDeskletsParam.iDeskletButtonSize &&
+					y > pDesklet->container.iHeight - myDeskletsParam.iDeskletButtonSize)
 				pDesklet->making_transparent = TRUE;
 		}
-		else if (pButton->type == GDK_BUTTON_RELEASE)
+		else if (n_press == 2)
 		{
-			if (!pDesklet->bClicked)  // on n'accepte le release que si on avait clique sur le desklet avant (on peut recevoir le release si on avait clique sur un dialogue qui chevauchait notre desklet et qui a disparu au clic).
-			{
-				return FALSE;
-			}
-			pDesklet->bClicked = FALSE;
-			//g_print ("GDK_BUTTON_RELEASE\n");
-			int x = pDesklet->container.iMouseX;
-			int y = pDesklet->container.iMouseY;
-			if (pDesklet->moving)
-			{
-				pDesklet->moving = FALSE;
-			}
-			else if (pDesklet->rotating)
-			{
-				pDesklet->rotating = FALSE;
-				cairo_dock_update_conf_file (pDesklet->pIcon->pModuleInstance->cConfFilePath,
-					G_TYPE_INT, "Desklet", "rotation", (int) (pDesklet->fRotation / G_PI * 180.),
-					G_TYPE_INVALID);
-				gtk_widget_queue_draw (pDesklet->container.pWidget);
-				gldi_object_notify (pDesklet, NOTIFICATION_CONFIGURE_DESKLET, pDesklet);
-			}
-			else if (pDesklet->retaching)
-			{
-				pDesklet->retaching = FALSE;
-				if (x > pDesklet->container.iWidth - myDeskletsParam.iDeskletButtonSize && y < myDeskletsParam.iDeskletButtonSize)  // on verifie qu'on est encore dedans.
-				{
-					Icon *icon = pDesklet->pIcon;
-					g_return_val_if_fail (CAIRO_DOCK_IS_APPLET (icon), FALSE);
-					gldi_module_instance_detach (icon->pModuleInstance);
-					return GLDI_NOTIFICATION_INTERCEPT;  // interception du signal.
-				}
-			}
-			else if (pDesklet->making_transparent)
-			{
-				cd_debug ("pDesklet->making_transparent\n");
-				pDesklet->making_transparent = FALSE;
-				if (x > pDesklet->container.iWidth - myDeskletsParam.iDeskletButtonSize && y > pDesklet->container.iHeight - myDeskletsParam.iDeskletButtonSize)  // on verifie qu'on est encore dedans.
-				{
-					Icon *icon = pDesklet->pIcon;
-					g_return_val_if_fail (CAIRO_DOCK_IS_APPLET (icon), FALSE);
-					pDesklet->bNoInput = ! pDesklet->bNoInput;
-					cd_debug ("no input : %d (%s)", pDesklet->bNoInput, icon->pModuleInstance->cConfFilePath);
-					cairo_dock_update_conf_file (icon->pModuleInstance->cConfFilePath,
-						G_TYPE_BOOLEAN, "Desklet", "no input", pDesklet->bNoInput,
-						G_TYPE_INVALID);
-					_cairo_dock_set_desklet_input_shape (pDesklet);
-					gtk_widget_queue_draw (pDesklet->container.pWidget);
-				}
-			}
-			else if (pDesklet->rotatingY)
-			{
-				pDesklet->rotatingY = FALSE;
-				cairo_dock_update_conf_file (pDesklet->pIcon->pModuleInstance->cConfFilePath,
-					G_TYPE_INT, "Desklet", "depth rotation y", (int) (pDesklet->fDepthRotationY / G_PI * 180.),
-					G_TYPE_INVALID);
-				gtk_widget_queue_draw (pDesklet->container.pWidget);
-			}
-			else if (pDesklet->rotatingX)
-			{
-				pDesklet->rotatingX = FALSE;
-				cairo_dock_update_conf_file (pDesklet->pIcon->pModuleInstance->cConfFilePath,
-					G_TYPE_INT, "Desklet", "depth rotation x", (int) (pDesklet->fDepthRotationX / G_PI * 180.),
-					G_TYPE_INVALID);
-				gtk_widget_queue_draw (pDesklet->container.pWidget);
-			}
-			else
-			{
-				Icon *pClickedIcon = gldi_desklet_find_clicked_icon (pDesklet);
-				gldi_object_notify (pDesklet, NOTIFICATION_CLICK_ICON, pClickedIcon, pDesklet, pButton->state);
-			}
-			// prudence.
-			pDesklet->rotating = FALSE;
-			pDesklet->retaching = FALSE;
-			pDesklet->making_transparent = FALSE;
-			pDesklet->rotatingX = FALSE;
-			pDesklet->rotatingY = FALSE;
-		}
-		else if (pButton->type == GDK_2BUTTON_PRESS)
-		{
-			if (! (pButton->x < myDeskletsParam.iDeskletButtonSize && pButton->y < myDeskletsParam.iDeskletButtonSize) && ! (pButton->x > (pDesklet->container.iWidth - myDeskletsParam.iDeskletButtonSize)/2 && pButton->x < (pDesklet->container.iWidth + myDeskletsParam.iDeskletButtonSize)/2 && pButton->y < myDeskletsParam.iDeskletButtonSize))
+			if (! (x < myDeskletsParam.iDeskletButtonSize && y < myDeskletsParam.iDeskletButtonSize) &&
+				! (x > (pDesklet->container.iWidth - myDeskletsParam.iDeskletButtonSize)/2 && 
+					x < (pDesklet->container.iWidth + myDeskletsParam.iDeskletButtonSize)/2 && y < myDeskletsParam.iDeskletButtonSize))
 			{
 				Icon *pClickedIcon = gldi_desklet_find_clicked_icon (pDesklet);  // can be NULL
 				gldi_object_notify (pDesklet, NOTIFICATION_DOUBLE_CLICK_ICON, pClickedIcon, pDesklet);
 			}
 		}
 	}
-	else if (pButton->button == 3 && pButton->type == GDK_BUTTON_PRESS)  // clique droit.
+	else if (button == 3 && n_press == 1) // right click
 	{
 		Icon *pClickedIcon = gldi_desklet_find_clicked_icon (pDesklet);
 		GtkWidget *menu = gldi_container_build_menu (CAIRO_CONTAINER (pDesklet), pClickedIcon);  // genere un CAIRO_DOCK_BUILD_ICON_MENU.
 		// gldi_menu_popup (menu);
 	}
-	else if (pButton->button == 2 && pButton->type == GDK_BUTTON_PRESS)  // clique milieu.
+	else if (button == 2 && n_press == 1) // middle click
 	{
-		if (pButton->x < myDeskletsParam.iDeskletButtonSize && pButton->y < myDeskletsParam.iDeskletButtonSize)
+		if (x < myDeskletsParam.iDeskletButtonSize && y < myDeskletsParam.iDeskletButtonSize)
 		{
 			pDesklet->fRotation = 0.;
 			gtk_widget_queue_draw (pDesklet->container.pWidget);
@@ -498,7 +421,8 @@ static gboolean on_button_press_desklet(G_GNUC_UNUSED GtkWidget *pWidget,
 				G_TYPE_INVALID);
 			gldi_object_notify (pDesklet, NOTIFICATION_CONFIGURE_DESKLET, pDesklet);
 		}
-		else if (pButton->x > (pDesklet->container.iWidth - myDeskletsParam.iDeskletButtonSize)/2 && pButton->x < (pDesklet->container.iWidth + myDeskletsParam.iDeskletButtonSize)/2 && pButton->y < myDeskletsParam.iDeskletButtonSize)
+		else if (x > (pDesklet->container.iWidth - myDeskletsParam.iDeskletButtonSize)/2 &&
+			x < (pDesklet->container.iWidth + myDeskletsParam.iDeskletButtonSize)/2 && y < myDeskletsParam.iDeskletButtonSize)
 		{
 			pDesklet->fDepthRotationY = 0.;
 			gtk_widget_queue_draw (pDesklet->container.pWidget);
@@ -506,7 +430,8 @@ static gboolean on_button_press_desklet(G_GNUC_UNUSED GtkWidget *pWidget,
 				G_TYPE_INT, "Desklet", "depth rotation y", 0,
 				G_TYPE_INVALID);
 		}
-		else if (pButton->y > (pDesklet->container.iHeight - myDeskletsParam.iDeskletButtonSize)/2 && pButton->y < (pDesklet->container.iHeight + myDeskletsParam.iDeskletButtonSize)/2 && pButton->x < myDeskletsParam.iDeskletButtonSize)
+		else if (y > (pDesklet->container.iHeight - myDeskletsParam.iDeskletButtonSize)/2 &&
+			y < (pDesklet->container.iHeight + myDeskletsParam.iDeskletButtonSize)/2 && x < myDeskletsParam.iDeskletButtonSize)
 		{
 			pDesklet->fDepthRotationX = 0.;
 			gtk_widget_queue_draw (pDesklet->container.pWidget);
@@ -514,14 +439,97 @@ static gboolean on_button_press_desklet(G_GNUC_UNUSED GtkWidget *pWidget,
 				G_TYPE_INT, "Desklet", "depth rotation x", 0,
 				G_TYPE_INVALID);
 		}
-		else
-		{
-			gldi_object_notify (pDesklet, NOTIFICATION_MIDDLE_CLICK_ICON, pDesklet->pIcon, pDesklet);
-		}
+		else gldi_object_notify (pDesklet, NOTIFICATION_MIDDLE_CLICK_ICON, pDesklet->pIcon, pDesklet);
 	}
-	return FALSE;
 }
 
+static void _on_button_release_desklet (GtkGestureClick *pCtrl, gint n_press, gdouble x0, gdouble y0, CairoDesklet *pDesklet)
+{
+	pDesklet->container.iMouseX = x0;
+	pDesklet->container.iMouseY = y0;
+	
+	guint button = gtk_gesture_single_get_current_button (GTK_GESTURE_SINGLE (pCtrl));
+	if (button == 1 && n_press == 1)
+	{
+		if (!pDesklet->bClicked)  // on n'accepte le release que si on avait clique sur le desklet avant (on peut recevoir le release si on avait clique sur un dialogue qui chevauchait notre desklet et qui a disparu au clic).
+			return;
+		
+		pDesklet->bClicked = FALSE;
+		//g_print ("GDK_BUTTON_RELEASE\n");
+		int x = pDesklet->container.iMouseX;
+		int y = pDesklet->container.iMouseY;
+		if (pDesklet->moving)
+		{
+			pDesklet->moving = FALSE;
+		}
+		else if (pDesklet->rotating)
+		{
+			pDesklet->rotating = FALSE;
+			cairo_dock_update_conf_file (pDesklet->pIcon->pModuleInstance->cConfFilePath,
+				G_TYPE_INT, "Desklet", "rotation", (int) (pDesklet->fRotation / G_PI * 180.),
+				G_TYPE_INVALID);
+			gtk_widget_queue_draw (pDesklet->container.pWidget);
+			gldi_object_notify (pDesklet, NOTIFICATION_CONFIGURE_DESKLET, pDesklet);
+		}
+		else if (pDesklet->retaching)
+		{
+			pDesklet->retaching = FALSE;
+			if (x > pDesklet->container.iWidth - myDeskletsParam.iDeskletButtonSize && y < myDeskletsParam.iDeskletButtonSize)  // on verifie qu'on est encore dedans.
+			{
+				Icon *icon = pDesklet->pIcon;
+				g_return_if_fail (CAIRO_DOCK_IS_APPLET (icon));
+				gldi_module_instance_detach (icon->pModuleInstance);
+				return;  // interception du signal.
+			}
+		}
+		else if (pDesklet->making_transparent)
+		{
+			cd_debug ("pDesklet->making_transparent\n");
+			pDesklet->making_transparent = FALSE;
+			if (x > pDesklet->container.iWidth - myDeskletsParam.iDeskletButtonSize && y > pDesklet->container.iHeight - myDeskletsParam.iDeskletButtonSize)  // on verifie qu'on est encore dedans.
+			{
+				Icon *icon = pDesklet->pIcon;
+				g_return_if_fail (CAIRO_DOCK_IS_APPLET (icon));
+				pDesklet->bNoInput = ! pDesklet->bNoInput;
+				cd_debug ("no input : %d (%s)", pDesklet->bNoInput, icon->pModuleInstance->cConfFilePath);
+				cairo_dock_update_conf_file (icon->pModuleInstance->cConfFilePath,
+					G_TYPE_BOOLEAN, "Desklet", "no input", pDesklet->bNoInput,
+					G_TYPE_INVALID);
+				_cairo_dock_set_desklet_input_shape (pDesklet);
+				gtk_widget_queue_draw (pDesklet->container.pWidget);
+			}
+		}
+		else if (pDesklet->rotatingY)
+		{
+			pDesklet->rotatingY = FALSE;
+			cairo_dock_update_conf_file (pDesklet->pIcon->pModuleInstance->cConfFilePath,
+				G_TYPE_INT, "Desklet", "depth rotation y", (int) (pDesklet->fDepthRotationY / G_PI * 180.),
+				G_TYPE_INVALID);
+			gtk_widget_queue_draw (pDesklet->container.pWidget);
+		}
+		else if (pDesklet->rotatingX)
+		{
+			pDesklet->rotatingX = FALSE;
+			cairo_dock_update_conf_file (pDesklet->pIcon->pModuleInstance->cConfFilePath,
+				G_TYPE_INT, "Desklet", "depth rotation x", (int) (pDesklet->fDepthRotationX / G_PI * 180.),
+				G_TYPE_INVALID);
+			gtk_widget_queue_draw (pDesklet->container.pWidget);
+		}
+		else
+		{
+			Icon *pClickedIcon = gldi_desklet_find_clicked_icon (pDesklet);
+			gldi_object_notify (pDesklet, NOTIFICATION_CLICK_ICON, pClickedIcon, pDesklet,
+				gtk_event_controller_get_current_event_state (GTK_EVENT_CONTROLLER (pCtrl)));
+		}
+		// prudence.
+		pDesklet->rotating = FALSE;
+		pDesklet->retaching = FALSE;
+		pDesklet->making_transparent = FALSE;
+		pDesklet->rotatingX = FALSE;
+		pDesklet->rotatingY = FALSE;
+	}
+}
+/*
 static void _on_drag_data_received (G_GNUC_UNUSED GtkWidget *pWidget, G_GNUC_UNUSED GdkDragContext *dc, gint x, gint y, GtkSelectionData *selection_data, G_GNUC_UNUSED guint info, guint time, CairoDesklet *pDesklet)
 {
 	//\_________________ On recupere l'URI.
@@ -542,10 +550,8 @@ static void _on_drag_data_received (G_GNUC_UNUSED GtkWidget *pWidget, G_GNUC_UNU
 	
 	gtk_drag_finish (dc, TRUE, FALSE, time);
 }
-
-static gboolean on_motion_notify_desklet (GtkWidget *pWidget,
-	GdkEventMotion* pMotion,
-	CairoDesklet *pDesklet)
+*/
+static void _on_motion_notify_desklet (GtkEventControllerMotion *pCtrl, gdouble x, gdouble y, CairoDesklet *pDesklet)
 {
 	/*if (pMotion->state & GDK_BUTTON1_MASK && cairo_dock_desklet_is_free (pDesklet))
 	{
@@ -553,18 +559,20 @@ static gboolean on_motion_notify_desklet (GtkWidget *pWidget,
 	}
 	else*/  // le 'press-button' est local au sous-widget clique, alors que le 'motion-notify' est global a la fenetre; c'est donc par lui qu'on peut avoir a coup sur les coordonnees du curseur (juste avant le clic).
 	{
-		pDesklet->container.iMouseX = pMotion->x;
-		pDesklet->container.iMouseY = pMotion->y;
+		pDesklet->container.iMouseX = x;
+		pDesklet->container.iMouseY = y;
 		gboolean bStartAnimation = FALSE;
 		gldi_object_notify (pDesklet, NOTIFICATION_MOUSE_MOVED, pDesklet, &bStartAnimation);
 		if (bStartAnimation)
 			cairo_dock_launch_animation (CAIRO_CONTAINER (pDesklet));
 	}
 	
+	GdkModifierType state = gtk_event_controller_get_current_event_state (GTK_EVENT_CONTROLLER (pCtrl));
+	
 	if (pDesklet->rotating && cairo_dock_desklet_is_free (pDesklet))
 	{
 		double alpha = atan2 (pDesklet->container.iHeight, - pDesklet->container.iWidth);
-		pDesklet->fRotation = alpha - atan2 (.5*pDesklet->container.iHeight - pMotion->y, pMotion->x - .5*pDesklet->container.iWidth);
+		pDesklet->fRotation = alpha - atan2 (.5*pDesklet->container.iHeight - y, x - .5*pDesklet->container.iWidth);
 		while (pDesklet->fRotation > G_PI)
 			pDesklet->fRotation -= 2 * G_PI;
 		while (pDesklet->fRotation <= - G_PI)
@@ -573,21 +581,20 @@ static gboolean on_motion_notify_desklet (GtkWidget *pWidget,
 	}
 	else if (pDesklet->rotatingY && cairo_dock_desklet_is_free (pDesklet))
 	{
-		pDesklet->fDepthRotationY = G_PI * (pMotion->x - .5*pDesklet->container.iWidth) / pDesklet->container.iWidth;
+		pDesklet->fDepthRotationY = G_PI * (x - .5*pDesklet->container.iWidth) / pDesklet->container.iWidth;
 		gtk_widget_queue_draw(pDesklet->container.pWidget);
 	}
 	else if (pDesklet->rotatingX && cairo_dock_desklet_is_free (pDesklet))
 	{
-		pDesklet->fDepthRotationX = G_PI * (pMotion->y - .5*pDesklet->container.iHeight) / pDesklet->container.iHeight;
+		pDesklet->fDepthRotationX = G_PI * (y - .5*pDesklet->container.iHeight) / pDesklet->container.iHeight;
 		gtk_widget_queue_draw(pDesklet->container.pWidget);
 	}
-	else if (pMotion->state & GDK_BUTTON1_MASK && cairo_dock_desklet_is_free (pDesklet) && ! pDesklet->moving)
+	else if ((state & GDK_BUTTON1_MASK) && cairo_dock_desklet_is_free (pDesklet) && ! pDesklet->moving)
 	{
-		gtk_window_begin_move_drag (GTK_WINDOW (gtk_widget_get_toplevel (pWidget)),
-			1/*pButton->button*/,
-			pMotion->x_root/*pButton->x_root*/,
-			pMotion->y_root/*pButton->y_root*/,
-			pDesklet->time/*pButton->time*/);
+		gdk_toplevel_begin_move (GDK_TOPLEVEL (gldi_container_get_gdk_window (CAIRO_CONTAINER (pDesklet))),
+			gtk_event_controller_get_current_event_device (GTK_EVENT_CONTROLLER (pCtrl)),
+			1, x, y,
+			gtk_event_controller_get_current_event_time (GTK_EVENT_CONTROLLER (pCtrl)));
 		pDesklet->moving = TRUE;
 	}
 	else
@@ -623,71 +630,42 @@ static gboolean on_motion_notify_desklet (GtkWidget *pWidget,
 			cairo_dock_launch_animation (CAIRO_CONTAINER (pDesklet));
 		}
 	}
-	
-	gdk_device_get_state (pMotion->device, pMotion->window, NULL, NULL);  // pour recevoir d'autres MotionNotify.
-	return FALSE;
 }
 
 
-static gboolean on_focus_in_out_desklet(G_GNUC_UNUSED GtkWidget *widget,
-	G_GNUC_UNUSED GdkEventFocus *event,
-	CairoDesklet *pDesklet)
+static void _on_focus_in_out_desklet(G_GNUC_UNUSED GtkEventControllerFocus *pCtrl, CairoDesklet *pDesklet)
 {
 	gtk_widget_queue_draw(pDesklet->container.pWidget);
-	return FALSE;
 }
 
-static gboolean on_enter_desklet (GtkWidget* pWidget,
-	G_GNUC_UNUSED GdkEventCrossing* pEvent,
-	CairoDesklet *pDesklet)
+static void _on_enter_desklet (G_GNUC_UNUSED GtkEventControllerMotion *pCtrl, gdouble x, gdouble y, CairoDesklet *pDesklet)
 {
 	//g_print ("%s (%d)\n", __func__, pDesklet->container.bInside);
 	if (! pDesklet->container.bInside)  // avant on etait dehors, on redessine donc.
 	{
 		pDesklet->container.bInside = TRUE;
-		gtk_widget_queue_draw (pWidget);  // redessin des boutons.
+		pDesklet->container.iMouseX = x;
+		pDesklet->container.iMouseY = y;
+		gtk_widget_queue_draw (pDesklet->container.pWidget);  // redessin des boutons.
 		
 		gboolean bStartAnimation = FALSE;
 		gldi_object_notify (pDesklet, NOTIFICATION_ENTER_DESKLET, pDesklet, &bStartAnimation);
 		if (bStartAnimation)
 			cairo_dock_launch_animation (CAIRO_CONTAINER (pDesklet));
 	}
-	return FALSE;
 }
-static gboolean on_leave_desklet (GtkWidget* pWidget,
-	GdkEventCrossing* pEvent,
-	CairoDesklet *pDesklet)
+static void _on_leave_desklet (G_GNUC_UNUSED GtkEventControllerMotion *pCtrl, CairoDesklet *pDesklet)
 {
-	//g_print ("%s (%d, %p, %d;%d)\n", __func__, pDesklet->container.bInside, pEvent, iMouseX, iMouseY);
-	int iMouseX, iMouseY;
-	if (pEvent != NULL)
-	{
-		iMouseX = pEvent->x;
-		iMouseY = pEvent->y;
-	}
-	else
-	{
-		gldi_container_update_mouse_position (CAIRO_CONTAINER (pDesklet));
-		iMouseX = pDesklet->container.iMouseX;
-		iMouseY = pDesklet->container.iMouseY;
-	}
-	if (gtk_bin_get_child (GTK_BIN (pDesklet->container.pWidget)) != NULL && iMouseX > 0 && iMouseX < pDesklet->container.iWidth && iMouseY > 0 && iMouseY < pDesklet->container.iHeight)  // en fait on est dans un widget fils, donc on ne fait rien.
-	{
-		return FALSE;
-	}
-	
 	pDesklet->container.bInside = FALSE;
 	Icon *pPointedIcon = cairo_dock_get_pointed_icon (pDesklet->icons);
 	if (pPointedIcon != NULL)
 		pPointedIcon->bPointed = FALSE;
-	gtk_widget_queue_draw (pWidget);  // redessin des boutons.
+	gtk_widget_queue_draw (pDesklet->container.pWidget);  // redessin des boutons.
 	
 	gboolean bStartAnimation = FALSE;
 	gldi_object_notify (pDesklet, NOTIFICATION_LEAVE_DESKLET, pDesklet, &bStartAnimation);
 	if (bStartAnimation)
 		cairo_dock_launch_animation (CAIRO_CONTAINER (pDesklet));
-	
-	return FALSE;
 }
 
 
@@ -808,15 +786,10 @@ void gldi_desklet_init_internals (CairoDesklet *pDesklet)
 	
 	// set up its window
 	GtkWidget *pWindow = pDesklet->container.pWidget;
-	gtk_window_set_title (GTK_WINDOW(pWindow), "cairo-dock-desklet");
-	gtk_widget_add_events( pWindow,
-		GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_SCROLL_MASK |
-		GDK_ENTER_NOTIFY_MASK | GDK_LEAVE_NOTIFY_MASK | GDK_FOCUS_CHANGE_MASK |
-		GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK);
-	gtk_container_set_border_width(GTK_CONTAINER(pWindow), 1);
+	gtk_window_set_title (GTK_WINDOW (pWindow), "cairo-dock-desklet");
+	// gtk_container_set_border_width(GTK_CONTAINER(pWindow), 1);
 	
-	GtkWidget *box = NULL;
-	if (gldi_container_is_wayland_backend ())
+/*	if (gldi_container_is_wayland_backend ())
 	{
 		// This is a hack to hide the titlebars, since on Wayland, gtk_window_set_decorated () 
 		// does the opposite of what it says, see e.g.: https://gitlab.gnome.org/GNOME/gtk/-/issues/5479
@@ -824,57 +797,54 @@ void gldi_desklet_init_internals (CairoDesklet *pDesklet)
 		// then hiding it manually later (at the end of this function)
 		box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
 		gtk_window_set_titlebar (GTK_WINDOW(pWindow), box);
-	}
+	}*/
+	gtk_window_set_decorated (GTK_WINDOW (pWindow), FALSE);
 	
 	// connect the signals to the window
 	g_signal_connect (G_OBJECT (pWindow),
 		"draw",
 		G_CALLBACK (on_expose_desklet),
-		pDesklet);
-	g_signal_connect (G_OBJECT (pWindow),
-		"configure-event",
-		G_CALLBACK (on_configure_desklet),
-		pDesklet);
-	g_signal_connect (G_OBJECT (pWindow),
-		"motion-notify-event",
-		G_CALLBACK (on_motion_notify_desklet),
-		pDesklet);
-	g_signal_connect (G_OBJECT (pWindow),
-		"button-press-event",
-		G_CALLBACK (on_button_press_desklet),
-		pDesklet);
-	g_signal_connect (G_OBJECT (pWindow),
-		"button-release-event",
-		G_CALLBACK (on_button_press_desklet),
-		pDesklet);
-	g_signal_connect (G_OBJECT (pWindow),
-		"focus-in-event",
-		G_CALLBACK (on_focus_in_out_desklet),
-		pDesklet);
-	g_signal_connect (G_OBJECT (pWindow),
-		"focus-out-event",
-		G_CALLBACK (on_focus_in_out_desklet),
-		pDesklet);
-	g_signal_connect (G_OBJECT (pWindow),
-		"enter-notify-event",
-		G_CALLBACK (on_enter_desklet),
-		pDesklet);
-	g_signal_connect (G_OBJECT (pWindow),
-		"leave-notify-event",
-		G_CALLBACK (on_leave_desklet),
-		pDesklet);
-	g_signal_connect (G_OBJECT (pWindow),
-		"unmap-event",
-		G_CALLBACK (on_unmap_desklet),
-		pDesklet);
-	g_signal_connect (G_OBJECT (pWindow),
-		"scroll-event",
-		G_CALLBACK (on_scroll_desklet),
-		pDesklet);
-	gldi_container_enable_drop (CAIRO_CONTAINER (pDesklet), G_CALLBACK (_on_drag_data_received), pDesklet);
+		pDesklet); // -> snapshot
+	// g_signal_connect (G_OBJECT (pWindow),
+	// 	"configure-event",
+	// 	G_CALLBACK (on_configure_desklet),
+	// 	pDesklet); // -> ?? (need to override virtual function?)
+	// -> or notify::width / notify::height on the GdkSurface?
 	
-	gtk_widget_show_all (pWindow);
-	if (box) gtk_widget_hide (box);
+	GtkEventController *pEventMotion = gtk_event_controller_motion_new ();
+	g_signal_connect (G_OBJECT (pEventMotion), "motion",
+		G_CALLBACK (_on_motion_notify_desklet), pDesklet);
+	g_signal_connect (G_OBJECT (pEventMotion), "enter",
+		G_CALLBACK (_on_enter_desklet), pDesklet);
+	g_signal_connect (G_OBJECT (pEventMotion), "leave",
+		G_CALLBACK (_on_leave_desklet), pDesklet);
+	gtk_widget_add_controller (pWindow, pEventMotion);
+	
+	GtkGesture *pEventClick = gtk_gesture_click_new ();
+	g_signal_connect (G_OBJECT (pEventClick), "pressed",
+		G_CALLBACK (_on_button_press_desklet), pDesklet);
+	g_signal_connect (G_OBJECT (pEventClick), "released",
+		G_CALLBACK (_on_button_release_desklet), pDesklet);
+	gtk_widget_add_controller (pWindow, GTK_EVENT_CONTROLLER (pEventClick));
+	
+	GtkEventController* pEventFocus = gtk_event_controller_focus_new ();
+	g_signal_connect (G_OBJECT (pEventFocus), "enter",
+		G_CALLBACK (_on_focus_in_out_desklet), pDesklet);
+	g_signal_connect (G_OBJECT (pEventFocus), "leave",
+		G_CALLBACK (_on_focus_in_out_desklet), pDesklet);
+	gtk_widget_add_controller (pWindow, pEventFocus);
+	
+	GtkEventController *pEventScroll = gtk_event_controller_scroll_new (GTK_EVENT_CONTROLLER_SCROLL_BOTH_AXES);
+	g_signal_connect (G_OBJECT (pEventScroll), "scroll",
+		G_CALLBACK (_on_scroll_desklet), pDesklet);
+	gtk_widget_add_controller (pWindow, pEventScroll);
+	
+	g_signal_connect (G_OBJECT (pWindow), "pending-unmap",
+		G_CALLBACK (on_unmap_desklet), pDesklet); // -> GdkSurface:mapped (only in GTK4): "notify::mapped" ??
+	
+	// gldi_container_enable_drop (CAIRO_CONTAINER (pDesklet), G_CALLBACK (_on_drag_data_received), pDesklet);
+	
+	gtk_window_present (GTK_WINDOW (pWindow));
 }
 
 
@@ -901,17 +871,18 @@ static gboolean _move_desklet (void *data)
 	if (pDesklet->iRequestedDesktopIx < 0 || pDesklet->iRequestedDesktopIx >=
 		g_desktopGeometry.iNbViewportX * g_desktopGeometry.iNbViewportY * g_desktopGeometry.iNbDesktops)
 	{
-		gtk_window_stick (GTK_WINDOW (pDesklet->container.pWidget));
+		/// TODO !!
+/*		gtk_window_stick (GTK_WINDOW (pDesklet->container.pWidget));
 		if (iAbsolutePositionX != pDesklet->container.iWindowPositionX ||
 			iAbsolutePositionY != pDesklet->container.iWindowPositionY)
 		{
 			gdk_window_move (gldi_container_get_gdk_window (CAIRO_CONTAINER (pDesklet)),
 				iAbsolutePositionX, iAbsolutePositionY);
-		}
+		} */
 	}
 	else
 	{
-		gtk_window_unstick (GTK_WINDOW (pDesklet->container.pWidget));
+		//!! gtk_window_unstick (GTK_WINDOW (pDesklet->container.pWidget));
 		// here we have g_desktopGeometry.iNbViewportX > 0 and g_desktopGeometry.iNbViewportY > 0
 	
 		int iNumDesktop, iNumViewportX, iNumViewportY;
@@ -949,13 +920,13 @@ void gldi_desklet_configure (CairoDesklet *pDesklet, CairoDeskletAttr *pAttribut
 	{
 		pDesklet->iDesiredWidth = pAttribute->iDeskletWidth;
 		pDesklet->iDesiredHeight = pAttribute->iDeskletHeight;
-		gtk_window_resize (GTK_WINDOW (pDesklet->container.pWidget),
+		gtk_widget_set_size_request (pDesklet->container.pWidget,
 			pAttribute->iDeskletWidth,
 			pAttribute->iDeskletHeight);
 	}
 	if (! pAttribute->bDeskletUseSize)
 	{
-		gtk_container_set_border_width (GTK_CONTAINER (pDesklet->container.pWidget), 0);
+		// gtk_container_set_border_width (GTK_CONTAINER (pDesklet->container.pWidget), 0);
 		gtk_window_set_resizable (GTK_WINDOW(pDesklet->container.pWidget), FALSE);
 		pDesklet->iDesiredWidth = 0;
 		pDesklet->iDesiredHeight = 0;
@@ -1059,7 +1030,7 @@ void gldi_desklet_decoration_free (CairoDeskletDecoration *pDecoration)
 void gldi_desklet_add_interactive_widget_with_margin (CairoDesklet *pDesklet, GtkWidget *pInteractiveWidget, int iRightMargin)
 {
 	g_return_if_fail (pDesklet != NULL && pInteractiveWidget != NULL);
-	if (pDesklet->pInteractiveWidget != NULL || gtk_bin_get_child (GTK_BIN (pDesklet->container.pWidget)) != NULL)
+	if (pDesklet->pInteractiveWidget != NULL || gtk_window_get_child (GTK_WINDOW (pDesklet->container.pWidget)) != NULL)
 	{
 		cd_warning ("This desklet already has an interactive widget !");
 		return;
@@ -1067,28 +1038,30 @@ void gldi_desklet_add_interactive_widget_with_margin (CairoDesklet *pDesklet, Gt
 	
 	//gtk_container_add (GTK_CONTAINER (pDesklet->container.pWidget), pInteractiveWidget);
 	GtkWidget *pHBox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-	gtk_container_add (GTK_CONTAINER (pDesklet->container.pWidget), pHBox);
+	gtk_window_set_child (GTK_WINDOW (pDesklet->container.pWidget), pHBox);
 	
-	gtk_box_pack_start (GTK_BOX (pHBox), pInteractiveWidget, TRUE, TRUE, 0);
+	gtk_box_append (GTK_BOX (pHBox), pInteractiveWidget);
 	pDesklet->pInteractiveWidget = pInteractiveWidget;
 	
 	if (iRightMargin != 0)
 	{
 		GtkWidget *pMarginBox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
 		g_object_set (pMarginBox, "width-request", iRightMargin, NULL);
-		gtk_box_pack_start (GTK_BOX (pHBox), pMarginBox, FALSE, FALSE, 0);  // a tester ...
+		gtk_box_append (GTK_BOX (pHBox), pMarginBox);  // a tester ...
 	}
 	
-	gtk_widget_show_all (pHBox);
+	// gtk_widget_show_all (pHBox);
 }
 
 void gldi_desklet_set_margin (CairoDesklet *pDesklet, int iRightMargin)
 {
 	g_return_if_fail (pDesklet != NULL && pDesklet->pInteractiveWidget != NULL);
 	
-	GtkWidget *pHBox = gtk_bin_get_child (GTK_BIN (pDesklet->container.pWidget));
+/*	GtkWidget *pHBox = gtk_window_get_child (GTK_WINDOW (pDesklet->container.pWidget));
 	if (pHBox && pHBox != pDesklet->pInteractiveWidget)  // precaution.
 	{
+		//!! TODO: how to get the children list of a box?
+		//!! maybe we need to save the pMarginBox widget?
 		GList *pChildList = gtk_container_get_children (GTK_CONTAINER (pHBox));
 		if (pChildList != NULL)
 		{
@@ -1105,19 +1078,7 @@ void gldi_desklet_set_margin (CairoDesklet *pDesklet, int iRightMargin)
 			}
 			g_list_free (pChildList);
 		}
-	}
-}
-
-static GtkWidget *_steal_widget_from_its_container (GtkWidget *pWidget)
-{
-	g_return_val_if_fail (pWidget != NULL, NULL);
-	GtkWidget *pContainer = gtk_widget_get_parent (pWidget);
-	if (pContainer != NULL)
-	{
-		g_object_ref (G_OBJECT (pWidget));
-		gtk_container_remove (GTK_CONTAINER (pContainer), pWidget);
-	}
-	return pWidget;
+	} */
 }
 
 GtkWidget *gldi_desklet_steal_interactive_widget (CairoDesklet *pDesklet)
@@ -1128,11 +1089,8 @@ GtkWidget *gldi_desklet_steal_interactive_widget (CairoDesklet *pDesklet)
 	GtkWidget *pInteractiveWidget = pDesklet->pInteractiveWidget;
 	if (pInteractiveWidget != NULL)
 	{
-		pInteractiveWidget = _steal_widget_from_its_container (pInteractiveWidget);
-		pDesklet->pInteractiveWidget = NULL;
-		GtkWidget *pBox = gtk_bin_get_child (GTK_BIN (pDesklet->container.pWidget));
-		if (pBox != NULL)
-			gtk_widget_destroy (pBox);
+		g_object_ref (pInteractiveWidget);
+		gtk_window_set_child (GTK_WINDOW (pDesklet->container.pWidget), NULL);
 	}
 	return pInteractiveWidget;
 }
@@ -1153,7 +1111,7 @@ void gldi_desklet_show (CairoDesklet *pDesklet)
 	if (pDesklet)
 	{
 		gtk_window_present(GTK_WINDOW(pDesklet->container.pWidget));
-		gtk_window_move (GTK_WINDOW(pDesklet->container.pWidget), pDesklet->container.iWindowPositionX, pDesklet->container.iWindowPositionY);  // sinon le WM le place n'importe ou.
+		//!! gtk_window_move (GTK_WINDOW(pDesklet->container.pWidget), pDesklet->container.iWindowPositionX, pDesklet->container.iWindowPositionY);  // sinon le WM le place n'importe ou.
 	}
 }
 
@@ -1207,9 +1165,9 @@ void gldi_desklet_set_accessibility (CairoDesklet *pDesklet, CairoDeskletVisibil
 	
 	//\_________________ On applique la nouvelle accessibilite.
 	
-	gtk_window_set_keep_below (GTK_WINDOW (pDesklet->container.pWidget), iVisibility == CAIRO_DESKLET_KEEP_BELOW);
+	// gtk_window_set_keep_below (GTK_WINDOW (pDesklet->container.pWidget), iVisibility == CAIRO_DESKLET_KEEP_BELOW);
 	
-	gtk_window_set_keep_above (GTK_WINDOW (pDesklet->container.pWidget), iVisibility == CAIRO_DESKLET_KEEP_ABOVE);
+	// gtk_window_set_keep_above (GTK_WINDOW (pDesklet->container.pWidget), iVisibility == CAIRO_DESKLET_KEEP_ABOVE);
 	
 	if (iVisibility == CAIRO_DESKLET_ON_WIDGET_LAYER)
 	{
@@ -1247,12 +1205,12 @@ void gldi_desklet_set_sticky (CairoDesklet *pDesklet, gboolean bSticky)
 	int iNumDesktop;
 	if (bSticky)
 	{
-		gtk_window_stick (GTK_WINDOW (pDesklet->container.pWidget));
+		//!! gtk_window_stick (GTK_WINDOW (pDesklet->container.pWidget));
 		iNumDesktop = -1;
 	}
 	else
 	{
-		gtk_window_unstick (GTK_WINDOW (pDesklet->container.pWidget));
+		//!! gtk_window_unstick (GTK_WINDOW (pDesklet->container.pWidget));
 		int iCurrentDesktop, iCurrentViewportX, iCurrentViewportY;
 		gldi_desktop_get_current (&iCurrentDesktop, &iCurrentViewportX, &iCurrentViewportY);
 		iNumDesktop = iCurrentDesktop * g_desktopGeometry.iNbViewportX * g_desktopGeometry.iNbViewportY + iCurrentViewportX * g_desktopGeometry.iNbViewportY + iCurrentViewportY;
@@ -1270,8 +1228,9 @@ void gldi_desklet_set_sticky (CairoDesklet *pDesklet, gboolean bSticky)
 
 gboolean gldi_desklet_is_sticky (CairoDesklet *pDesklet)
 {
+	return FALSE; /**
 	GdkWindow *window = gldi_container_get_gdk_window (CAIRO_CONTAINER (pDesklet));
-	return ((gdk_window_get_state (window)) & GDK_WINDOW_STATE_STICKY);
+	return ((gdk_window_get_state (window)) & GDK_WINDOW_STATE_STICKY); */
 }
 
 void gldi_desklet_lock_position (CairoDesklet *pDesklet, gboolean bPositionLocked)

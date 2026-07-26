@@ -312,12 +312,12 @@ void cairo_dock_play_sound (const gchar *cSoundPath)
 	g_free (cContent);
 	g_strfreev (cLineList);
 }*/
-
+/*
 void cairo_dock_pop_up_about_applet (G_GNUC_UNUSED GtkMenuItem *menu_item, GldiModuleInstance *pModuleInstance)
 {
 	gldi_module_instance_popup_description (pModuleInstance);
 }
-
+*/
 
 void cairo_dock_open_module_config_on_demand (int iClickedButton, G_GNUC_UNUSED GtkWidget *pInteractiveWidget, GldiModuleInstance *pModuleInstance, G_GNUC_UNUSED CairoDialog *pDialog)
 {
@@ -479,9 +479,8 @@ void cairo_dock_resize_applet (GldiModuleInstance *pInstance, int w, int h)
 	}
 	else  // in desklet mode, just resize the desklet, it will trigger the reload of the applet when the 'configure' event is received.
 	{
-		gtk_window_resize (GTK_WINDOW (pContainer->pWidget),
-			w,
-			h);  /// TODO: actually, the renderer should handle this, because except with the 'Simple' view, we can't know the actual size of the icon.
+		/// TODO: actually, the renderer should handle this, because except with the 'Simple' view, we can't know the actual size of the icon.
+		gtk_widget_set_size_request (pContainer->pWidget, w, h);
 	}
 }
 

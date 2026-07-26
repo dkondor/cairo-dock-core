@@ -38,7 +38,7 @@ G_BEGIN_DECLS
 *@param pContainer a container.
 *@return the context on which to draw. Is never NULL, test it with cairo_status() before use it, and destroy it with cairo_destroy() when you're done with it.
 */
-cairo_t * cairo_dock_create_drawing_context_generic (GldiContainer *pContainer);
+// cairo_t * cairo_dock_create_drawing_context_generic (GldiContainer *pContainer);
 
 void cairo_dock_init_drawing_context_on_container (GldiContainer *pContainer, cairo_t *pCairoContext);
 
@@ -46,8 +46,8 @@ void cairo_dock_init_drawing_context_on_container (GldiContainer *pContainer, ca
 *@param pContainer the container on which you want to draw.
 *@return the newly allocated context, to be destroyed with 'cairo_destroy'.
 */
-cairo_t *cairo_dock_create_drawing_context_on_container (GldiContainer *pContainer);
-#define cairo_dock_create_drawing_context cairo_dock_create_drawing_context_on_container
+// cairo_t *cairo_dock_create_drawing_context_on_container (GldiContainer *pContainer);
+// #define cairo_dock_create_drawing_context cairo_dock_create_drawing_context_on_container
 
 /** Create a drawing context to draw on a part of a container. It handles fake transparency.
 *@param pContainer the container on which you want to draw
@@ -55,7 +55,7 @@ cairo_t *cairo_dock_create_drawing_context_on_container (GldiContainer *pContain
 *@param fBgColor background color (rgba) to fill the area with, or NULL to let it transparent.
 *@return the newly allocated context, with a clip corresponding to the area, to be destroyed with 'cairo_destroy'.
 */
-cairo_t *cairo_dock_create_drawing_context_on_area (GldiContainer *pContainer, GdkRectangle *pArea, double *fBgColor);
+// cairo_t *cairo_dock_create_drawing_context_on_area (GldiContainer *pContainer, GdkRectangle *pArea, double *fBgColor);
 
 
 double cairo_dock_calculate_extra_width_for_trapeze (double fFrameHeight, double fInclination, double fRadius, double fLineWidth);

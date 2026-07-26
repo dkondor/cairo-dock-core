@@ -913,7 +913,10 @@ void cairo_dock_show_subdock (Icon *pPointedIcon, CairoDock *pParentDock)
 {
 	cd_debug ("we show the child dock");
 	CairoDock *pSubDock = pPointedIcon->pSubDock;
-	g_return_if_fail (pSubDock != NULL);
+	g_return_if_fail (pSubDock != NULL && pSubDock->container.pWidget != NULL);
+	
+	GtkPopover *pPopover = GTK_POPOVER (pSubDock->container.pWidget);
+	g_return_if_fail (pPopover != NULL);
 
 	// set sane defaults for mouse position; this is needed since we
 	// cannot get the real position on Wayland when it is outside, but
@@ -938,31 +941,20 @@ void cairo_dock_show_subdock (Icon *pPointedIcon, CairoDock *pParentDock)
 	int iNewWidth = pSubDock->iMaxDockWidth;
 	int iNewHeight = pSubDock->iMaxDockHeight;
 	
-	if (!gtk_widget_get_realized (pSubDock->container.pWidget))
-	{
-		// if we don't have a GDK Window yet, we can set the size on the GTK Window
-		if (pSubDock->container.bIsHorizontal)
-			gtk_window_resize (GTK_WINDOW (pSubDock->container.pWidget), iNewWidth, iNewHeight);
-		else gtk_window_resize (GTK_WINDOW (pSubDock->container.pWidget), iNewHeight, iNewWidth);
-	}
-	else
-	{
-		// otherwise, it's better to directly set the size of the GDK Window to
-		// avoid problems with move_to_rect () later
-		if (pSubDock->container.bIsHorizontal)
-			gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
-				iNewWidth, iNewHeight);
-		else gdk_window_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pSubDock)),
-			iNewHeight, iNewWidth);
-	}
-
+	if (pSubDock->container.bIsHorizontal)
+		gtk_widget_set_size_request (pSubDock->container.pWidget, iNewWidth, iNewHeight);
+	else gtk_widget_set_size_request (pSubDock->container.pWidget, iNewHeight, iNewWidth);
+	
 	GdkRectangle rect = {0, 0, 1, 1};
-	GdkGravity rect_anchor = GDK_GRAVITY_NORTH;
-	GdkGravity subdock_anchor = GDK_GRAVITY_SOUTH;
+	GtkPositionType pos;
 	gldi_container_calculate_rect (CAIRO_CONTAINER (pParentDock), pPointedIcon,
-		&rect, &rect_anchor, &subdock_anchor, TRUE);
-	gldi_container_move_to_rect (CAIRO_CONTAINER (pSubDock),
-		&rect, rect_anchor, subdock_anchor, GDK_ANCHOR_SLIDE, 0, 0);
+		&rect, &pos, TRUE);
+	
+	gtk_popover_set_position (pPopover, pos);
+	gtk_popover_set_pointing_to (pPopover, &rect);
+	gtk_popover_popup (pPopover);
+	
+	//!! TODO: confirm the following !! (note: no configure events in GTK4)
 	// note: for some reason, we do not receive configure events at least on Wayland,
 	// so we need to set these manually
 	// TODO: we might need to trigger reloading icon images as well? (see dock-factory.c:1245-1282)
@@ -970,18 +962,6 @@ void cairo_dock_show_subdock (Icon *pPointedIcon, CairoDock *pParentDock)
 	pSubDock->container.iWidth = iNewWidth;
 	pSubDock->container.iHeight = iNewHeight;
 
-	if (g_bUseOpenGL)
-	{
-		// note: this is a no-op on X11, only needed on Wayland + EGL
-		if (pSubDock->container.bIsHorizontal)
-			gldi_gl_container_resized (CAIRO_CONTAINER (pSubDock), iNewWidth, iNewHeight);
-		else gldi_gl_container_resized (CAIRO_CONTAINER (pSubDock), iNewHeight, iNewWidth);
-	}
-	
-	// note: when using gtk-layer-shell (the parent dock is layer surface),
-	// showing the window has to happen after (relative) positioning
-	gtk_window_present (GTK_WINDOW (pSubDock->container.pWidget));
-		
 	// animate it
 	if (myDocksParam.bAnimateSubDock && pSubDock->icons != NULL)
 	{
@@ -1000,8 +980,6 @@ void cairo_dock_show_subdock (Icon *pPointedIcon, CairoDock *pParentDock)
 	}
 	gldi_object_notify (pPointedIcon, NOTIFICATION_UNFOLD_SUBDOCK, pPointedIcon);
 	pSubDock->bWMIconsNeedUpdate = TRUE; // will update minimize positions when the dock's content actually gets drawn
-	
-	// gldi_dialogs_replace_all ();
 }
 
 

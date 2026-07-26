@@ -24,7 +24,7 @@
 #include "gldi-config.h"
 #ifdef HAVE_WAYLAND
 
-#include <gdk/gdkwayland.h>
+#include <gdk/wayland/gdkwayland.h>
 #include "wayland-cosmic-toplevel-management-client-protocol.h"
 #include "wayland-cosmic-toplevel-info-client-protocol.h"
 #include "wayland-cosmic-workspace-client-protocol.h"
@@ -50,7 +50,7 @@
 #include <stdio.h>
 
 #ifdef HAVE_GTK_LAYER_SHELL
-#include <gtk-layer-shell.h>
+#include <gtk4-layer-shell.h>
 extern gboolean g_bDisableLayerShell; // from wayland-manager
 #endif
 
@@ -152,9 +152,9 @@ static void _set_thumbnail_area (GldiWindowActor *actor, GldiContainer* pContain
 	if ( ! (actor && pContainer) ) return;
 	if (w < 0 || h < 0) return;
 	GldiCosmicWindowActor *wactor = (GldiCosmicWindowActor *)actor;
-	GdkWindow* window = gldi_container_get_gdk_window (pContainer);
+	GdkSurface* window = gldi_container_get_gdk_window (pContainer);
 	if (!window) return;
-	struct wl_surface* surface = gdk_wayland_window_get_wl_surface (window);
+	struct wl_surface* surface = gdk_wayland_surface_get_wl_surface (window);
 	if (!surface) return;
 	
 	zcosmic_toplevel_manager_v1_set_rectangle(s_ptoplevel_manager, wactor->chandle, surface, x, y, w, h);
@@ -889,7 +889,7 @@ gboolean gldi_cosmic_toplevel_try_init (struct wl_registry *registry)
 	wmb.set_sticky = _set_sticky;
 	wmb.can_minimize_maximize_close = _can_minimize_maximize_close;
 	// wmb.get_id = _get_id;
-	wmb.pick_window = gldi_wayland_wm_pick_window;
+	// wmb.pick_window = gldi_wayland_wm_pick_window;
 	wmb.get_supported_actions = _get_supported_actions;
 	int flags = GLDI_WM_NO_VIEWPORT_OVERLAP | GLDI_WM_GEOM_REL_TO_VIEWPORT;
 	if (info_version >= 2) flags |= GLDI_WM_HAVE_WINDOW_GEOMETRY;

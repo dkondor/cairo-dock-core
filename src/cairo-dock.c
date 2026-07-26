@@ -131,6 +131,7 @@ static gint s_iNbCrashes = 0;
 static gboolean s_bPingServer = TRUE;
 static gboolean s_bCDSessionLaunched = FALSE; // session CD already launched?
 static gboolean s_bWaylandRunAlready = FALSE;
+static gboolean s_bQuitRequest = FALSE;
 
 /*
 static void _on_got_server_answer (const gchar *data, G_GNUC_UNUSED gpointer user_data)
@@ -186,7 +187,8 @@ static gboolean _cairo_dock_first_launch_setup (G_GNUC_UNUSED gpointer data)
 }
 static gboolean _cairo_dock_quit (G_GNUC_UNUSED gpointer user_data)
 {
-	gtk_main_quit ();
+	s_bQuitRequest = TRUE;
+	// gtk_main_quit ();
 	return G_SOURCE_CONTINUE;
 }
 /* Crash handler that tries to restart Cairo-Dock. The motivation is that since Cairo-Dock may
@@ -552,7 +554,7 @@ int main (int argc, char** argv)
 	GVolumeMonitor *tmp_vol = g_volume_monitor_get ();
 	g_object_unref (tmp_vol);
 	
-	gtk_init (&argc, &argv);
+	gtk_init ();
 	
 	if (g_bLocked) cd_warning ("Cairo-Dock will be locked.");
 	
@@ -642,8 +644,8 @@ int main (int argc, char** argv)
 	if (bNoSticky)
 		cairo_dock_set_containers_non_sticky ();
 	
-	if (bTransparencyWorkaround)
-		cairo_dock_enable_containers_opacity ();
+//	if (bTransparencyWorkaround)
+//		cairo_dock_enable_containers_opacity ();
 	
 	if (iDesktopEnv != CAIRO_DOCK_UNKNOWN_ENV)
 		cairo_dock_fm_force_desktop_env (iDesktopEnv);
@@ -673,20 +675,21 @@ int main (int argc, char** argv)
 			GtkWidget *label = gtk_label_new (_("OpenGL allows you to use the hardware acceleration, reducing the CPU load to the minimum.\nIt also allows some pretty visual effects similar to Compiz.\nHowever, some cards and/or their drivers don't fully support it, which may prevent the dock from running correctly.\nDo you want to activate OpenGL ?\n (To not show this dialog, launch the dock from the Application menu,\n  or with the -o option to force OpenGL and -c to force cairo.)"));
 			GtkWidget *pContentBox = gtk_dialog_get_content_area (GTK_DIALOG(dialog));
 
-			gtk_box_pack_start (GTK_BOX (pContentBox), label, FALSE, FALSE, 0);
+			gtk_box_append (GTK_BOX (pContentBox), label);
 
 			GtkWidget *pAskBox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 3);
-			gtk_box_pack_start (GTK_BOX (pContentBox), pAskBox, FALSE, FALSE, 0);
+			gtk_box_append (GTK_BOX (pContentBox), pAskBox);
 			label = gtk_label_new (_("Remember this choice"));
 			GtkWidget *pCheckBox = gtk_check_button_new ();
-			gtk_box_pack_end (GTK_BOX (pAskBox), pCheckBox, FALSE, FALSE, 0);
-			gtk_box_pack_end (GTK_BOX (pAskBox), label, FALSE, FALSE, 0);
+			gtk_box_append (GTK_BOX (pAskBox), pCheckBox);
+			gtk_box_append (GTK_BOX (pAskBox), label);
 			
-			gtk_widget_show_all (dialog);
+			// gtk_widget_show (dialog);
 			
-			gint iAnswer = gtk_dialog_run (GTK_DIALOG (dialog));  // lance sa propre main loop, c'est pourquoi on peut le faire avant le gtk_main().
+			gint iAnswer = GTK_RESPONSE_NO; // gtk_dialog_run (GTK_DIALOG (dialog));  // lance sa propre main loop, c'est pourquoi on peut le faire avant le gtk_main().
 			gboolean bRememberChoice = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (pCheckBox));
-			gtk_widget_destroy (dialog);
+			// gtk_widget_destroy (dialog);
+			g_object_unref (G_OBJECT (dialog));
 			if (iAnswer == GTK_RESPONSE_NO)
 			{
 				gldi_gl_backend_deactivate ();
@@ -748,10 +751,10 @@ int main (int argc, char** argv)
 	// cairo_dock_load_user_gui_backend (s_iGuiMode);
 	
 	//\___________________ register to the useful notifications.
-	gldi_object_register_notification (&myContainerObjectMgr,
-		NOTIFICATION_DROP_DATA_SELECTION,
-		(GldiNotificationFunc) cairo_dock_notification_drop_data_selection,
-		GLDI_RUN_AFTER, NULL);
+//	gldi_object_register_notification (&myContainerObjectMgr,
+//		NOTIFICATION_DROP_DATA_SELECTION,
+//		(GldiNotificationFunc) cairo_dock_notification_drop_data_selection,
+//		GLDI_RUN_AFTER, NULL);
 	gldi_object_register_notification (&myContainerObjectMgr,
 		NOTIFICATION_CLICK_ICON,
 		(GldiNotificationFunc) cairo_dock_notification_click_icon,
@@ -903,7 +906,7 @@ int main (int argc, char** argv)
 	else if (! s_bCDSessionLaunched && cDesktopSessionEnv
 		&& strncmp (cDesktopSessionEnv, "cairo-dock", 10) == 0) // match e.g. cairo-dock-wayfire and similar as well
 	{
-		gchar *cSecondDock = g_strdup_printf ("%s/"CAIRO_DOCK_MAIN_DOCK_NAME"-2.conf", g_cCurrentThemePath);
+/*		gchar *cSecondDock = g_strdup_printf ("%s/"CAIRO_DOCK_MAIN_DOCK_NAME"-2.conf", g_cCurrentThemePath);
 		if (! g_file_test (cSecondDock, G_FILE_TEST_EXISTS))
 		{
 			GtkWidget *pDialog = gtk_dialog_new_with_buttons (_("You're using our Cairo-Dock session"),
@@ -915,8 +918,8 @@ int main (int argc, char** argv)
 			GtkWidget *pLabel = gtk_label_new (_("It can be interesting to use an adapted theme for this session.\n\nDo you want to load our \"Default-Panel\" theme?\n\nNote: your current theme will be saved and can be reimported later from the Themes manager"));
 
 			GtkWidget *pContentBox = gtk_dialog_get_content_area (GTK_DIALOG (pDialog));
-			gtk_box_pack_start (GTK_BOX (pContentBox), pLabel, FALSE, FALSE, 0);
-			gtk_widget_show_all (pDialog);
+			gtk_box_append (GTK_BOX (pContentBox), pLabel);
+			gtk_widget_show (pDialog);
 
 			gint iAnswer = gtk_dialog_run (GTK_DIALOG (pDialog)); // will block the main loop
 			gtk_widget_destroy (pDialog);
@@ -935,7 +938,7 @@ int main (int argc, char** argv)
 			// Force init script
 			g_timeout_add_seconds (4, _cairo_dock_first_launch_setup, NULL);
 		}
-		g_free (cSecondDock);
+		g_free (cSecondDock); */
 
 		// Update 'cd session' key: we already check that the user is using an adapted theme for this session
 		s_bCDSessionLaunched = TRUE;
@@ -1073,7 +1076,10 @@ int main (int argc, char** argv)
 		g_timeout_add_seconds (5, _cairo_dock_successful_launch, GINT_TO_POINTER (bFirstLaunch));
 
 	// Start Mainloop
-	gtk_main ();
+	while (!s_bQuitRequest)
+		g_main_context_iteration (NULL, TRUE);
+	//!! TODO: properly close all main docks !!
+	// gtk_main ();
 	
 	signal (SIGSEGV, NULL);  // Segmentation violation
 	signal (SIGBUS, NULL);

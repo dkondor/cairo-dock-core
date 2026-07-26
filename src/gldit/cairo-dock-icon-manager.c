@@ -212,14 +212,21 @@ void cairo_dock_set_specified_desktop_for_icon (Icon *pIcon, int iSpecificDeskto
  * GTK_ICON_SIZE_LARGE_TOOLBAR: 24
  * GTK_ICON_SIZE_DND:           32
  * GTK_ICON_SIZE_DIALOG:        48
+ * 
+ * TODO: in GTK4, we don't have many icon sizes, only normal and large;
+ * we should not use GtkIconSize as an option to set sizes!
  */
 gint cairo_dock_search_icon_size (GtkIconSize iIconSize)
 {
-	gint iWidth, iHeight;
-	if (! gtk_icon_size_lookup (iIconSize, &iWidth, &iHeight))
-		return CAIRO_DOCK_DEFAULT_ICON_SIZE;
-
-	return MAX (iWidth, iHeight);
+	switch (iIconSize)
+	{
+		case GTK_ICON_SIZE_NORMAL:
+			return 24;
+		case GTK_ICON_SIZE_LARGE:
+			return 32;
+		default: // including GTK_ICON_SIZE_INHERIT
+			return CAIRO_DOCK_DEFAULT_ICON_SIZE;
+	}
 }
 
 extern GldiContainer *g_pPrimaryContainer;
@@ -245,7 +252,7 @@ gchar *cairo_dock_search_icon_s_path (const gchar *cFileName, gint iDesiredIconS
 	GString *sIconPath = g_string_new ("");
 	const gchar *cSuffixTab[4] = {".svg", ".png", ".xpm", NULL};
 	gboolean bHasSuffix=FALSE, bFileFound=FALSE, bHasVersion=FALSE;
-	GtkIconInfo* pIconInfo = NULL;
+	GtkIconPaintable* pIconInfo = NULL;
 	gchar *str = strrchr (cFileName, '.');
 	if (str)
 	{
@@ -301,26 +308,38 @@ gchar *cairo_dock_search_icon_s_path (const gchar *cFileName, gint iDesiredIconS
 		if (g_pPrimaryContainer != NULL)
 		{
 			// TODO: better way to determine the scale factor based on which screen this icon will appear !!
-			GdkWindow* gdkwindow = gldi_container_get_gdk_window (g_pPrimaryContainer);
-			scale = gdk_window_get_scale_factor (gdkwindow);
+			GdkSurface* gdkwindow = gldi_container_get_gdk_window (g_pPrimaryContainer);
+			scale = gdk_surface_get_scale_factor (gdkwindow); //!! TODO: move to gdk_surface_get_scale() for fractional scaling !!
 		}
-		pIconInfo = gtk_icon_theme_lookup_icon_for_scale (s_pIconTheme,
+		pIconInfo = gtk_icon_theme_lookup_icon (s_pIconTheme,
 			sIconPath->str,
+			NULL, // fallbacks
 			iDesiredIconSize, // GTK_ICON_LOOKUP_FORCE_SIZE if size < 30 ?? -> icons can be different // a lot of themes now use only svg files.
 			scale,
-			GTK_ICON_LOOKUP_FORCE_SVG);
+			GTK_TEXT_DIR_NONE, // ??
+			0);
 		if (pIconInfo == NULL && ! s_bUseLocalIcons && ! bHasVersion)  // if we were not using the default theme and didn't find any icon, let's try with the default theme (for instance gvfs will give us names from the default theme, and they might not exist in our current theme); if it has a version, we'll retry without it.
 		{
-			pIconInfo = gtk_icon_theme_lookup_icon_for_scale (gtk_icon_theme_get_default (),  // the default theme is mapped in shared memory so it's available at any time.
+			pIconInfo = gtk_icon_theme_lookup_icon (
+				gtk_icon_theme_get_for_display (gdk_display_get_default ()),  // the default theme is mapped in shared memory so it's available at any time.
 				sIconPath->str,
+				NULL,
 				iDesiredIconSize,
 				scale,
-				GTK_ICON_LOOKUP_FORCE_SVG);
+				GTK_TEXT_DIR_NONE,
+				0);
 		}
 		if (pIconInfo != NULL)
 		{
-			g_string_assign (sIconPath, gtk_icon_info_get_filename (pIconInfo));
-			bFileFound = TRUE;
+			GFile *pFile = gtk_icon_paintable_get_file (pIconInfo);
+			gchar *cPath = pFile ? g_file_get_path (pFile) : NULL;
+			if (cPath)
+			{
+				g_string_assign (sIconPath, cPath);
+				bFileFound = TRUE;
+				g_free (cPath); // could avoid an unnecessary copy here
+			}
+			if (pFile) g_object_unref (G_OBJECT (pFile));
 			g_object_unref (G_OBJECT (pIconInfo));
 		}
 	}
@@ -367,9 +386,9 @@ void cairo_dock_add_path_to_icon_theme (const gchar *cThemePath)
 			(GSignalMatchType) G_SIGNAL_MATCH_FUNC,
 			0, 0, NULL, _on_icon_theme_changed, NULL);
 	}
-	gtk_icon_theme_append_search_path (s_pIconTheme,
+	gtk_icon_theme_add_search_path (s_pIconTheme,
 		cThemePath);  /// TODO: does it check for unicity ?...
-	gtk_icon_theme_rescan_if_needed (s_pIconTheme);
+	//!! gtk_icon_theme_rescan_if_needed (s_pIconTheme); -- TODO: does not exist anymore, not needed?
 	if (s_bUseDefaultTheme)
 	{
 		g_signal_handlers_unblock_matched (s_pIconTheme,
@@ -386,24 +405,23 @@ void cairo_dock_remove_path_from_icon_theme (const gchar *cThemePath)
 		(GSignalMatchType) G_SIGNAL_MATCH_FUNC,
 		0, 0, NULL, _on_icon_theme_changed, NULL);
 	
-	gchar **paths = NULL;
-	gint iNbPaths = 0;
-	gtk_icon_theme_get_search_path (s_pIconTheme, &paths, &iNbPaths);
+	gchar **paths = gtk_icon_theme_get_search_path (s_pIconTheme);
 	int i;
-	for (i = 0; i < iNbPaths; i++)  // on cherche sa position dans le tableau.
+	for (i = 0; paths[i]; i++)  // on cherche sa position dans le tableau.
 	{
 		if (strcmp (paths[i], cThemePath))
 			break;
 	}
-	if (i < iNbPaths)  // trouve
+	if (paths[i])  // trouve
 	{
 		g_free (paths[i]);
-		for (i = i+1; i < iNbPaths; i++)  // on decale tous les suivants vers l'arriere.
+		paths[i] = NULL;
+		for (i = i+1; paths[i]; i++)  // on decale tous les suivants vers l'arriere.
 		{
 			paths[i-1] = paths[i];
 		}
 		paths[i-1] = NULL;
-		gtk_icon_theme_set_search_path (s_pIconTheme, (const gchar **)paths, iNbPaths - 1);
+		gtk_icon_theme_set_search_path (s_pIconTheme, (const gchar **)paths);
 	}
 	g_strfreev (paths);
 	
@@ -713,7 +731,7 @@ static void _cairo_dock_load_icon_theme (void)
 	if (myIconsParam.cIconTheme == NULL  // no icon theme defined => use the default one.
 	|| strcmp (myIconsParam.cIconTheme, "_Custom Icons_") == 0)  // use custom icons and default theme as fallback
 	{
-		s_pIconTheme = gtk_icon_theme_get_default ();
+		s_pIconTheme = gtk_icon_theme_get_for_display (gdk_display_get_default ());
 		g_signal_connect (G_OBJECT (s_pIconTheme), "changed", G_CALLBACK (_on_icon_theme_changed), NULL);
 		s_bUseDefaultTheme = TRUE;
 		s_bUseLocalIcons = (myIconsParam.cIconTheme != NULL);
@@ -721,7 +739,7 @@ static void _cairo_dock_load_icon_theme (void)
 	else  // use the given icon theme
 	{
 		s_pIconTheme = gtk_icon_theme_new ();
-		gtk_icon_theme_set_custom_theme (s_pIconTheme, myIconsParam.cIconTheme);
+		gtk_icon_theme_set_theme_name (s_pIconTheme, myIconsParam.cIconTheme);
 		s_bUseLocalIcons = FALSE;
 		s_bUseDefaultTheme = FALSE;
 	}

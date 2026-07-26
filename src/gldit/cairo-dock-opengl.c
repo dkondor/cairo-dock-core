@@ -34,7 +34,7 @@ CairoDockGLConfig g_openglConfig;
 gboolean g_bUseOpenGL = FALSE;
 
 // dependencies
-extern GldiDesktopBackground *g_pFakeTransparencyDesktopBg;
+// extern GldiDesktopBackground *g_pFakeTransparencyDesktopBg;
 extern gboolean g_bEasterEggs;
 
 // private
@@ -68,6 +68,17 @@ void gldi_gl_backend_force_indirect_rendering (void)
 		g_openglConfig.bIndirectRendering = TRUE;
 }
 
+static inline gint _get_scale_factor (GldiContainer *pContainer)
+{
+	gint ret = 1;
+	if (pContainer)
+	{
+		GdkSurface *pSurface = gldi_container_get_gdk_window (pContainer);
+		if (pSurface) ret = gdk_surface_get_scale_factor (pSurface);
+	}
+	return ret;
+}
+
 
 static inline void _set_perspective_view (int iWidth, int iHeight, int scale)
 {
@@ -98,8 +109,7 @@ void gldi_gl_container_set_perspective_view (GldiContainer *pContainer)
 		w = pContainer->iHeight;
 		h = pContainer->iWidth;
 	}
-	GdkWindow* gdkwindow = gldi_container_get_gdk_window (pContainer);
-	gint scale = gdk_window_get_scale_factor (gdkwindow);
+	gint scale = _get_scale_factor (pContainer);
 	
 	_set_perspective_view (w, h, scale);
 	pContainer->bPerspectiveView = TRUE;
@@ -109,12 +119,7 @@ void gldi_gl_container_set_perspective_view_for_icon (Icon *pIcon)
 {
 	int w, h;
 	cairo_dock_get_icon_extent (pIcon, &w, &h);
-	gint scale = 1;
-	if(pIcon->pContainer) {
-		GdkWindow* gdkwindow = gldi_container_get_gdk_window (pIcon->pContainer);
-		scale = gdk_window_get_scale_factor (gdkwindow);
-	}
-	
+	gint scale = _get_scale_factor (pIcon->pContainer);
 	_set_perspective_view (w, h, scale);
 }
 
@@ -145,8 +150,7 @@ void gldi_gl_container_set_ortho_view (GldiContainer *pContainer)
 		w = pContainer->iHeight;
 		h = pContainer->iWidth;
 	}
-	GdkWindow* gdkwindow = gldi_container_get_gdk_window (pContainer);
-	gint scale = gdk_window_get_scale_factor (gdkwindow);
+	gint scale = _get_scale_factor (pContainer);
 	
 	_set_ortho_view (w * scale, h * scale);
 	pContainer->bPerspectiveView = FALSE;
@@ -156,12 +160,7 @@ void gldi_gl_container_set_ortho_view_for_icon (Icon *pIcon)
 {
 	int w, h;
 	cairo_dock_get_icon_extent (pIcon, &w, &h);
-	gint scale = 1;
-	if(pIcon->pContainer) {
-		GdkWindow* gdkwindow = gldi_container_get_gdk_window (pIcon->pContainer);
-		scale = gdk_window_get_scale_factor (gdkwindow);
-	}
-	
+	gint scale = _get_scale_factor (pIcon->pContainer);
 	_set_ortho_view (w * scale, h * scale);
 }
 
@@ -183,9 +182,9 @@ gboolean gldi_gl_offscreen_context_make_current (void)
 
 static void _apply_desktop_background (GldiContainer *pContainer)
 {
-	if (! g_pFakeTransparencyDesktopBg || g_pFakeTransparencyDesktopBg->iTexture == 0)
+//	if (! g_pFakeTransparencyDesktopBg || g_pFakeTransparencyDesktopBg->iTexture == 0)
 		return ;
-	
+/*	
 	glPushMatrix ();
 	gboolean bSetPerspective = pContainer->bPerspectiveView;
 	if (bSetPerspective)
@@ -231,7 +230,7 @@ static void _apply_desktop_background (GldiContainer *pContainer)
 	_cairo_dock_disable_texture ();
 	if (bSetPerspective)
 		gldi_gl_container_set_perspective_view (pContainer);
-	glPopMatrix ();
+	glPopMatrix (); */
 }
 
 gboolean gldi_gl_container_begin_draw_full (GldiContainer *pContainer, GdkRectangle *pArea, gboolean bClear)
@@ -240,8 +239,7 @@ gboolean gldi_gl_container_begin_draw_full (GldiContainer *pContainer, GdkRectan
 		return FALSE;
 	
 	glLoadIdentity ();
-	GdkWindow* gdkwindow = gldi_container_get_gdk_window (pContainer);
-	gint scale = gdk_window_get_scale_factor (gdkwindow);
+	gint scale = _get_scale_factor (pContainer);
 	glScalef (scale, scale, 1.f);
 	
 	if (pArea != NULL)

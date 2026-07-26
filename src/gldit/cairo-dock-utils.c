@@ -528,7 +528,7 @@ void gldi_register_process_manager_backend (GldiChildProcessManagerBackend *back
 
 #ifdef HAVE_X11
 
-#include <gdk/gdkx.h>  // gdk_x11_get_default_xdisplay
+#include <gdk/x11/gdkx.h>  // gdk_x11_get_default_xdisplay
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #ifdef HAVE_XEXTEND

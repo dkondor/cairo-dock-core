@@ -177,24 +177,8 @@ static void _cairo_dock_calculate_constrainted_size (double *fImageWidth, double
 	}
 }
 
-
-static inline cairo_t *_get_source_context (void)
-{
-	cairo_t *pSourceContext = NULL;
-	if (g_pPrimaryContainer != NULL)
-	{
-		gtk_widget_realize (g_pPrimaryContainer->pWidget);  // ensure the widget is realized
-		// this is deprecated, but it is a convenient way to get a cairo context whose properties we can use when creating our surfaces
-		pSourceContext = gdk_cairo_create (gldi_container_get_gdk_window(g_pPrimaryContainer));
-	}
-	return pSourceContext;  // Note: we can't keep the context alive and reuse it later, because under Wayland it will make the container invisible
-}
-
 cairo_surface_t *cairo_dock_create_blank_surface_full (int iWidth, int iHeight, cairo_t *pSourceContext)
 {
-	cairo_t *tmpContext = NULL;
-	if (!pSourceContext && !g_bUseOpenGL)
-		pSourceContext = tmpContext = _get_source_context ();
 	cairo_surface_t *pSurface;
 	if (pSourceContext != NULL && cairo_status (pSourceContext) != CAIRO_STATUS_SUCCESS)
 		pSourceContext = NULL;
@@ -206,8 +190,9 @@ cairo_surface_t *cairo_dock_create_blank_surface_full (int iWidth, int iHeight, 
 			cairo_surface_get_device_scale (cairo_get_target (pSourceContext), &xs, &ys);
 		else if (g_pPrimaryContainer != NULL)
 		{
-			GdkWindow* gdkwindow = gldi_container_get_gdk_window (g_pPrimaryContainer);
-			xs = ys = gdk_window_get_scale_factor (gdkwindow);
+			GdkSurface* gdkwindow = gldi_container_get_gdk_window (g_pPrimaryContainer);
+			if (gdkwindow)
+				xs = ys = gdk_surface_get_scale_factor (gdkwindow);
 		}
 		pSurface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, (int)ceil(iWidth * xs), (int)ceil(iHeight * ys));
 		cairo_surface_set_device_scale (pSurface, xs, ys);
@@ -218,7 +203,6 @@ cairo_surface_t *cairo_dock_create_blank_surface_full (int iWidth, int iHeight, 
 			iWidth,
 			iHeight);
 		
-	if(tmpContext) cairo_destroy (tmpContext);
 	return pSurface;
 }
 
@@ -834,8 +818,9 @@ cairo_surface_t * cairo_dock_rotate_surface (cairo_surface_t *pSurface, double f
 cairo_surface_t *cairo_dock_create_surface_from_text_full (const gchar *cText, GldiTextDescription *pTextDescription, double fMaxScale, int iMaxWidth, int *iTextWidth, int *iTextHeight)
 {
 	g_return_val_if_fail (cText != NULL && pTextDescription != NULL, NULL);
-	cairo_t *pSourceContext = _get_source_context ();
-	g_return_val_if_fail (pSourceContext != NULL && cairo_status (pSourceContext) == CAIRO_STATUS_SUCCESS, NULL);
+	
+	cairo_surface_t* pTmpSurface = cairo_dock_create_blank_surface_full (20, 20, NULL);
+	cairo_t* pSourceContext = cairo_create (pTmpSurface);
 	
 	//\_________________ get the font description
 	PangoFontDescription *pDesc = gldi_text_description_get_description (pTextDescription);
@@ -959,6 +944,7 @@ cairo_surface_t *cairo_dock_create_surface_from_text_full (const gchar *cText, G
 	g_object_unref (pLayout);
 	pango_font_description_set_absolute_size (pDesc, iSize * PANGO_SCALE);
 	cairo_destroy (pSourceContext);
+	cairo_surface_destroy (pTmpSurface);
 	return pNewSurface;
 }
 

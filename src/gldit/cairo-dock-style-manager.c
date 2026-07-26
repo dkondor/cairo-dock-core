@@ -81,11 +81,12 @@ static void _on_style_changed (G_GNUC_UNUSED GtkStyleContext *_style, gpointer d
 			// grab a style context
 			// grabing one from an actual menu widget proves to be the most reliable way
 			// actually building a context and querying the properties just doesn't work for all themes :-/
-			GtkWidget *pMenu = gtk_menu_new ();
+	/*		GtkWidget *pMenu = gtk_menu_new ();
 			GtkWidget *pMenuItem = gtk_menu_item_new ();
 			gtk_menu_shell_append (GTK_MENU_SHELL (pMenu), pMenuItem);
 			GtkStyleContext *style = gtk_widget_get_style_context(pMenuItem);  // owned by GTK
-			GdkRGBA *c;
+			GdkRGBA *c;*/
+			
 			/*GtkStyleContext *style = gtk_style_context_new();
 			gtk_style_context_set_screen (style, gdk_screen_get_default());
 			int pos;
@@ -99,7 +100,7 @@ static void _on_style_changed (G_GNUC_UNUSED GtkStyleContext *_style, gpointer d
 			gtk_widget_path_free (path);*/
 			
 			// get text color
-			gtk_style_context_get_color (style, GTK_STATE_FLAG_NORMAL, &s_text_color);
+		/*	gtk_style_context_get_color (style, GTK_STATE_FLAG_NORMAL, &s_text_color);
 			cd_debug ("text color: %.2f;%.2f;%.2f;%.2f", s_text_color.red, s_text_color.green, s_text_color.blue, s_text_color.alpha);
 			
 			// get selected bg color
@@ -175,7 +176,7 @@ static void _on_style_changed (G_GNUC_UNUSED GtkStyleContext *_style, gpointer d
 			
 			gboolean bNotify = GPOINTER_TO_INT(data);
 			if (bNotify && ! cairo_dock_is_loading())
-				gldi_object_notify (&myStyleMgr, NOTIFICATION_STYLE_CHANGED);
+				gldi_object_notify (&myStyleMgr, NOTIFICATION_STYLE_CHANGED);*/
 		}
 	}
 	else cd_debug (" style changed ignored");
@@ -407,7 +408,7 @@ void gldi_style_colors_paint_bg_color_with_alpha (cairo_t *pCairoContext, int iW
   ////////////
  /// INIT ///
 ////////////
-
+/*
 static void init (void)
 {
 	if (s_pStyle != NULL)
@@ -418,7 +419,7 @@ static void init (void)
 	gtk_style_context_set_screen (s_pStyle, gdk_screen_get_default());
 	g_signal_connect (s_pStyle, "changed", G_CALLBACK(_on_style_changed), GINT_TO_POINTER (TRUE));  // TRUE => throw a notification
 }
-
+*/
   //////////////////
  /// GET CONFIG ///
 //////////////////
@@ -533,7 +534,7 @@ void gldi_register_style_manager (void)
 	gldi_object_init (GLDI_OBJECT(&myStyleMgr), &myManagerObjectMgr, NULL);
 	myStyleMgr.cModuleName  = "Style";
 	// interface
-	myStyleMgr.init         = init;
+	// myStyleMgr.init         = init;
 	myStyleMgr.load         = load;
 	myStyleMgr.unload       = unload;
 	myStyleMgr.reload       = (GldiManagerReloadFunc)reload;

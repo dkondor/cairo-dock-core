@@ -27,7 +27,7 @@
 
 #define _GNU_SOURCE
 
-#include <gdk/gdkwayland.h>
+#include <gdk/wayland/gdkwayland.h>
 #include "wayland-plasma-window-management-client-protocol.h"
 #include "cairo-dock-windows-manager-priv.h"
 #include "cairo-dock-desktop-manager.h"
@@ -260,10 +260,10 @@ static void _thumbnail_remove_from_container (GldiPlasmaWindowActor *pactor, gbo
 	
 	if (bUnset)
 	{
-		GdkWindow* window = gldi_container_get_gdk_window (pactor->pMinimizeContainer);
+		GdkSurface* window = gldi_container_get_gdk_window (pactor->pMinimizeContainer);
 		if (window)
 		{
-			struct wl_surface* surface = gdk_wayland_window_get_wl_surface (window);
+			struct wl_surface* surface = gdk_wayland_surface_get_wl_surface (window);
 			if (surface) org_kde_plasma_window_unset_minimized_geometry (pactor->wactor.handle, surface);
 		}
 	}
@@ -299,8 +299,8 @@ static void _set_thumbnail_area (GldiWindowActor *actor, GldiContainer* pContain
 	struct wl_surface* surface = NULL;
 	if (pContainer && w >= 0 && h >= 0)
 	{
-		GdkWindow* window = gldi_container_get_gdk_window (pContainer);
-		if (window) surface = gdk_wayland_window_get_wl_surface (window);
+		GdkSurface* window = gldi_container_get_gdk_window (pContainer);
+		if (window) surface = gdk_wayland_surface_get_wl_surface (window);
 	}
 	
 	GldiPlasmaWindowActor *pactor = (GldiPlasmaWindowActor*) actor;
@@ -656,7 +656,7 @@ static void gldi_plasma_window_manager_init ()
 	wmb.set_sticky = _set_sticky;
 	wmb.can_minimize_maximize_close = _can_minimize_maximize_close;
 	// wmb.get_id = _get_id;
-	wmb.pick_window = gldi_wayland_wm_pick_window;
+	// wmb.pick_window = gldi_wayland_wm_pick_window;
 	wmb.get_supported_actions = _get_supported_actions;
 	wmb.flags = GINT_TO_POINTER (GLDI_WM_NO_VIEWPORT_OVERLAP | GLDI_WM_GEOM_REL_TO_VIEWPORT | GLDI_WM_HAVE_WINDOW_GEOMETRY | GLDI_WM_HAVE_WORKSPACES);
 	wmb.name = "plasma";

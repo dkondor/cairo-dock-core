@@ -463,7 +463,7 @@ static gboolean _on_update_desklet_notification (G_GNUC_UNUSED gpointer data, Ca
 	gtk_widget_queue_draw (pDesklet->container.pWidget);
 	return GLDI_NOTIFICATION_LET_PASS;
 }
-
+/*
 static Icon *_cairo_dock_pick_icon_on_opengl_desklet (CairoDesklet *pDesklet)
 {
 	GLuint selectBuf[4];
@@ -480,8 +480,8 @@ static Icon *_cairo_dock_pick_icon_on_opengl_desklet (CairoDesklet *pDesklet)
 	glInitNames();
 	glPushName(0);
 	
-	GdkWindow* gdkwindow = gldi_container_get_gdk_window (CAIRO_CONTAINER(pDesklet));
-	gint scale = gdk_window_get_scale_factor (gdkwindow);
+	GdkSurface* gdkwindow = gldi_container_get_gdk_window (CAIRO_CONTAINER(pDesklet));
+	gint scale = gdk_surface_get_scale_factor (gdkwindow);
 	
 	glMatrixMode (GL_PROJECTION);
 	glPushMatrix ();
@@ -612,13 +612,13 @@ static Icon *_cairo_dock_pick_icon_on_opengl_desklet (CairoDesklet *pDesklet)
 	}
 	
 	return pFoundIcon;
-}
+}*/
 Icon *gldi_desklet_find_clicked_icon (CairoDesklet *pDesklet)
 {
-	if (g_bUseOpenGL && pDesklet->pRenderer && pDesklet->pRenderer->render_opengl)
+/*	if (g_bUseOpenGL && pDesklet->pRenderer && pDesklet->pRenderer->render_opengl)
 	{
 		return _cairo_dock_pick_icon_on_opengl_desklet (pDesklet);
-	}
+	}*/
 	
 	int iMouseX = pDesklet->container.iMouseX, iMouseY = pDesklet->container.iMouseY;
 	if (fabs (pDesklet->fRotation) > ANGLE_MIN)
@@ -715,7 +715,7 @@ static void _set_one_desklet_visible (CairoDesklet *pDesklet, gpointer data)
 		if (bIsOnWidgetLayer)  // on le passe sur la couche visible.
 			gldi_desktop_set_on_widget_layer (CAIRO_CONTAINER (pDesklet), FALSE);
 		
-		gtk_window_set_keep_below (GTK_WINDOW (pDesklet->container.pWidget), FALSE);
+		//!! gtk_window_set_keep_below (GTK_WINDOW (pDesklet->container.pWidget), FALSE);
 		
 		gldi_desklet_show (pDesklet);
 	}

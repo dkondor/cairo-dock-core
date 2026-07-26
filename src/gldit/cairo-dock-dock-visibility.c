@@ -59,8 +59,8 @@ static void _get_dock_geometry (const CairoDock *pDock, GtkAllocation *pArea)
 		//!! TODO: move this to the container backends !!
 		gboolean bFound = FALSE;
 		GdkMonitor *monitor = NULL;
-		GdkWindow *gdkwindow = gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock));
-		if (gdkwindow) monitor = gdk_display_get_monitor_at_window (gdk_display_get_default (), gdkwindow);
+		GdkSurface *gdkwindow = gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock));
+		if (gdkwindow) monitor = gdk_display_get_monitor_at_surface (gdk_display_get_default (), gdkwindow);
 		
 		if (monitor)
 		{

@@ -368,7 +368,7 @@ gboolean cairo_dock_notification_scroll_icon (G_GNUC_UNUSED gpointer pUserData, 
 	return GLDI_NOTIFICATION_LET_PASS;
 }
 
-
+/*
 gboolean cairo_dock_notification_drop_data_selection (G_GNUC_UNUSED gpointer pUserData,
 		GtkSelectionData *selection_data, Icon *icon, double fOrder, GldiContainer *pContainer,
 		gboolean *bHandled)
@@ -450,7 +450,7 @@ gboolean cairo_dock_notification_drop_data_selection (G_GNUC_UNUSED gpointer pUs
 	g_strfreev (data);
 	return ret;
 }
-
+*/
 
 void cairo_dock_set_custom_icon_on_appli (const gchar *cFilePath, Icon *icon, GldiContainer *pContainer)
 {

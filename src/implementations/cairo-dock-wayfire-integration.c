@@ -300,9 +300,8 @@ static void _bind_key (GldiShortkey *pBinding, gboolean grab, CairoDockGrabKeyRe
 		
 		GString *str = g_string_sized_new (40); // all modifiers + some long key name
 		
-		// first process modifiers (note: GDK_SUPER_MASK and GDK_META_MASK have been removed by the caller)
 		if (modifiers & GDK_CONTROL_MASK) g_string_append (str, "<ctrl>");
-		if (modifiers & GDK_META_MASK || modifiers & GDK_MOD1_MASK) g_string_append (str, "<alt>"); // TODO: GDK_ALT_MASK !! (only in Gdk4)
+		if (modifiers & GDK_ALT_MASK) g_string_append (str, "<alt>");
 		if (modifiers & GDK_SHIFT_MASK) g_string_append (str, "<shift>");
 		if (modifiers & GDK_SUPER_MASK) g_string_append (str, "<super>");
 		

@@ -45,7 +45,7 @@ static CairoDockGLFont *s_pFont = NULL;
   ////////////
  /// FONT ///
 ////////////
-
+/*
 #define _init_data_renderer_font(...) s_pFont = cairo_dock_load_textured_font ("Monospace Bold 12", 0, 184)  // on va jusqu'a ø
 
 CairoDockGLFont *cairo_dock_get_default_data_renderer_font (void)
@@ -60,6 +60,7 @@ void cairo_dock_unload_default_data_renderer_font (void)
 	cairo_dock_free_gl_font (s_pFont);
 	s_pFont = NULL;
 }
+*/
 
 
   /////////////////////////
@@ -91,10 +92,10 @@ CairoDataRenderer *cairo_dock_new_data_renderer (const gchar *cRendererName)
 	CairoDockDataRendererRecord *pRecord = cairo_dock_get_data_renderer_record (cRendererName);
 	g_return_val_if_fail (pRecord != NULL && pRecord->iStructSize != 0, NULL);
 	
-	if (g_bUseOpenGL && s_pFont == NULL)
+/*	if (g_bUseOpenGL && s_pFont == NULL)
 	{
 		_init_data_renderer_font ();
-	}
+	}*/
 	
 	CairoDataRenderer *pRenderer = g_malloc0 (pRecord->iStructSize);
 	memcpy (&pRenderer->interface, &pRecord->interface, sizeof (CairoDataRendererInterface));
@@ -186,8 +187,8 @@ gchar *cairo_dock_get_package_path_for_data_renderer (const gchar *cRendererName
 
 static void unload (void)
 {
-	cairo_dock_free_gl_font (s_pFont);
-	s_pFont = NULL;
+//	cairo_dock_free_gl_font (s_pFont);
+//	s_pFont = NULL;
 }
 
 

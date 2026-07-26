@@ -31,7 +31,7 @@
 #include <cairo.h>
 #include <gdk/gdk.h>
 #ifdef GDK_WINDOWING_X11
-#include <gdk/gdkx.h>  // GDK_WINDOW_XID, GDK_IS_X11_DISPLAY
+#include <gdk/x11/gdkx.h>  // GDK_WINDOW_XID, GDK_IS_X11_DISPLAY
 #endif
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
@@ -599,7 +599,7 @@ static gboolean _cairo_dock_unstack_Xevents (G_GNUC_UNUSED gpointer data)
 			else if (event.type == KeyPress)
 			{
 				guint event_mods = 0;
-				if (event.xkey.state & alt_mask) event_mods |= GDK_MOD1_MASK;
+				if (event.xkey.state & alt_mask) event_mods |= GDK_ALT_MASK;
 				if (event.xkey.state & ctrl_mask) event_mods |= GDK_CONTROL_MASK;
 				if (event.xkey.state & shift_mask) event_mods |= GDK_SHIFT_MASK;
 				if (event.xkey.state & super_mask) event_mods |= GDK_SUPER_MASK;
@@ -972,7 +972,7 @@ static void _grab_shortkey (GldiShortkey *pBinding, gboolean grab, CairoDockGrab
 {
 	guint keycode = pBinding->keycode;
 	guint modifiers = 0;
-	if (pBinding->modifiers & GDK_MOD1_MASK || pBinding->modifiers & GDK_META_MASK) modifiers |= alt_mask;
+	if (pBinding->modifiers & GDK_ALT_MASK) modifiers |= alt_mask;
 	if (pBinding->modifiers & GDK_CONTROL_MASK) modifiers |= ctrl_mask;
 	if (pBinding->modifiers & GDK_SHIFT_MASK) modifiers |= shift_mask;
 	if (pBinding->modifiers & GDK_SUPER_MASK) modifiers |= super_mask;
@@ -1191,7 +1191,7 @@ static GldiWindowActor *_pick_window (G_GNUC_UNUSED GtkWindow *pParentWindow)
 /////////////////////////////////
 
 #ifdef GDK_WINDOWING_X11
-#define _gldi_container_get_Xid(pContainer) GDK_WINDOW_XID (gldi_container_get_gdk_window(pContainer))
+#define _gldi_container_get_Xid(pContainer) gdk_x11_surface_get_xid (gldi_container_get_gdk_window(pContainer))
 #else
 _gldi_container_get_Xid(pContainer) 0
 #endif
@@ -1255,7 +1255,8 @@ static void _present (GldiContainer *pContainer)
 
 static void _set_keep_below (GldiContainer *pContainer, gboolean bKeepBelow)
 {
-	gtk_window_set_keep_below (GTK_WINDOW (pContainer->pWidget), bKeepBelow);
+	cd_warning ("not implemented"); // TODO: need to set X11 property ourselves?
+	// gtk_window_set_keep_below (GTK_WINDOW (pContainer->pWidget), bKeepBelow);
 }
 
 static void _move_resize_dock (CairoDock *pDock)
@@ -1271,6 +1272,9 @@ static void _move_resize_dock (CairoDock *pDock)
 	 */
 	// g_print (" -> %dx%d (%dx%d), %d;%d\n", iNewWidth, iNewHeight, pDock->container.iWidth, pDock->container.iHeight, iNewPositionX, iNewPositionY);
 
+	cd_warning ("not implemented");
+	
+	/*
 	if (pDock->container.bIsHorizontal)
 	{
 		gdk_window_move_resize (gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock)),
@@ -1278,10 +1282,9 @@ static void _move_resize_dock (CairoDock *pDock)
 				iNewPositionY,
 				iNewWidth,
 				iNewHeight);
-		/* When we have two gdk_window_move_resize in a row, Compiz will
-		 * disturbed and it will block the draw of the dock. It seems Compiz
-		 * sends too much 'configure' compare to Metacity. 
-		 */
+		// When we have two gdk_window_move_resize in a row, Compiz will
+		// disturbed and it will block the draw of the dock. It seems Compiz
+		// sends too much 'configure' compare to Metacity. 
 	}
 	else
 	{
@@ -1290,7 +1293,7 @@ static void _move_resize_dock (CairoDock *pDock)
 				iNewPositionX,
 				iNewHeight,
 				iNewWidth);
-	}
+	} */
 }
 
 typedef struct {
@@ -1321,7 +1324,11 @@ static void _cairo_dock_unhide_root_dock_on_mouse_hit (CairoDock *pDock, CDMouse
 		pMouse->bUpToDate = TRUE;
 		GdkSeat *pSeat = gdk_display_get_default_seat (gdk_display_get_default());
 		GdkDevice *pDevice = gdk_seat_get_pointer (pSeat);
-		gdk_device_get_position (pDevice, NULL, &x, &y);
+		//!! TODO: use gdk_surface_get_device_position
+		// gdk_device_get_position (pDevice, NULL, &x, &y);
+		cd_warning ("not implemented");
+		return;
+		
 		if (x == pMouse->x && y == pMouse->y)  // le pointeur n'a pas bouge, on quitte.
 		{
 			pMouse->bNoMove = TRUE;
@@ -1528,14 +1535,25 @@ static void _update_mouse_position (GldiContainer *pContainer)
 {
 	GdkSeat *pSeat = gdk_display_get_default_seat (gdk_display_get_default());
 	GdkDevice *pDevice = gdk_seat_get_pointer (pSeat);
+	double x, y;
+	gdk_surface_get_device_position (gldi_container_get_gdk_window (pContainer), pDevice, &x, &y, NULL);
 	if ((pContainer)->bIsHorizontal)
-		gdk_window_get_device_position (gldi_container_get_gdk_window (pContainer), pDevice, &pContainer->iMouseX, &pContainer->iMouseY, NULL);
+	{
+		pContainer->iMouseX = x;
+		pContainer->iMouseY = y;
+	}
 	else
-		gdk_window_get_device_position (gldi_container_get_gdk_window (pContainer), pDevice, &pContainer->iMouseY, &pContainer->iMouseX, NULL);
+	{
+		pContainer->iMouseX = y;
+		pContainer->iMouseY = x;
+	}
 }
 
-static gboolean _dock_handle_leave (CairoDock *pDock, G_GNUC_UNUSED GdkEventCrossing *pEvent)
+static gboolean _dock_handle_leave (CairoDock *pDock, gboolean bRealEvent)
 {
+	if (bRealEvent)
+		_update_mouse_position (CAIRO_CONTAINER (pDock)); // need to update the position since the event does not report it
+	
 	// this function is just the _mouse_is_really_outside () function from cairo-dock-dock-factory.c
 	// this check only makes sense on X11
 	int x1, x2, y1, y2;
@@ -1637,10 +1655,11 @@ static void _adjust_aimed_point (const Icon *pIcon, GtkWidget *pWidget,
 	else
 	{
 		// in this case, position is relative to pWidget
-		int x, y;
-		gdk_window_get_position (gtk_widget_get_window (gtk_widget_get_toplevel (pWidget)), &x, &y);
-		*iAimedX += x;
-		*iAimedY += y;
+		// int x, y;
+		//!! TODO: save window positions from the configure events !!
+		//gdk_window_get_position (gtk_widget_get_window (gtk_widget_get_toplevel (pWidget)), &x, &y);
+		// *iAimedX += x;
+		// *iAimedY += y;
 	}
 }
 
@@ -1849,7 +1868,7 @@ static void init (void)
 	cmb.present = _present;
 	cmb.set_keep_below = _set_keep_below;
 	cmb.move_resize_dock = _move_resize_dock;
-	cmb.update_polling_screen_edge = _update_polling_screen_edge;
+	// cmb.update_polling_screen_edge = _update_polling_screen_edge;
 	cmb.can_reserve_space = _can_reserve_space;
 	cmb.update_mouse_position = _update_mouse_position;
 	cmb.dock_handle_leave = _dock_handle_leave;
