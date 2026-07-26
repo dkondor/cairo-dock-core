@@ -426,33 +426,53 @@ void gldi_container_move_to_rect (GldiContainer *pContainer, const GdkRectangle 
 void gldi_container_calculate_rect (const GldiContainer* pContainer, const Icon* pPointedIcon,
 	GdkRectangle *rect, GdkGravity* rect_anchor, GdkGravity* window_anchor, gboolean bSkipLabel)
 {
-	if (! (pPointedIcon && pContainer) ) return;
+	if (!pContainer) return;
 
 	if (pContainer->bIsHorizontal)
 	{
-		rect->x = pPointedIcon->fDrawX;
-		rect->y = pPointedIcon->fDrawY;
-		rect->width = pPointedIcon->fWidth * pPointedIcon->fScale;
-		rect->height = pPointedIcon->fHeight * pPointedIcon->fScale;
+		if (pPointedIcon)
+		{
+			rect->x = pPointedIcon->fDrawX;
+			rect->y = pPointedIcon->fDrawY;
+			rect->width = pPointedIcon->fWidth * pPointedIcon->fScale;
+			rect->height = pPointedIcon->fHeight * pPointedIcon->fScale;
+		}
+		else
+		{
+			rect->x = pContainer->iWidth / 2;
+			rect->y = 0;
+			rect->width = 1;
+			rect->height = pContainer->iHeight;
+		}
 		if (pContainer->bDirectionUp)
 		{
 			*rect_anchor = GDK_GRAVITY_NORTH;
 			*window_anchor = GDK_GRAVITY_SOUTH;
-			if (bSkipLabel) rect->y -= myIconsParam.iLabelSize;
+			if (pPointedIcon && bSkipLabel) rect->y -= myIconsParam.iLabelSize;
 		}
 		else
 		{
 			*rect_anchor = GDK_GRAVITY_SOUTH;
 			*window_anchor = GDK_GRAVITY_NORTH;
-			if (bSkipLabel) rect->y += myIconsParam.iLabelSize;
+			if (pPointedIcon && bSkipLabel) rect->y += myIconsParam.iLabelSize;
 		}
 	}
 	else
 	{
-		rect->x = pPointedIcon->fDrawY;
-		rect->y = pPointedIcon->fDrawX;
-		rect->width = pPointedIcon->fHeight * pPointedIcon->fScale;
-		rect->height = pPointedIcon->fWidth * pPointedIcon->fScale;
+		if (pPointedIcon)
+		{
+			rect->x = pPointedIcon->fDrawY;
+			rect->y = pPointedIcon->fDrawX;
+			rect->width = pPointedIcon->fHeight * pPointedIcon->fScale;
+			rect->height = pPointedIcon->fWidth * pPointedIcon->fScale;
+		}
+		else
+		{
+			rect->x = 0;
+			rect->y = pContainer->iWidth / 2;
+			rect->width = pContainer->iHeight;
+			rect->height = 1;
+		}
 		if (pContainer->bDirectionUp)
 		{
 			*rect_anchor = GDK_GRAVITY_WEST;
