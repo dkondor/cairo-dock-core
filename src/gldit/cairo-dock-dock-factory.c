@@ -696,7 +696,7 @@ static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCro
 		// so we cannot get here if it would have returned false (this is the same with the new implementation as well)
 		if (pOriginDock == pDock /* && _mouse_is_really_outside (pDock) */ )  // ce test est la pour parer aux WM deficients mentaux comme KWin qui nous font sortir/rentrer lors d'un clic.
 		{
-			cd_debug (" on detache l'icone");
+/*			cd_debug (" on detache l'icone");
 			pOriginDock->bIconIsFlyingAway = TRUE;
 			gldi_icon_detach (s_pIconClicked);
 			cairo_dock_stop_icon_glide (pOriginDock);
@@ -716,7 +716,7 @@ static gboolean _on_leave_notify2 (G_GNUC_UNUSED GtkWidget* pWidget, GdkEventCro
 			if (pDock->iRefCount > 0 || pDock->bAutoHide)  // pour garder le dock visible.
 			{
 				return TRUE;
-			}
+			} */
 		}
 	}
 	
@@ -2425,7 +2425,7 @@ void gldi_dock_init_internals (CairoDock *pDock)
 		"leave-notify-event",
 		G_CALLBACK (_on_leave_notify),
 		pDock);
-	gldi_container_enable_drop (CAIRO_CONTAINER (pDock),
+/*	gldi_container_enable_drop (CAIRO_CONTAINER (pDock),
 		G_CALLBACK (_on_drag_data_received),
 		pDock);
 	g_signal_connect (G_OBJECT (pWindow),
@@ -2443,7 +2443,7 @@ void gldi_dock_init_internals (CairoDock *pDock)
 	g_signal_connect (G_OBJECT (pWindow),
 		"drag-failed",
 		G_CALLBACK (_on_drag_failed),
-		pDock);
+		pDock); */
 	/*g_signal_connect (G_OBJECT (pWindow),
 		"drag-drop",
 		G_CALLBACK (_on_drag_drop),
