@@ -62,13 +62,13 @@ SET(core_lib_SRCS
 	cairo-dock-task.c 					cairo-dock-task.h
 	cairo-dock-config.c 				cairo-dock-config.h
 	cairo-dock-utils.c 					cairo-dock-utils.h
-	cairo-dock-menu.c 					cairo-dock-menu.h
+	# cairo-dock-menu.c 					cairo-dock-menu.h
 	cairo-dock-style-manager.c 			cairo-dock-style-manager.h
 	cairo-dock-style-facility.c 		cairo-dock-style-facility.h
 	cairo-dock-desktop-file-db.c		cairo-dock-desktop-file-db.h
 	cdwindow.c                          cdwindow.h
 	texture-gradation.h
-	gtk3imagemenuitem.c 				gtk3imagemenuitem.h
+	# gtk3imagemenuitem.c 				gtk3imagemenuitem.h
 )
 
 ########### compilation ###############
@@ -183,7 +183,7 @@ install(FILES
 	cairo-dock-task.h
 	cairo-dock-animations.h
 	# cairo-dock-gui-factory.h
-	cairo-dock-menu.h
+	# cairo-dock-menu.h
 	cairo-dock-style-manager.h
 	cairo-dock-style-facility.h
 	cairo-dock-utils.h
