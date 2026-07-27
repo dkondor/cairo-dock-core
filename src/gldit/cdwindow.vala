@@ -32,6 +32,7 @@ public class CDWindow : Gtk.Window {
 	public CDWindow () {
 		Object();
 		base.set_decorated(false);
+		this.add_css_class("cairo-dock");
 	}
 	
 	public override void unmap () {
@@ -57,6 +58,7 @@ public class CDPopup : Gtk.Popover {
 	public CDPopup () {
 		Object();
 		base.set_has_arrow(false);
+		this.add_css_class("cairo-dock");
 	}
 	
 	public override void unmap () {
@@ -65,6 +67,7 @@ public class CDPopup : Gtk.Popover {
 	}
 	
 	public override void snapshot (Gtk.Snapshot snapshot) {
+		base.snapshot(snapshot);
 		var surface = this.get_surface();
 		var rect = Graphene.Rect();
 		rect.init(0.0f, 0.0f, surface.get_width(), surface.get_height());

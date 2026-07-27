@@ -29,7 +29,7 @@
 #include "cairo-dock-dock-facility.h" // cairo_dock_is_hidden
 #include "cairo-dock-dock-manager.h"
 #include "cairo-dock-dock-priv.h"
-// #include "cairo-dock-dialog-manager.h"
+#include "cairo-dock-style-manager.h" // gldi_style_colors_freeze
 #include "cairo-dock-log.h"
 #include "cairo-dock-config.h"
 #include "cairo-dock-utils.h"  // cairo_dock_string_is_address
@@ -618,6 +618,37 @@ gboolean gldi_container_get_scale_setting (GKeyFile *pKeyFile, double *fScale, g
 	return bScale;
 }
 
+  ////////////
+ /// INIT ///
+////////////
+
+static void init (void)
+{
+	static GtkCssProvider *cssProvider = NULL;
+	if (cssProvider) return;
+	
+	cssProvider = gtk_css_provider_new ();
+	gldi_style_colors_freeze ();
+	gtk_style_context_add_provider_for_display (gdk_display_get_default(), GTK_STYLE_PROVIDER(cssProvider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+	const gchar *css = "\
+		window.cairo-dock {\
+			background-color: rgba(0, 0, 0, 0.0);\
+		}\
+		popover.background {\
+			background-color: rgba(0, 0, 0, 0.0);\
+		}\
+		popover.cairo-dock contents {\
+			box-shadow: 0 0 0 0;\
+			background-color: rgba(0, 0, 0, 0.0);\
+			border: none;\
+			border-radius: 0 0 0 0;\
+			padding: 0 0 0 0;\
+		}\
+		";
+	gtk_css_provider_load_from_string (cssProvider, css);
+	gldi_style_colors_freeze ();
+}
+
   ///////////////
  /// MANAGER ///
 ///////////////
@@ -694,7 +725,7 @@ void gldi_register_containers_manager (void)
 	gldi_object_init (GLDI_OBJECT(&myContainersMgr), &myManagerObjectMgr, NULL);
 	myContainersMgr.cModuleName  = "Containers";
 	// interface
-	// myContainersMgr.init         = init;
+	myContainersMgr.init         = init;
 	// myContainersMgr.load         = load;
 	// myContainersMgr.unload       = unload;
 	myContainersMgr.reload       = (GldiManagerReloadFunc)NULL;
