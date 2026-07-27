@@ -128,7 +128,7 @@ static void _make_sub_dock (CairoDock *pDock, CairoDock *pParentDock, const gcha
 {
 	//\__________________ set sub-dock flag
 	pDock->iRefCount = 1;
-	gtk_window_set_title (GTK_WINDOW (pDock->container.pWidget), "cairo-dock-sub");
+	// gtk_window_set_title (GTK_WINDOW (pDock->container.pWidget), "cairo-dock-sub");
 	
 	//\__________________ set the orientation relatively to the parent dock
 	pDock->container.bIsHorizontal = pParentDock->container.bIsHorizontal;
@@ -2296,7 +2296,7 @@ static void init_object (GldiObject *obj, gpointer attr)
 	}
 	else
 	{
-		gtk_window_set_title (GTK_WINDOW (pDock->container.pWidget), "cairo-dock-sub");
+		// gtk_window_set_title (GTK_WINDOW (pDock->container.pWidget), "cairo-dock-sub");
 		
 		//\__________________ set additional params from its parent dock.
 		CairoDock *pParentDock = dattr->pParentDock;

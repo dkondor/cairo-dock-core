@@ -88,6 +88,8 @@ cd_window_construct (GType object_type)
 {
 	CDWindow * self = NULL;
 	self = (CDWindow*) g_object_new (object_type, NULL);
+	gtk_window_set_decorated (G_TYPE_CHECK_INSTANCE_CAST (self, gtk_window_get_type (), GtkWindow), FALSE);
+	gtk_widget_add_css_class ((GtkWidget*) self, "cairo-dock");
 	return self;
 }
 
@@ -182,6 +184,8 @@ cd_popup_construct (GType object_type)
 {
 	CDPopup * self = NULL;
 	self = (CDPopup*) g_object_new (object_type, NULL);
+	gtk_popover_set_has_arrow (G_TYPE_CHECK_INSTANCE_CAST (self, gtk_popover_get_type (), GtkPopover), FALSE);
+	gtk_widget_add_css_class ((GtkWidget*) self, "cairo-dock");
 	return self;
 }
 
@@ -214,6 +218,7 @@ cd_popup_real_snapshot (GtkWidget* base,
 	cairo_t* _tmp3_;
 	self = (CDPopup*) base;
 	g_return_if_fail (snapshot != NULL);
+	GTK_WIDGET_CLASS (cd_popup_parent_class)->snapshot ((GtkWidget*) G_TYPE_CHECK_INSTANCE_CAST (self, gtk_popover_get_type (), GtkPopover), snapshot);
 	_tmp0_ = gtk_native_get_surface ((GtkNative*) self);
 	_tmp1_ = _g_object_ref0 (_tmp0_);
 	surface = _tmp1_;
