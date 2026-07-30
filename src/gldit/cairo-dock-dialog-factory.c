@@ -110,8 +110,6 @@ static gboolean on_expose_dialog (G_GNUC_UNUSED GtkWidget *pWidget, cairo_t *pCa
 			pDialog->container.iWindowPositionY = newY;
 		}
 	
-		cairo_dock_init_drawing_context_on_container (CAIRO_CONTAINER (pDialog), pCairoContext);
-		
 		cairo_save (pCairoContext);
 		if (pDialog->pDecorator != NULL)
 			pDialog->pDecorator->render (pCairoContext, pDialog);

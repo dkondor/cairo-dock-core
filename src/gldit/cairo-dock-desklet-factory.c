@@ -76,10 +76,6 @@ static gboolean on_expose_desklet (G_GNUC_UNUSED GtkWidget *pWidget, cairo_t *pC
 			
 			gldi_gl_container_end_draw (CAIRO_CONTAINER (pDesklet));
 		}
-		else
-		{
-			cairo_dock_init_drawing_context_on_container (CAIRO_CONTAINER (pDesklet), pCairoContext);
-		}
 		return FALSE;
 	}
 	
@@ -92,12 +88,7 @@ static gboolean on_expose_desklet (G_GNUC_UNUSED GtkWidget *pWidget, cairo_t *pC
 		
 		gldi_gl_container_end_draw (CAIRO_CONTAINER (pDesklet));
 	}
-	else
-	{
-		cairo_dock_init_drawing_context_on_container (CAIRO_CONTAINER (pDesklet), pCairoContext);
-		
-		gldi_object_notify (pDesklet, NOTIFICATION_RENDER, pDesklet, pCairoContext);
-	}
+	else gldi_object_notify (pDesklet, NOTIFICATION_RENDER, pDesklet, pCairoContext);
 	
 	return FALSE;
 }
