@@ -40,8 +40,6 @@ G_BEGIN_DECLS
 */
 // cairo_t * cairo_dock_create_drawing_context_generic (GldiContainer *pContainer);
 
-void cairo_dock_init_drawing_context_on_container (GldiContainer *pContainer, cairo_t *pCairoContext);
-
 /** Create a drawing context to draw on a container. It handles fake transparency.
 *@param pContainer the container on which you want to draw.
 *@return the newly allocated context, to be destroyed with 'cairo_destroy'.

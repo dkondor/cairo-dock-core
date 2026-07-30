@@ -159,8 +159,6 @@ static void _on_expose (G_GNUC_UNUSED GtkWidget *pWidget, cairo_t *pCairoContext
 	}
 	else if (! g_bUseOpenGL && pDock->pRenderer->render != NULL)  // cairo rendering
 	{
-		cairo_dock_init_drawing_context_on_container (CAIRO_CONTAINER (pDock), pCairoContext);
-		
 		if (bIsLoading)
 		{
 			// don't draw anything, just let it transparent
@@ -2394,7 +2392,7 @@ void gldi_dock_init_internals (CairoDock *pDock)
 		pDock);*/
 	// connect unmap signal -- on Wayland, the compositor might close
 	// the dock at any time, so we need to handle this possibility
-	g_signal_connect (G_OBJECT (pWindow), "pending-unmap",
+	g_signal_connect (G_OBJECT (pWindow), "unmap",
 		G_CALLBACK (_on_dock_unmap), pDock);
 	
 	if (!pDock->iRefCount) gtk_window_present (GTK_WINDOW (pWindow));
