@@ -35,7 +35,7 @@ struct _GldiMenuParams {
 	gdouble fAlign;
 	gint iRadius;  // actually it's more an horizontal padding/offset
 	gint iArrowHeight;
-	GtkCssProvider *cssProvider;  // a css to define the margins of the menu
+	GtkCssProvider *cssProvider;  // a css to define the margins of the menu -- not used!
 };
 typedef struct _GldiMenuParams GldiMenuParams;
 
@@ -54,7 +54,7 @@ GtkWidget *gldi_menu_new (Icon *pIcon);
 
 /** Creates a new sub-menu. It's just a menu that doesn't point on an Icon/Container.
  */
-#define gldi_submenu_new(...) gldi_menu_new (NULL)
+// #define gldi_submenu_new(...) gldi_menu_new (NULL)
 
 /** Initialize a menu, so that it can be drawn and placed correctly.
  * It's useful if the menu was created beforehand (like a DbusMenu).
@@ -67,30 +67,26 @@ void gldi_menu_reinit (GtkWidget *pMenu, Icon *pIcon);
 
 /** Pop-up a menu. The menu is placed above the icon, or above the container, or above the mouse, depending on how it has been initialized.
 *@param menu the menu.
-*@param event an event to which the menu is popped up in response (NULL to use the current GTK event)
 */
-void gldi_menu_popup_full (GtkWidget *menu, const GdkEvent *event);
-#define gldi_menu_popup(menu) gldi_menu_popup_full (menu, NULL)
+// void gldi_menu_popup_full (GtkWidget *menu, const GdkEvent *event);
+void gldi_menu_popup (GtkWidget *menu);
 
 
 /** Creates a menu-item, with a label and an image. The child widget of the menu-item is a gtk-label.
  * If the label is NULL, the child widget will be NULL too (this is useful if the menu-item will hold a custom widget).
  * @param cLabel the label, or NULL
  * @param cImage the image path or name, or NULL
- * @param bUseMnemonic whether to use the mnemonic inside the label or not
- * @param iSize size of the image, or 0 to use the default size
- * @param bUseStyle whether to use our custom style to draw this menu item
+ * @param iSize size of the image in logical pixels, or 0 to use the default size
  * @return the new menu-item.
  */
-GtkWidget *gldi_menu_item_new_full2 (const gchar *cLabel, const gchar *cImage, gboolean bUseMnemonic, GtkIconSize iSize, gboolean bUseStyle);
-#define gldi_menu_item_new_full(cLabel, cImage, bUseMnemonic, iSize) gldi_menu_item_new_full2 (cLabel, cImage, bUseMnemonic, iSize, TRUE)
+// GtkWidget *gldi_menu_item_new_full (const gchar *cLabel, const gchar *cImage, guint iSize);
 
 /** A convenient function to create a menu-item with a label and an image.
  * @param cLabel the label, or NULL
  * @param cImage the image path or name, or NULL
  * @return the new menu-item.
  */
-#define gldi_menu_item_new(cLabel, cImage) gldi_menu_item_new_full (cLabel, cImage, FALSE, 0)
+// #define gldi_menu_item_new(cLabel, cImage) gldi_menu_item_new_full (cLabel, cImage, 0)
 
 /** A convenient function to create a menu-item with a label, an image, and an associated action.
  * @param cLabel the label, or NULL
@@ -99,7 +95,7 @@ GtkWidget *gldi_menu_item_new_full2 (const gchar *cLabel, const gchar *cImage, g
  * @param pData the data passed to the callback
  * @return the new menu-item.
  */
-GtkWidget *gldi_menu_item_new_with_action (const gchar *cLabel, const gchar *cImage, GCallback pFunction, gpointer pData);
+// GtkWidget *gldi_menu_item_new_with_action (const gchar *cLabel, const gchar *cImage, GCallback pFunction, gpointer pData);
 
 /** A convenient function to create a menu-item with a label, an image, and an associated sub-menu.
  * @param cLabel the label
@@ -107,14 +103,14 @@ GtkWidget *gldi_menu_item_new_with_action (const gchar *cLabel, const gchar *cIm
  * @param pSubMenuPtr pointer that will contain the new sub-menu, or NULL
  * @return the new menu-item.
  */
-GtkWidget *gldi_menu_item_new_with_submenu (const gchar *cLabel, const gchar *cImage, GtkWidget **pSubMenuPtr);
+// GtkWidget *gldi_menu_item_new_with_submenu (const gchar *cLabel, const gchar *cImage, GtkWidget **pSubMenuPtr);
 
 
-/** Sets a gtk-image on a menu-item. This is useful if the image can't be given by a name or path (for instance, loaded from a cairo surface).
+/** Sets a gtk-image on a menu-item. This is useful if the image can't be given by a name or path.
  * @param pMenuItem the menu-item
- * @param image the image
+ * @param image the image; must be a cairo_image_surface_t with ARGB32 pixel format
  */
-void gldi_menu_item_set_image (GtkWidget *pMenuItem, GtkWidget *image);
+void gldi_menu_item_set_image (GtkWidget *pMenuItem, cairo_surface_t *surface);
 
 /** Gets the image of a menu-item.
  * @param pMenuItem the menu-item
@@ -135,11 +131,6 @@ GtkWidget *gldi_menu_add_item (GtkWidget *pMenu, const gchar *cLabel, const gcha
 #define cairo_dock_add_in_menu_with_stock_and_data(cLabel, gtkStock, pFunction, pMenu, pData) gldi_menu_add_item (pMenu, cLabel, gtkStock, pFunction, pData)
 
 /** A convenient function to add an item to a given menu with an optional tooltip to display.
- * It is recommended to use this function to add a tooltip instead of gtk_widget_set_tooltip_text ()
- * as on Wayland and gtk-layer-shell there seems to be a race condition with GTK internals that
- * can result in an attempt to re-show the tooltip after the menu has been closed, that leads to
- * a protocol error and crash; see https://github.com/wmww/gtk-layer-shell/issues/207.
- * This function takes care to keep the tooltip hidden when the menu has been closed.
  * @param pMenu the menu
  * @param cLabel the label, or NULL
  * @param cImage the image path or name, or NULL
@@ -148,7 +139,14 @@ GtkWidget *gldi_menu_add_item (GtkWidget *pMenu, const gchar *cLabel, const gcha
  * @param pData the data passed to the callback
  * @return the new menu-entry that has been added.
  */
-GtkWidget *gldi_menu_add_item_with_tooltip (GtkWidget *pMenu, const gchar *cLabel, const gchar *cImage, const gchar *cToolTip, void (*pFunction)(GtkMenuItem*, gpointer), gpointer pData);
+GtkWidget *gldi_menu_add_item_with_tooltip (GtkWidget *pMenu, const gchar *cLabel, const gchar *cImage, const gchar *cToolTip, void (*pFunction)(GtkWidget*, gpointer), gpointer pData);
+
+/** Add a menu item with a checkbox to a given menu.
+ * @param pMenu the menu
+ * @param cLabel the label (should not be NULL)
+ * @return the new menu-entry, which is a GtkCheckBox in this case; connect to the "toggled" signal to be notified when its value changes
+ */
+GtkWidget *gldi_menu_add_item_with_checkbox (GtkWidget *pMenu, const gchar *cLabel);
 
 /** A convenient function to add a sub-menu to a given menu.
  * @param pMenu the menu

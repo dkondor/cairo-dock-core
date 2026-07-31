@@ -30,12 +30,14 @@
 #include <gtk/gtk.h>
 #include <glib-object.h>
 #include <glib.h>
-#include <gdk/gdk.h>
 #include <graphene-gobject.h>
 #include <string.h>
 #include <float.h>
 #include <math.h>
 #include <cairo-gobject.h>
+#include <gsk/gsk.h>
+#include <gdk/gdk.h>
+#include <stdlib.h>
 
 #if !defined(VALA_STRICT_C)
 #if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ >= 14)
@@ -52,7 +54,6 @@ enum  {
 };
 static GParamSpec* cd_window_properties[CD_WINDOW_NUM_PROPERTIES];
 #define _cairo_destroy0(var) ((var == NULL) ? NULL : (var = (cairo_destroy (var), NULL)))
-#define _g_object_unref0(var) ((var == NULL) ? NULL : (var = (g_object_unref (var), NULL)))
 enum  {
 	CD_WINDOW_PENDING_UNMAP_SIGNAL,
 	CD_WINDOW_DRAW_SIGNAL,
@@ -70,9 +71,91 @@ enum  {
 	CD_POPUP_NUM_SIGNALS
 };
 static guint cd_popup_signals[CD_POPUP_NUM_SIGNALS] = {0};
+enum  {
+	CD_MENU_0_PROPERTY,
+	CD_MENU_NUM_PROPERTIES
+};
+static GParamSpec* cd_menu_properties[CD_MENU_NUM_PROPERTIES];
+#define _g_object_unref0(var) ((var == NULL) ? NULL : (var = (g_object_unref (var), NULL)))
+#define _g_source_unref0(var) ((var == NULL) ? NULL : (var = (g_source_unref (var), NULL)))
+enum  {
+	CD_ARROW_0_PROPERTY,
+	CD_ARROW_NUM_PROPERTIES
+};
+static GParamSpec* cd_arrow_properties[CD_ARROW_NUM_PROPERTIES];
+#define _gsk_path_unref0(var) ((var == NULL) ? NULL : (var = (gsk_path_unref (var), NULL)))
+#define _gsk_path_builder_unref0(var) ((var == NULL) ? NULL : (var = (gsk_path_builder_unref (var), NULL)))
+enum  {
+	CD_MENU_ITEM_BASE_0_PROPERTY,
+	CD_MENU_ITEM_BASE_NUM_PROPERTIES
+};
+static GParamSpec* cd_menu_item_base_properties[CD_MENU_ITEM_BASE_NUM_PROPERTIES];
+typedef struct _Block1Data Block1Data;
+enum  {
+	CD_MENU_ITEM_0_PROPERTY,
+	CD_MENU_ITEM_NUM_PROPERTIES
+};
+static GParamSpec* cd_menu_item_properties[CD_MENU_ITEM_NUM_PROPERTIES];
+typedef struct _Block2Data Block2Data;
+enum  {
+	CD_MENU_ITEM_CLICKED_SIGNAL,
+	CD_MENU_ITEM_NUM_SIGNALS
+};
+static guint cd_menu_item_signals[CD_MENU_ITEM_NUM_SIGNALS] = {0};
+enum  {
+	CD_MENU_SEPARATOR_0_PROPERTY,
+	CD_MENU_SEPARATOR_NUM_PROPERTIES
+};
+static GParamSpec* cd_menu_separator_properties[CD_MENU_SEPARATOR_NUM_PROPERTIES];
+#define __vala_GskStroke_free0(var) ((var == NULL) ? NULL : (var = (_vala_GskStroke_free (var), NULL)))
+
+struct _CDMenuPrivate {
+	GtkBox* box;
+	CDMenu* open_submenu;
+	GSource* submenu_source;
+};
+
+struct _CDArrowPrivate {
+	GskPath* path;
+};
+
+struct _CDMenuItemBasePrivate {
+	CDMenu* parent_menu;
+};
+
+struct _Block1Data {
+	int _ref_count_;
+	CDMenuItemBase* self;
+	CDMenu* parent_menu;
+};
+
+struct _CDMenuItemPrivate {
+	GtkLabel* lbl;
+	GtkImage* img;
+};
+
+struct _Block2Data {
+	int _ref_count_;
+	CDMenuItem* self;
+	CDMenu* parent_menu;
+};
+
+struct _CDMenuSeparatorPrivate {
+	GskStroke* stroke;
+};
 
 static gpointer cd_window_parent_class = NULL;
 static gpointer cd_popup_parent_class = NULL;
+static gint CDMenu_private_offset;
+static gpointer cd_menu_parent_class = NULL;
+static gint CDArrow_private_offset;
+static gpointer cd_arrow_parent_class = NULL;
+static gint CDMenuItemBase_private_offset;
+static gpointer cd_menu_item_base_parent_class = NULL;
+static gint CDMenuItem_private_offset;
+static gpointer cd_menu_item_parent_class = NULL;
+static gint CDMenuSeparator_private_offset;
+static gpointer cd_menu_separator_parent_class = NULL;
 
 static void cd_window_real_unmap (GtkWidget* base);
 static void cd_window_real_snapshot (GtkWidget* base,
@@ -81,7 +164,61 @@ static GType cd_window_get_type_once (void);
 static void cd_popup_real_unmap (GtkWidget* base);
 static void cd_popup_real_snapshot (GtkWidget* base,
                              GtkSnapshot* snapshot);
+static void cd_popup_finalize (GObject * obj);
 static GType cd_popup_get_type_once (void);
+static gboolean __lambda4_ (CDMenu* self);
+static gboolean ___lambda4__gsource_func (gpointer self);
+static void cd_menu_finalize (GObject * obj);
+static GType cd_menu_get_type_once (void);
+static void cd_arrow_real_snapshot (GtkWidget* base,
+                             GtkSnapshot* snapshot);
+static void cd_arrow_finalize (GObject * obj);
+static GType cd_arrow_get_type_once (void);
+static Block1Data* block1_data_ref (Block1Data* _data1_);
+static void block1_data_unref (void * _userdata_);
+static void __lambda5_ (Block1Data* _data1_,
+                 GtkEventControllerMotion* ctrl,
+                 gdouble x,
+                 gdouble y);
+static void ___lambda5__gtk_event_controller_motion_enter (GtkEventControllerMotion* _sender,
+                                                    gdouble x,
+                                                    gdouble y,
+                                                    gpointer self);
+static void __lambda6_ (CDMenuItemBase* self,
+                 GtkEventControllerMotion* ctrl);
+static void ___lambda6__gtk_event_controller_motion_leave (GtkEventControllerMotion* _sender,
+                                                    gpointer self);
+static void cd_menu_item_base_finalize (GObject * obj);
+static GType cd_menu_item_base_get_type_once (void);
+static Block2Data* block2_data_ref (Block2Data* _data2_);
+static void block2_data_unref (void * _userdata_);
+static void __lambda7_ (CDMenuItem* self,
+                 GtkGestureClick* click,
+                 gint n_press,
+                 gdouble x,
+                 gdouble y);
+static void ___lambda7__gtk_gesture_click_pressed (GtkGestureClick* _sender,
+                                            gint n_press,
+                                            gdouble x,
+                                            gdouble y,
+                                            gpointer self);
+static void __lambda8_ (Block2Data* _data2_,
+                 GtkGestureClick* click,
+                 gint n_press,
+                 gdouble x,
+                 gdouble y);
+static void ___lambda8__gtk_gesture_click_released (GtkGestureClick* _sender,
+                                             gint n_press,
+                                             gdouble x,
+                                             gdouble y,
+                                             gpointer self);
+static void cd_menu_item_finalize (GObject * obj);
+static GType cd_menu_item_get_type_once (void);
+static void _vala_GskStroke_free (GskStroke* self);
+static void cd_menu_separator_real_snapshot (GtkWidget* base,
+                                      GtkSnapshot* snapshot);
+static void cd_menu_separator_finalize (GObject * obj);
+static GType cd_menu_separator_get_type_once (void);
 
 CDWindow*
 cd_window_construct (GType object_type)
@@ -108,37 +245,24 @@ cd_window_real_unmap (GtkWidget* base)
 	GTK_WIDGET_CLASS (cd_window_parent_class)->unmap ((GtkWidget*) G_TYPE_CHECK_INSTANCE_CAST (self, gtk_window_get_type (), GtkWindow));
 }
 
-static gpointer
-_g_object_ref0 (gpointer self)
-{
-	return self ? g_object_ref (self) : NULL;
-}
-
 static void
 cd_window_real_snapshot (GtkWidget* base,
                          GtkSnapshot* snapshot)
 {
 	CDWindow * self;
-	GdkSurface* surface = NULL;
-	GdkSurface* _tmp0_;
-	GdkSurface* _tmp1_;
 	graphene_rect_t rect = {0};
 	cairo_t* ctx = NULL;
-	graphene_rect_t _tmp2_;
-	cairo_t* _tmp3_;
+	graphene_rect_t _tmp0_;
+	cairo_t* _tmp1_;
 	self = (CDWindow*) base;
 	g_return_if_fail (snapshot != NULL);
-	_tmp0_ = gtk_native_get_surface ((GtkNative*) self);
-	_tmp1_ = _g_object_ref0 (_tmp0_);
-	surface = _tmp1_;
 	memset (&rect, 0, sizeof (graphene_rect_t));
-	graphene_rect_init (&rect, 0.0f, 0.0f, (gfloat) gdk_surface_get_width (surface), (gfloat) gdk_surface_get_height (surface));
-	_tmp2_ = rect;
-	_tmp3_ = gtk_snapshot_append_cairo (snapshot, &_tmp2_);
-	ctx = _tmp3_;
+	graphene_rect_init (&rect, 0.0f, 0.0f, (gfloat) gtk_widget_get_width ((GtkWidget*) self), (gfloat) gtk_widget_get_height ((GtkWidget*) self));
+	_tmp0_ = rect;
+	_tmp1_ = gtk_snapshot_append_cairo (snapshot, &_tmp0_);
+	ctx = _tmp1_;
 	g_signal_emit (self, cd_window_signals[CD_WINDOW_DRAW_SIGNAL], 0, ctx);
 	_cairo_destroy0 (ctx);
-	_g_object_unref0 (surface);
 }
 
 static void
@@ -209,27 +333,27 @@ cd_popup_real_snapshot (GtkWidget* base,
                         GtkSnapshot* snapshot)
 {
 	CDPopup * self;
-	GdkSurface* surface = NULL;
-	GdkSurface* _tmp0_;
-	GdkSurface* _tmp1_;
 	graphene_rect_t rect = {0};
 	cairo_t* ctx = NULL;
-	graphene_rect_t _tmp2_;
-	cairo_t* _tmp3_;
+	graphene_rect_t _tmp0_;
+	cairo_t* _tmp1_;
+	cairo_t* _tmp2_;
 	self = (CDPopup*) base;
 	g_return_if_fail (snapshot != NULL);
-	GTK_WIDGET_CLASS (cd_popup_parent_class)->snapshot ((GtkWidget*) G_TYPE_CHECK_INSTANCE_CAST (self, gtk_popover_get_type (), GtkPopover), snapshot);
-	_tmp0_ = gtk_native_get_surface ((GtkNative*) self);
-	_tmp1_ = _g_object_ref0 (_tmp0_);
-	surface = _tmp1_;
+	if (self->snapshot_base_first) {
+		GTK_WIDGET_CLASS (cd_popup_parent_class)->snapshot ((GtkWidget*) G_TYPE_CHECK_INSTANCE_CAST (self, gtk_popover_get_type (), GtkPopover), snapshot);
+	}
 	memset (&rect, 0, sizeof (graphene_rect_t));
-	graphene_rect_init (&rect, 0.0f, 0.0f, (gfloat) gdk_surface_get_width (surface), (gfloat) gdk_surface_get_height (surface));
-	_tmp2_ = rect;
-	_tmp3_ = gtk_snapshot_append_cairo (snapshot, &_tmp2_);
-	ctx = _tmp3_;
-	g_signal_emit (self, cd_popup_signals[CD_POPUP_DRAW_SIGNAL], 0, ctx);
+	graphene_rect_init (&rect, 0.0f, 0.0f, (gfloat) gtk_widget_get_width ((GtkWidget*) self), (gfloat) gtk_widget_get_height ((GtkWidget*) self));
+	_tmp0_ = rect;
+	_tmp1_ = gtk_snapshot_append_cairo (snapshot, &_tmp0_);
+	ctx = _tmp1_;
+	_tmp2_ = ctx;
+	g_signal_emit (self, cd_popup_signals[CD_POPUP_DRAW_SIGNAL], 0, _tmp2_);
+	if (!self->snapshot_base_first) {
+		GTK_WIDGET_CLASS (cd_popup_parent_class)->snapshot ((GtkWidget*) G_TYPE_CHECK_INSTANCE_CAST (self, gtk_popover_get_type (), GtkPopover), snapshot);
+	}
 	_cairo_destroy0 (ctx);
-	_g_object_unref0 (surface);
 }
 
 static void
@@ -239,6 +363,7 @@ cd_popup_class_init (CDPopupClass * klass,
 	cd_popup_parent_class = g_type_class_peek_parent (klass);
 	((GtkWidgetClass *) klass)->unmap = (void (*) (GtkWidget*)) cd_popup_real_unmap;
 	((GtkWidgetClass *) klass)->snapshot = (void (*) (GtkWidget*, GtkSnapshot*)) cd_popup_real_snapshot;
+	G_OBJECT_CLASS (klass)->finalize = cd_popup_finalize;
 	cd_popup_signals[CD_POPUP_PENDING_UNMAP_SIGNAL] = g_signal_new ("pending-unmap", TYPE_CD_POPUP, G_SIGNAL_RUN_LAST, 0, NULL, NULL, g_cclosure_marshal_VOID__VOID, G_TYPE_NONE, 0);
 	cd_popup_signals[CD_POPUP_DRAW_SIGNAL] = g_signal_new ("draw", TYPE_CD_POPUP, G_SIGNAL_RUN_LAST, 0, NULL, NULL, g_cclosure_marshal_VOID__BOXED, G_TYPE_NONE, 1, cairo_gobject_context_get_type ());
 }
@@ -247,6 +372,15 @@ static void
 cd_popup_instance_init (CDPopup * self,
                         gpointer klass)
 {
+	self->snapshot_base_first = TRUE;
+}
+
+static void
+cd_popup_finalize (GObject * obj)
+{
+	CDPopup * self;
+	self = G_TYPE_CHECK_INSTANCE_CAST (obj, TYPE_CD_POPUP, CDPopup);
+	G_OBJECT_CLASS (cd_popup_parent_class)->finalize (obj);
 }
 
 static GType
@@ -268,5 +402,904 @@ cd_popup_get_type (void)
 		g_once_init_leave (&cd_popup_type_id__once, cd_popup_type_id);
 	}
 	return cd_popup_type_id__once;
+}
+
+static inline gpointer
+cd_menu_get_instance_private (CDMenu* self)
+{
+	return G_STRUCT_MEMBER_P (self, CDMenu_private_offset);
+}
+
+CDMenu*
+cd_menu_construct (GType object_type)
+{
+	CDMenu * self = NULL;
+	GtkBox* _tmp0_;
+	GtkBox* _tmp1_;
+	GtkBox* _tmp2_;
+	GtkBox* _tmp3_;
+	self = (CDMenu*) g_object_new (object_type, "css-name", "cdmenu", NULL);
+	_tmp0_ = (GtkBox*) gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+	g_object_ref_sink (_tmp0_);
+	_g_object_unref0 (self->priv->box);
+	self->priv->box = _tmp0_;
+	_tmp1_ = self->priv->box;
+	gtk_widget_set_margin_top ((GtkWidget*) _tmp1_, 4);
+	_tmp2_ = self->priv->box;
+	gtk_widget_set_margin_bottom ((GtkWidget*) _tmp2_, 4);
+	gtk_popover_set_autohide ((GtkPopover*) self, TRUE);
+	_tmp3_ = self->priv->box;
+	gtk_popover_set_child ((GtkPopover*) self, (GtkWidget*) _tmp3_);
+	((CDPopup*) self)->snapshot_base_first = FALSE;
+	return self;
+}
+
+CDMenu*
+cd_menu_new (void)
+{
+	return cd_menu_construct (TYPE_CD_MENU);
+}
+
+void
+cd_menu_add_menu_item (CDMenu* self,
+                       GtkWidget* item)
+{
+	GtkBox* _tmp0_;
+	g_return_if_fail (self != NULL);
+	g_return_if_fail (item != NULL);
+	_tmp0_ = self->priv->box;
+	gtk_box_append (_tmp0_, item);
+}
+
+static gpointer
+_g_object_ref0 (gpointer self)
+{
+	return self ? g_object_ref (self) : NULL;
+}
+
+static gboolean
+__lambda4_ (CDMenu* self)
+{
+	gboolean _tmp0_ = FALSE;
+	gboolean result;
+	if (gtk_widget_get_visible ((GtkWidget*) self)) {
+		CDMenu* _tmp1_;
+		_tmp1_ = self->priv->open_submenu;
+		_tmp0_ = _tmp1_ != NULL;
+	} else {
+		_tmp0_ = FALSE;
+	}
+	if (_tmp0_) {
+		CDMenu* _tmp2_;
+		_tmp2_ = self->priv->open_submenu;
+		gtk_popover_popup ((GtkPopover*) _tmp2_);
+		_g_source_unref0 (self->priv->submenu_source);
+		self->priv->submenu_source = NULL;
+	}
+	result = G_SOURCE_REMOVE;
+	return result;
+}
+
+static gboolean
+___lambda4__gsource_func (gpointer self)
+{
+	gboolean result;
+	result = __lambda4_ ((CDMenu*) self);
+	return result;
+}
+
+void
+cd_menu_popup_submenu (CDMenu* self,
+                       CDMenu* submenu)
+{
+	CDMenu* _tmp0_;
+	GSource* _tmp1_;
+	GSource* _tmp2_;
+	GSource* _tmp3_;
+	g_return_if_fail (self != NULL);
+	g_return_if_fail (submenu != NULL);
+	cd_menu_close_submenu (self);
+	_tmp0_ = _g_object_ref0 (submenu);
+	_g_object_unref0 (self->priv->open_submenu);
+	self->priv->open_submenu = _tmp0_;
+	_tmp1_ = g_timeout_source_new ((guint) 200);
+	_g_source_unref0 (self->priv->submenu_source);
+	self->priv->submenu_source = _tmp1_;
+	_tmp2_ = self->priv->submenu_source;
+	g_source_set_callback (_tmp2_, ___lambda4__gsource_func, g_object_ref (self), g_object_unref);
+	_tmp3_ = self->priv->submenu_source;
+	g_source_attach (_tmp3_, NULL);
+}
+
+void
+cd_menu_close_submenu (CDMenu* self)
+{
+	CDMenu* _tmp0_;
+	g_return_if_fail (self != NULL);
+	_tmp0_ = self->priv->open_submenu;
+	if (_tmp0_ != NULL) {
+		GSource* _tmp1_;
+		_tmp1_ = self->priv->submenu_source;
+		if (_tmp1_ != NULL) {
+			GSource* _tmp2_;
+			_tmp2_ = self->priv->submenu_source;
+			g_source_destroy (_tmp2_);
+			_g_source_unref0 (self->priv->submenu_source);
+			self->priv->submenu_source = NULL;
+		} else {
+			CDMenu* _tmp3_;
+			_tmp3_ = self->priv->open_submenu;
+			gtk_popover_popdown ((GtkPopover*) _tmp3_);
+		}
+		_g_object_unref0 (self->priv->open_submenu);
+		self->priv->open_submenu = NULL;
+	}
+}
+
+void
+cd_menu_popdown_recursive (CDMenu* self)
+{
+	CDMenuItem* parent = NULL;
+	GtkWidget* _tmp0_;
+	CDMenuItem* _tmp1_;
+	g_return_if_fail (self != NULL);
+	gtk_popover_popdown ((GtkPopover*) self);
+	_tmp0_ = gtk_widget_get_parent ((GtkWidget*) self);
+	_tmp1_ = _g_object_ref0 (IS_CD_MENU_ITEM (_tmp0_) ? ((CDMenuItem*) _tmp0_) : NULL);
+	parent = _tmp1_;
+	while (TRUE) {
+		CDMenuItem* _tmp2_;
+		CDMenu* parent_menu = NULL;
+		CDMenuItem* _tmp3_;
+		CDMenu* _tmp4_;
+		CDMenu* _tmp5_;
+		GtkWidget* _tmp6_;
+		CDMenuItem* _tmp7_;
+		CDMenu* _tmp8_;
+		_tmp2_ = parent;
+		if (!(_tmp2_ != NULL)) {
+			break;
+		}
+		_tmp3_ = parent;
+		_tmp4_ = cd_menu_item_base_get_parent_menu ((CDMenuItemBase*) _tmp3_);
+		parent_menu = _tmp4_;
+		_tmp5_ = parent_menu;
+		_tmp6_ = gtk_widget_get_parent ((GtkWidget*) _tmp5_);
+		_tmp7_ = _g_object_ref0 (IS_CD_MENU_ITEM (_tmp6_) ? ((CDMenuItem*) _tmp6_) : NULL);
+		_g_object_unref0 (parent);
+		parent = _tmp7_;
+		_tmp8_ = parent_menu;
+		gtk_popover_popdown ((GtkPopover*) _tmp8_);
+		_g_object_unref0 (parent_menu);
+	}
+	_g_object_unref0 (parent);
+}
+
+static void
+cd_menu_class_init (CDMenuClass * klass,
+                    gpointer klass_data)
+{
+	cd_menu_parent_class = g_type_class_peek_parent (klass);
+	g_type_class_adjust_private_offset (klass, &CDMenu_private_offset);
+	G_OBJECT_CLASS (klass)->finalize = cd_menu_finalize;
+}
+
+static void
+cd_menu_instance_init (CDMenu * self,
+                       gpointer klass)
+{
+	self->priv = cd_menu_get_instance_private (self);
+	self->priv->open_submenu = NULL;
+	self->priv->submenu_source = NULL;
+}
+
+static void
+cd_menu_finalize (GObject * obj)
+{
+	CDMenu * self;
+	self = G_TYPE_CHECK_INSTANCE_CAST (obj, TYPE_CD_MENU, CDMenu);
+	_g_object_unref0 (self->priv->box);
+	_g_object_unref0 (self->priv->open_submenu);
+	_g_source_unref0 (self->priv->submenu_source);
+	G_OBJECT_CLASS (cd_menu_parent_class)->finalize (obj);
+}
+
+static GType
+cd_menu_get_type_once (void)
+{
+	static const GTypeInfo g_define_type_info = { sizeof (CDMenuClass), (GBaseInitFunc) NULL, (GBaseFinalizeFunc) NULL, (GClassInitFunc) cd_menu_class_init, (GClassFinalizeFunc) NULL, NULL, sizeof (CDMenu), 0, (GInstanceInitFunc) cd_menu_instance_init, NULL };
+	GType cd_menu_type_id;
+	cd_menu_type_id = g_type_register_static (TYPE_CD_POPUP, "CDMenu", &g_define_type_info, 0);
+	CDMenu_private_offset = g_type_add_instance_private (cd_menu_type_id, sizeof (CDMenuPrivate));
+	return cd_menu_type_id;
+}
+
+GType
+cd_menu_get_type (void)
+{
+	static volatile gsize cd_menu_type_id__once = 0;
+	if (g_once_init_enter (&cd_menu_type_id__once)) {
+		GType cd_menu_type_id;
+		cd_menu_type_id = cd_menu_get_type_once ();
+		g_once_init_leave (&cd_menu_type_id__once, cd_menu_type_id);
+	}
+	return cd_menu_type_id__once;
+}
+
+static inline gpointer
+cd_arrow_get_instance_private (CDArrow* self)
+{
+	return G_STRUCT_MEMBER_P (self, CDArrow_private_offset);
+}
+
+CDArrow*
+cd_arrow_construct (GType object_type)
+{
+	CDArrow * self = NULL;
+	GskPathBuilder* builder = NULL;
+	GskPathBuilder* _tmp0_;
+	GskPath* _tmp1_;
+	self = (CDArrow*) g_object_new (object_type, "css-name", "cdarrow", "valign", GTK_ALIGN_CENTER, "margin-end", 4, NULL);
+	gtk_widget_set_size_request ((GtkWidget*) self, 8, 12);
+	_tmp0_ = gsk_path_builder_new ();
+	builder = _tmp0_;
+	gsk_path_builder_move_to (builder, 1.0f, 0.5f);
+	gsk_path_builder_line_to (builder, 7.0f, 6.0f);
+	gsk_path_builder_line_to (builder, 1.0f, 11.5f);
+	gsk_path_builder_close (builder);
+	_tmp1_ = gsk_path_builder_to_path (builder);
+	_gsk_path_unref0 (self->priv->path);
+	self->priv->path = _tmp1_;
+	_gsk_path_builder_unref0 (builder);
+	return self;
+}
+
+CDArrow*
+cd_arrow_new (void)
+{
+	return cd_arrow_construct (TYPE_CD_ARROW);
+}
+
+static void
+cd_arrow_real_snapshot (GtkWidget* base,
+                        GtkSnapshot* snapshot)
+{
+	CDArrow * self;
+	GskPath* _tmp0_;
+	GdkRGBA _tmp1_ = {0};
+	self = (CDArrow*) base;
+	g_return_if_fail (snapshot != NULL);
+	_tmp0_ = self->priv->path;
+	gtk_widget_get_color ((GtkWidget*) self, &_tmp1_);
+	gtk_snapshot_append_fill (snapshot, _tmp0_, GSK_FILL_RULE_WINDING, &_tmp1_);
+}
+
+static void
+cd_arrow_class_init (CDArrowClass * klass,
+                     gpointer klass_data)
+{
+	cd_arrow_parent_class = g_type_class_peek_parent (klass);
+	g_type_class_adjust_private_offset (klass, &CDArrow_private_offset);
+	((GtkWidgetClass *) klass)->snapshot = (void (*) (GtkWidget*, GtkSnapshot*)) cd_arrow_real_snapshot;
+	G_OBJECT_CLASS (klass)->finalize = cd_arrow_finalize;
+}
+
+static void
+cd_arrow_instance_init (CDArrow * self,
+                        gpointer klass)
+{
+	self->priv = cd_arrow_get_instance_private (self);
+}
+
+static void
+cd_arrow_finalize (GObject * obj)
+{
+	CDArrow * self;
+	self = G_TYPE_CHECK_INSTANCE_CAST (obj, TYPE_CD_ARROW, CDArrow);
+	_gsk_path_unref0 (self->priv->path);
+	G_OBJECT_CLASS (cd_arrow_parent_class)->finalize (obj);
+}
+
+static GType
+cd_arrow_get_type_once (void)
+{
+	static const GTypeInfo g_define_type_info = { sizeof (CDArrowClass), (GBaseInitFunc) NULL, (GBaseFinalizeFunc) NULL, (GClassInitFunc) cd_arrow_class_init, (GClassFinalizeFunc) NULL, NULL, sizeof (CDArrow), 0, (GInstanceInitFunc) cd_arrow_instance_init, NULL };
+	GType cd_arrow_type_id;
+	cd_arrow_type_id = g_type_register_static (gtk_widget_get_type (), "CDArrow", &g_define_type_info, 0);
+	CDArrow_private_offset = g_type_add_instance_private (cd_arrow_type_id, sizeof (CDArrowPrivate));
+	return cd_arrow_type_id;
+}
+
+GType
+cd_arrow_get_type (void)
+{
+	static volatile gsize cd_arrow_type_id__once = 0;
+	if (g_once_init_enter (&cd_arrow_type_id__once)) {
+		GType cd_arrow_type_id;
+		cd_arrow_type_id = cd_arrow_get_type_once ();
+		g_once_init_leave (&cd_arrow_type_id__once, cd_arrow_type_id);
+	}
+	return cd_arrow_type_id__once;
+}
+
+static inline gpointer
+cd_menu_item_base_get_instance_private (CDMenuItemBase* self)
+{
+	return G_STRUCT_MEMBER_P (self, CDMenuItemBase_private_offset);
+}
+
+static Block1Data*
+block1_data_ref (Block1Data* _data1_)
+{
+	g_atomic_int_inc (&_data1_->_ref_count_);
+	return _data1_;
+}
+
+static void
+block1_data_unref (void * _userdata_)
+{
+	Block1Data* _data1_;
+	_data1_ = (Block1Data*) _userdata_;
+	if (g_atomic_int_dec_and_test (&_data1_->_ref_count_)) {
+		CDMenuItemBase* self;
+		self = _data1_->self;
+		_g_object_unref0 (_data1_->parent_menu);
+		_g_object_unref0 (self);
+		g_slice_free (Block1Data, _data1_);
+	}
+}
+
+static void
+__lambda5_ (Block1Data* _data1_,
+            GtkEventControllerMotion* ctrl,
+            gdouble x,
+            gdouble y)
+{
+	CDMenuItemBase* self;
+	CDMenu* _tmp0_;
+	self = _data1_->self;
+	g_return_if_fail (ctrl != NULL);
+	_tmp0_ = self->submenu;
+	if (_tmp0_ != NULL) {
+		CDMenu* _tmp1_;
+		CDMenu* _tmp2_;
+		_tmp1_ = self->submenu;
+		if (gtk_widget_get_visible ((GtkWidget*) _tmp1_)) {
+			return;
+		}
+		_tmp2_ = self->submenu;
+		cd_menu_popup_submenu (_data1_->parent_menu, _tmp2_);
+	} else {
+		cd_menu_close_submenu (_data1_->parent_menu);
+	}
+	gtk_widget_set_state_flags ((GtkWidget*) self, GTK_STATE_FLAG_PRELIGHT, FALSE);
+	gtk_widget_queue_draw ((GtkWidget*) self);
+}
+
+static void
+___lambda5__gtk_event_controller_motion_enter (GtkEventControllerMotion* _sender,
+                                               gdouble x,
+                                               gdouble y,
+                                               gpointer self)
+{
+	__lambda5_ (self, _sender, x, y);
+}
+
+static void
+__lambda6_ (CDMenuItemBase* self,
+            GtkEventControllerMotion* ctrl)
+{
+	gboolean _tmp0_ = FALSE;
+	CDMenu* _tmp1_;
+	g_return_if_fail (ctrl != NULL);
+	_tmp1_ = self->submenu;
+	if (_tmp1_ != NULL) {
+		CDMenu* _tmp2_;
+		_tmp2_ = self->submenu;
+		_tmp0_ = gtk_widget_get_visible ((GtkWidget*) _tmp2_);
+	} else {
+		_tmp0_ = FALSE;
+	}
+	if (_tmp0_) {
+		return;
+	}
+	gtk_widget_unset_state_flags ((GtkWidget*) self, GTK_STATE_FLAG_PRELIGHT);
+	gtk_widget_queue_draw ((GtkWidget*) self);
+}
+
+static void
+___lambda6__gtk_event_controller_motion_leave (GtkEventControllerMotion* _sender,
+                                               gpointer self)
+{
+	__lambda6_ ((CDMenuItemBase*) self, _sender);
+}
+
+CDMenuItemBase*
+cd_menu_item_base_construct (GType object_type,
+                             CDMenu* parent_menu)
+{
+	CDMenuItemBase * self = NULL;
+	Block1Data* _data1_;
+	CDMenu* _tmp0_;
+	GtkEventControllerMotion* ctrl = NULL;
+	GtkEventControllerMotion* _tmp1_;
+	GtkEventController* _tmp2_;
+	CDMenu* _tmp3_;
+	g_return_val_if_fail (parent_menu != NULL, NULL);
+	_data1_ = g_slice_new0 (Block1Data);
+	_data1_->_ref_count_ = 1;
+	_tmp0_ = _g_object_ref0 (parent_menu);
+	_g_object_unref0 (_data1_->parent_menu);
+	_data1_->parent_menu = _tmp0_;
+	self = (CDMenuItemBase*) g_object_new (object_type, "orientation", GTK_ORIENTATION_HORIZONTAL, "spacing", 0, "css-name", "cdmenuitem", NULL);
+	_data1_->self = g_object_ref (self);
+	_g_object_unref0 (self->submenu);
+	self->submenu = NULL;
+	_tmp1_ = (GtkEventControllerMotion*) gtk_event_controller_motion_new ();
+	ctrl = _tmp1_;
+	g_signal_connect_data (ctrl, "enter", (GCallback) ___lambda5__gtk_event_controller_motion_enter, block1_data_ref (_data1_), (GClosureNotify) block1_data_unref, 0);
+	g_signal_connect_object (ctrl, "leave", (GCallback) ___lambda6__gtk_event_controller_motion_leave, self, 0);
+	_tmp2_ = _g_object_ref0 ((GtkEventController*) ctrl);
+	gtk_widget_add_controller ((GtkWidget*) self, _tmp2_);
+	cd_menu_add_menu_item (_data1_->parent_menu, (GtkWidget*) self);
+	_tmp3_ = _g_object_ref0 (_data1_->parent_menu);
+	_g_object_unref0 (self->priv->parent_menu);
+	self->priv->parent_menu = _tmp3_;
+	_g_object_unref0 (ctrl);
+	block1_data_unref (_data1_);
+	_data1_ = NULL;
+	return self;
+}
+
+CDMenuItemBase*
+cd_menu_item_base_new (CDMenu* parent_menu)
+{
+	return cd_menu_item_base_construct (TYPE_CD_MENU_ITEM_BASE, parent_menu);
+}
+
+CDMenu*
+cd_menu_item_base_get_parent_menu (CDMenuItemBase* self)
+{
+	CDMenu* _tmp0_;
+	CDMenu* _tmp1_;
+	CDMenu* result;
+	g_return_val_if_fail (self != NULL, NULL);
+	_tmp0_ = self->priv->parent_menu;
+	_tmp1_ = _g_object_ref0 (_tmp0_);
+	result = _tmp1_;
+	return result;
+}
+
+static void
+cd_menu_item_base_class_init (CDMenuItemBaseClass * klass,
+                              gpointer klass_data)
+{
+	cd_menu_item_base_parent_class = g_type_class_peek_parent (klass);
+	g_type_class_adjust_private_offset (klass, &CDMenuItemBase_private_offset);
+	G_OBJECT_CLASS (klass)->finalize = cd_menu_item_base_finalize;
+}
+
+static void
+cd_menu_item_base_instance_init (CDMenuItemBase * self,
+                                 gpointer klass)
+{
+	self->priv = cd_menu_item_base_get_instance_private (self);
+}
+
+static void
+cd_menu_item_base_finalize (GObject * obj)
+{
+	CDMenuItemBase * self;
+	self = G_TYPE_CHECK_INSTANCE_CAST (obj, TYPE_CD_MENU_ITEM_BASE, CDMenuItemBase);
+	_g_object_unref0 (self->priv->parent_menu);
+	_g_object_unref0 (self->submenu);
+	G_OBJECT_CLASS (cd_menu_item_base_parent_class)->finalize (obj);
+}
+
+static GType
+cd_menu_item_base_get_type_once (void)
+{
+	static const GTypeInfo g_define_type_info = { sizeof (CDMenuItemBaseClass), (GBaseInitFunc) NULL, (GBaseFinalizeFunc) NULL, (GClassInitFunc) cd_menu_item_base_class_init, (GClassFinalizeFunc) NULL, NULL, sizeof (CDMenuItemBase), 0, (GInstanceInitFunc) cd_menu_item_base_instance_init, NULL };
+	GType cd_menu_item_base_type_id;
+	cd_menu_item_base_type_id = g_type_register_static (gtk_box_get_type (), "CDMenuItemBase", &g_define_type_info, 0);
+	CDMenuItemBase_private_offset = g_type_add_instance_private (cd_menu_item_base_type_id, sizeof (CDMenuItemBasePrivate));
+	return cd_menu_item_base_type_id;
+}
+
+GType
+cd_menu_item_base_get_type (void)
+{
+	static volatile gsize cd_menu_item_base_type_id__once = 0;
+	if (g_once_init_enter (&cd_menu_item_base_type_id__once)) {
+		GType cd_menu_item_base_type_id;
+		cd_menu_item_base_type_id = cd_menu_item_base_get_type_once ();
+		g_once_init_leave (&cd_menu_item_base_type_id__once, cd_menu_item_base_type_id);
+	}
+	return cd_menu_item_base_type_id__once;
+}
+
+static inline gpointer
+cd_menu_item_get_instance_private (CDMenuItem* self)
+{
+	return G_STRUCT_MEMBER_P (self, CDMenuItem_private_offset);
+}
+
+static Block2Data*
+block2_data_ref (Block2Data* _data2_)
+{
+	g_atomic_int_inc (&_data2_->_ref_count_);
+	return _data2_;
+}
+
+static void
+block2_data_unref (void * _userdata_)
+{
+	Block2Data* _data2_;
+	_data2_ = (Block2Data*) _userdata_;
+	if (g_atomic_int_dec_and_test (&_data2_->_ref_count_)) {
+		CDMenuItem* self;
+		self = _data2_->self;
+		_g_object_unref0 (_data2_->parent_menu);
+		_g_object_unref0 (self);
+		g_slice_free (Block2Data, _data2_);
+	}
+}
+
+static void
+__lambda7_ (CDMenuItem* self,
+            GtkGestureClick* click,
+            gint n_press,
+            gdouble x,
+            gdouble y)
+{
+	g_return_if_fail (click != NULL);
+	if (n_press == 1) {
+		gtk_gesture_set_state ((GtkGesture*) click, GTK_EVENT_SEQUENCE_CLAIMED);
+	}
+}
+
+static void
+___lambda7__gtk_gesture_click_pressed (GtkGestureClick* _sender,
+                                       gint n_press,
+                                       gdouble x,
+                                       gdouble y,
+                                       gpointer self)
+{
+	__lambda7_ ((CDMenuItem*) self, _sender, n_press, x, y);
+}
+
+static void
+__lambda8_ (Block2Data* _data2_,
+            GtkGestureClick* click,
+            gint n_press,
+            gdouble x,
+            gdouble y)
+{
+	CDMenuItem* self;
+	self = _data2_->self;
+	g_return_if_fail (click != NULL);
+	if (n_press == 1) {
+		g_signal_emit (self, cd_menu_item_signals[CD_MENU_ITEM_CLICKED_SIGNAL], 0);
+	}
+	cd_menu_popdown_recursive (_data2_->parent_menu);
+}
+
+static void
+___lambda8__gtk_gesture_click_released (GtkGestureClick* _sender,
+                                        gint n_press,
+                                        gdouble x,
+                                        gdouble y,
+                                        gpointer self)
+{
+	__lambda8_ (self, _sender, n_press, x, y);
+}
+
+CDMenuItem*
+cd_menu_item_construct (GType object_type,
+                        const gchar* label,
+                        CDMenu* parent_menu)
+{
+	CDMenuItem * self = NULL;
+	Block2Data* _data2_;
+	CDMenu* _tmp0_;
+	GtkImage* _tmp1_;
+	GtkImage* _tmp2_;
+	GtkImage* _tmp3_;
+	GtkImage* _tmp4_;
+	GtkImage* _tmp5_;
+	GtkImage* _tmp6_;
+	GtkGestureClick* click = NULL;
+	GtkGestureClick* _tmp13_;
+	GtkEventController* _tmp14_;
+	g_return_val_if_fail (label != NULL, NULL);
+	g_return_val_if_fail (parent_menu != NULL, NULL);
+	_data2_ = g_slice_new0 (Block2Data);
+	_data2_->_ref_count_ = 1;
+	_tmp0_ = _g_object_ref0 (parent_menu);
+	_g_object_unref0 (_data2_->parent_menu);
+	_data2_->parent_menu = _tmp0_;
+	self = (CDMenuItem*) cd_menu_item_base_construct (object_type, _data2_->parent_menu);
+	_data2_->self = g_object_ref (self);
+	_tmp1_ = (GtkImage*) gtk_image_new ();
+	g_object_ref_sink (_tmp1_);
+	_g_object_unref0 (self->priv->img);
+	self->priv->img = _tmp1_;
+	_tmp2_ = self->priv->img;
+	gtk_widget_set_size_request ((GtkWidget*) _tmp2_, 24, 24);
+	_tmp3_ = self->priv->img;
+	gtk_widget_set_margin_top ((GtkWidget*) _tmp3_, 3);
+	_tmp4_ = self->priv->img;
+	gtk_widget_set_margin_bottom ((GtkWidget*) _tmp4_, 3);
+	_tmp5_ = self->priv->img;
+	gtk_widget_set_margin_start ((GtkWidget*) _tmp5_, 4);
+	_tmp6_ = self->priv->img;
+	gtk_box_append ((GtkBox*) self, (GtkWidget*) _tmp6_);
+	if (label != NULL) {
+		GtkLabel* _tmp7_;
+		GtkLabel* _tmp8_;
+		GtkLabel* _tmp9_;
+		GtkLabel* _tmp10_;
+		GtkLabel* _tmp11_;
+		GtkLabel* _tmp12_;
+		_tmp7_ = (GtkLabel*) gtk_label_new (label);
+		g_object_ref_sink (_tmp7_);
+		_g_object_unref0 (self->priv->lbl);
+		self->priv->lbl = _tmp7_;
+		_tmp8_ = self->priv->lbl;
+		gtk_widget_set_hexpand ((GtkWidget*) _tmp8_, TRUE);
+		_tmp9_ = self->priv->lbl;
+		gtk_widget_set_halign ((GtkWidget*) _tmp9_, GTK_ALIGN_START);
+		_tmp10_ = self->priv->lbl;
+		gtk_widget_set_margin_start ((GtkWidget*) _tmp10_, 4);
+		_tmp11_ = self->priv->lbl;
+		gtk_widget_set_margin_end ((GtkWidget*) _tmp11_, 6);
+		_tmp12_ = self->priv->lbl;
+		gtk_box_append ((GtkBox*) self, (GtkWidget*) _tmp12_);
+	} else {
+		_g_object_unref0 (self->priv->lbl);
+		self->priv->lbl = NULL;
+	}
+	_tmp13_ = (GtkGestureClick*) gtk_gesture_click_new ();
+	click = _tmp13_;
+	gtk_gesture_single_set_button ((GtkGestureSingle*) click, (guint) 1);
+	g_signal_connect_object (click, "pressed", (GCallback) ___lambda7__gtk_gesture_click_pressed, self, 0);
+	g_signal_connect_data (click, "released", (GCallback) ___lambda8__gtk_gesture_click_released, block2_data_ref (_data2_), (GClosureNotify) block2_data_unref, 0);
+	_tmp14_ = _g_object_ref0 ((GtkEventController*) click);
+	gtk_widget_add_controller ((GtkWidget*) self, _tmp14_);
+	_g_object_unref0 (click);
+	block2_data_unref (_data2_);
+	_data2_ = NULL;
+	return self;
+}
+
+CDMenuItem*
+cd_menu_item_new (const gchar* label,
+                  CDMenu* parent_menu)
+{
+	return cd_menu_item_construct (TYPE_CD_MENU_ITEM, label, parent_menu);
+}
+
+void
+cd_menu_item_set_image (CDMenuItem* self,
+                        GdkPaintable* new_img)
+{
+	gint h = 0;
+	gint w = 0;
+	GtkImage* _tmp0_;
+	gint mt = 0;
+	gint mb = 0;
+	GtkImage* _tmp1_;
+	GtkImage* _tmp2_;
+	GtkImage* _tmp3_;
+	g_return_if_fail (self != NULL);
+	g_return_if_fail (new_img != NULL);
+	h = gdk_paintable_get_intrinsic_height (new_img);
+	w = gdk_paintable_get_intrinsic_width (new_img);
+	if (h == 0) {
+		h = 24;
+	}
+	if (w == 0) {
+		w = 24;
+	}
+	_tmp0_ = self->priv->img;
+	gtk_widget_set_size_request ((GtkWidget*) _tmp0_, w, h);
+	mt = 2;
+	mb = 2;
+	if (h < 24) {
+		gint tmp = 0;
+		tmp = (24 - h) / 2;
+		mt += tmp;
+		mb += tmp;
+		if ((h % 2) == 1) {
+			mt += 1;
+		}
+	}
+	_tmp1_ = self->priv->img;
+	gtk_widget_set_margin_top ((GtkWidget*) _tmp1_, mt);
+	_tmp2_ = self->priv->img;
+	gtk_widget_set_margin_bottom ((GtkWidget*) _tmp2_, mb);
+	_tmp3_ = self->priv->img;
+	gtk_image_set_from_paintable (_tmp3_, new_img);
+	gtk_widget_queue_draw ((GtkWidget*) self);
+}
+
+void
+cd_menu_item_set_submenu (CDMenuItem* self,
+                          CDMenu* menu)
+{
+	CDMenu* _tmp0_;
+	CDArrow* _tmp1_;
+	CDArrow* _tmp2_;
+	g_return_if_fail (self != NULL);
+	g_return_if_fail (menu != NULL);
+	_tmp0_ = _g_object_ref0 (menu);
+	_g_object_unref0 (((CDMenuItemBase*) self)->submenu);
+	((CDMenuItemBase*) self)->submenu = _tmp0_;
+	gtk_widget_set_parent ((GtkWidget*) menu, (GtkWidget*) self);
+	gtk_popover_set_position ((GtkPopover*) menu, GTK_POS_RIGHT);
+	_tmp1_ = cd_arrow_new ();
+	g_object_ref_sink (_tmp1_);
+	_tmp2_ = _tmp1_;
+	gtk_box_append ((GtkBox*) self, (GtkWidget*) _tmp2_);
+	_g_object_unref0 (_tmp2_);
+}
+
+static void
+cd_menu_item_class_init (CDMenuItemClass * klass,
+                         gpointer klass_data)
+{
+	cd_menu_item_parent_class = g_type_class_peek_parent (klass);
+	g_type_class_adjust_private_offset (klass, &CDMenuItem_private_offset);
+	G_OBJECT_CLASS (klass)->finalize = cd_menu_item_finalize;
+	cd_menu_item_signals[CD_MENU_ITEM_CLICKED_SIGNAL] = g_signal_new ("clicked", TYPE_CD_MENU_ITEM, G_SIGNAL_RUN_LAST, 0, NULL, NULL, g_cclosure_marshal_VOID__VOID, G_TYPE_NONE, 0);
+}
+
+static void
+cd_menu_item_instance_init (CDMenuItem * self,
+                            gpointer klass)
+{
+	self->priv = cd_menu_item_get_instance_private (self);
+}
+
+static void
+cd_menu_item_finalize (GObject * obj)
+{
+	CDMenuItem * self;
+	self = G_TYPE_CHECK_INSTANCE_CAST (obj, TYPE_CD_MENU_ITEM, CDMenuItem);
+	_g_object_unref0 (self->priv->lbl);
+	_g_object_unref0 (self->priv->img);
+	G_OBJECT_CLASS (cd_menu_item_parent_class)->finalize (obj);
+}
+
+static GType
+cd_menu_item_get_type_once (void)
+{
+	static const GTypeInfo g_define_type_info = { sizeof (CDMenuItemClass), (GBaseInitFunc) NULL, (GBaseFinalizeFunc) NULL, (GClassInitFunc) cd_menu_item_class_init, (GClassFinalizeFunc) NULL, NULL, sizeof (CDMenuItem), 0, (GInstanceInitFunc) cd_menu_item_instance_init, NULL };
+	GType cd_menu_item_type_id;
+	cd_menu_item_type_id = g_type_register_static (TYPE_CD_MENU_ITEM_BASE, "CDMenuItem", &g_define_type_info, 0);
+	CDMenuItem_private_offset = g_type_add_instance_private (cd_menu_item_type_id, sizeof (CDMenuItemPrivate));
+	return cd_menu_item_type_id;
+}
+
+GType
+cd_menu_item_get_type (void)
+{
+	static volatile gsize cd_menu_item_type_id__once = 0;
+	if (g_once_init_enter (&cd_menu_item_type_id__once)) {
+		GType cd_menu_item_type_id;
+		cd_menu_item_type_id = cd_menu_item_get_type_once ();
+		g_once_init_leave (&cd_menu_item_type_id__once, cd_menu_item_type_id);
+	}
+	return cd_menu_item_type_id__once;
+}
+
+static inline gpointer
+cd_menu_separator_get_instance_private (CDMenuSeparator* self)
+{
+	return G_STRUCT_MEMBER_P (self, CDMenuSeparator_private_offset);
+}
+
+static void
+_vala_GskStroke_free (GskStroke* self)
+{
+	g_boxed_free (gsk_stroke_get_type (), self);
+}
+
+CDMenuSeparator*
+cd_menu_separator_construct (GType object_type,
+                             CDMenu* parent_menu)
+{
+	CDMenuSeparator * self = NULL;
+	GskStroke* _tmp0_;
+	g_return_val_if_fail (parent_menu != NULL, NULL);
+	self = (CDMenuSeparator*) g_object_new (object_type, "css-name", "cdmenuseparator", NULL);
+	gtk_widget_set_size_request ((GtkWidget*) self, -1, 3);
+	cd_menu_add_menu_item (parent_menu, (GtkWidget*) self);
+	_tmp0_ = gsk_stroke_new (1.0f);
+	__vala_GskStroke_free0 (self->priv->stroke);
+	self->priv->stroke = _tmp0_;
+	return self;
+}
+
+CDMenuSeparator*
+cd_menu_separator_new (CDMenu* parent_menu)
+{
+	return cd_menu_separator_construct (TYPE_CD_MENU_SEPARATOR, parent_menu);
+}
+
+static void
+cd_menu_separator_real_snapshot (GtkWidget* base,
+                                 GtkSnapshot* snapshot)
+{
+	CDMenuSeparator * self;
+	GskPathBuilder* builder = NULL;
+	GskPathBuilder* _tmp0_;
+	gint w = 0;
+	GskPath* _tmp1_;
+	GskPath* _tmp2_;
+	GskStroke* _tmp3_;
+	GdkRGBA _tmp4_ = {0};
+	self = (CDMenuSeparator*) base;
+	g_return_if_fail (snapshot != NULL);
+	_tmp0_ = gsk_path_builder_new ();
+	builder = _tmp0_;
+	w = gtk_widget_get_width ((GtkWidget*) self);
+	gsk_path_builder_move_to (builder, 0.05f * w, 0.5f);
+	gsk_path_builder_line_to (builder, 0.95f * w, 0.5f);
+	_tmp1_ = gsk_path_builder_to_path (builder);
+	_tmp2_ = _tmp1_;
+	_tmp3_ = self->priv->stroke;
+	gtk_widget_get_color ((GtkWidget*) self, &_tmp4_);
+	gtk_snapshot_append_stroke (snapshot, _tmp2_, _tmp3_, &_tmp4_);
+	_gsk_path_unref0 (_tmp2_);
+	_gsk_path_builder_unref0 (builder);
+}
+
+static void
+cd_menu_separator_class_init (CDMenuSeparatorClass * klass,
+                              gpointer klass_data)
+{
+	cd_menu_separator_parent_class = g_type_class_peek_parent (klass);
+	g_type_class_adjust_private_offset (klass, &CDMenuSeparator_private_offset);
+	((GtkWidgetClass *) klass)->snapshot = (void (*) (GtkWidget*, GtkSnapshot*)) cd_menu_separator_real_snapshot;
+	G_OBJECT_CLASS (klass)->finalize = cd_menu_separator_finalize;
+}
+
+static void
+cd_menu_separator_instance_init (CDMenuSeparator * self,
+                                 gpointer klass)
+{
+	self->priv = cd_menu_separator_get_instance_private (self);
+}
+
+static void
+cd_menu_separator_finalize (GObject * obj)
+{
+	CDMenuSeparator * self;
+	self = G_TYPE_CHECK_INSTANCE_CAST (obj, TYPE_CD_MENU_SEPARATOR, CDMenuSeparator);
+	__vala_GskStroke_free0 (self->priv->stroke);
+	G_OBJECT_CLASS (cd_menu_separator_parent_class)->finalize (obj);
+}
+
+static GType
+cd_menu_separator_get_type_once (void)
+{
+	static const GTypeInfo g_define_type_info = { sizeof (CDMenuSeparatorClass), (GBaseInitFunc) NULL, (GBaseFinalizeFunc) NULL, (GClassInitFunc) cd_menu_separator_class_init, (GClassFinalizeFunc) NULL, NULL, sizeof (CDMenuSeparator), 0, (GInstanceInitFunc) cd_menu_separator_instance_init, NULL };
+	GType cd_menu_separator_type_id;
+	cd_menu_separator_type_id = g_type_register_static (gtk_widget_get_type (), "CDMenuSeparator", &g_define_type_info, 0);
+	CDMenuSeparator_private_offset = g_type_add_instance_private (cd_menu_separator_type_id, sizeof (CDMenuSeparatorPrivate));
+	return cd_menu_separator_type_id;
+}
+
+GType
+cd_menu_separator_get_type (void)
+{
+	static volatile gsize cd_menu_separator_type_id__once = 0;
+	if (g_once_init_enter (&cd_menu_separator_type_id__once)) {
+		GType cd_menu_separator_type_id;
+		cd_menu_separator_type_id = cd_menu_separator_get_type_once ();
+		g_once_init_leave (&cd_menu_separator_type_id__once, cd_menu_separator_type_id);
+	}
+	return cd_menu_separator_type_id__once;
 }
 

@@ -767,14 +767,14 @@ int main (int argc, char** argv)
 		NOTIFICATION_SCROLL_ICON,
 		(GldiNotificationFunc) cairo_dock_notification_scroll_icon,
 		GLDI_RUN_AFTER, NULL);
-/*	gldi_object_register_notification (&myContainerObjectMgr,
+	gldi_object_register_notification (&myContainerObjectMgr,
 		NOTIFICATION_BUILD_CONTAINER_MENU,
 		(GldiNotificationFunc) cairo_dock_notification_build_container_menu,
 		GLDI_RUN_FIRST, NULL);
 	gldi_object_register_notification (&myContainerObjectMgr,
 		NOTIFICATION_BUILD_ICON_MENU,
 		(GldiNotificationFunc) cairo_dock_notification_build_icon_menu,
-		GLDI_RUN_AFTER, NULL); */
+		GLDI_RUN_AFTER, NULL);
 	
 	gldi_object_register_notification (&myDeskletObjectMgr,
 		NOTIFICATION_CONFIGURE_DESKLET,

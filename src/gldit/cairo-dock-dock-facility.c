@@ -496,7 +496,6 @@ void cairo_dock_update_input_shape (CairoDock *pDock)
 }
 
 
-
   ///////////////////
  /// LINEAR DOCK ///
 ///////////////////

@@ -22,7 +22,6 @@
 
 #include <cairo.h>
 #include <gtk/gtk.h>
-#include "gtk3imagemenuitem.h"
 
 #include "cairo-dock-container-priv.h"
 #include "cairo-dock-icon-factory.h"
@@ -32,28 +31,30 @@
 #include "cairo-dock-draw.h"
 #include "cairo-dock-backends-manager.h"  // cairo_dock_get_dialog_decorator
 #include "cairo-dock-dialog-manager.h"  // myDialogsParam
+#include "cairo-dock-dialog-factory.h"  // myDialogsParam
 #include "cairo-dock-style-manager.h"
 #include "cairo-dock-menu.h"
 #include "cairo-dock-wayland-manager.h"
+#include "cdwindow.h"
 
 extern gchar *g_cCurrentThemePath;
 extern GldiContainer *g_pPrimaryContainer;
 
-static gboolean _draw_menu_item (GtkWidget *widget, cairo_t *cr, G_GNUC_UNUSED gpointer data);
+// static gboolean _draw_menu_item (GtkWidget *widget, cairo_t *cr, G_GNUC_UNUSED gpointer data);
 
   ////////////
  /// MENU ///
 /////////////
 
-static gboolean _draw_menu (GtkWidget *pWidget,
+static void _draw_menu (GtkWidget *pWidget,
 	cairo_t *pCairoContext,
 	G_GNUC_UNUSED GtkWidget *menu)
 {
 	// reset the clip set by GTK, to allow us draw in the margin of the widget
-	cairo_reset_clip(pCairoContext);
+	// cairo_reset_clip(pCairoContext); -- not needed
 	
 	// erase the default background
-	cairo_dock_erase_cairo_context (pCairoContext);
+	cairo_dock_erase_cairo_context (pCairoContext); // -- not needed, we get a new context each time
 	
 	// draw the background/outline and set the clip
 	CairoDialogDecorator *pDecorator = cairo_dock_get_dialog_decorator (myDialogsParam.cDecoratorName);
@@ -69,13 +70,12 @@ static gboolean _draw_menu (GtkWidget *pWidget,
 	}
 	
 	// draw the items
-	cairo_set_source_rgba (pCairoContext, 0.0, 0.0, 0.0, 1.0);
-	
+	// cairo_set_source_rgba (pCairoContext, 0.0, 0.0, 0.0, 1.0); -- not needed? (snapshot() will use different surfaces)
+	/* -- done by our snapshot() implementation
 	GtkWidgetClass *parent_class = g_type_class_peek (g_type_parent (G_TYPE_FROM_INSTANCE (pWidget)));
 	parent_class = g_type_class_peek_parent (parent_class);  // skip the direct parent (GtkBin, which does anyway nothing usually), because dbusmenu-gtk draws it
 	parent_class->draw (pWidget, pCairoContext);
-	
-	return TRUE;
+	*/
 }
 
 static void _set_margin_position (GtkWidget *pMenu, GldiMenuParams *pParams)
@@ -108,27 +108,13 @@ static void _set_margin_position (GtkWidget *pMenu, GldiMenuParams *pParams)
 		// store the value
 		pParams->iMarginPosition = iMarginPosition;
 		
-		// get/add a css
+		// get/add a css -- note: this does not work in GTK4, but see the original note:
 		// actually gtk_widget_set_margin_xxx works, but then GTK adds a translation to the cairo_context, forcing each renderer to offset its drawing by gtk_widget_get_margin_xxx()
 		// also, gtk_widget_get_allocation() doesn't take into account the margin, forcing each renderer to add it
 		// so in the end it's better not to use it
-		GtkCssProvider *cssProvider = pParams->cssProvider;
-		if (cssProvider)  // unfortunately, GTK doesn't update correctly a css provider if we load some new data inside (the previous padding values are kept, along with the new ones, although 'gtk_css_provider_load_from_data' is supposed to "clear any previously loaded information"), so we have to remove/add it :-/
-		{
-			gtk_style_context_remove_provider (gtk_widget_get_style_context(pMenu), GTK_STYLE_PROVIDER(cssProvider));
-			g_object_unref (cssProvider);
-			cssProvider = NULL;
-			pParams->cssProvider = NULL;
-		}
-		if (cssProvider == NULL)
-		{
-			cssProvider = gtk_css_provider_new ();
-			gtk_style_context_add_provider (gtk_widget_get_style_context(pMenu), GTK_STYLE_PROVIDER(cssProvider), GTK_STYLE_PROVIDER_PRIORITY_USER);  // this adds a reference on the provider, plus the one we own
-			pParams->cssProvider = cssProvider;
-		}
+		// -> cairo_context is not a problem, it is created by us, but the allocation can be?
 		
-		// load the new padding rule into the css
-		gchar *css = NULL;
+		
 		int ah = pParams->iArrowHeight;
 		int b=0, t=0, r=0, l=0;
 		switch (iMarginPosition)
@@ -139,21 +125,17 @@ static void _set_margin_position (GtkWidget *pMenu, GldiMenuParams *pParams)
 			case 3: l = ah; break;
 			default: break;
 		}
-		css = g_strdup_printf ("GtkMenu,menu { \
-			padding-bottom: %dpx; \
-			padding-top: %dpx; \
-			padding-right: %dpx; \
-			padding-left: %dpx; \
-		}", b, t, r, l);  // we must define all the paddings, else if the margin position changes, clearing the css won't make the padding disappear; also, 'GtkMenu' is old
-		gtk_css_provider_load_from_data (cssProvider,
-			css, -1, NULL);
-		g_free (css);
+		
+		gtk_widget_set_margin_start (pMenu, l);
+		gtk_widget_set_margin_top (pMenu, t);
+		gtk_widget_set_margin_end (pMenu, r);
+		gtk_widget_set_margin_bottom (pMenu, b);
 	}
 }
 
 GtkWidget *gldi_menu_new (Icon *pIcon)
 {
-	GtkWidget *pMenu = gtk_menu_new ();
+	GtkWidget *pMenu = GTK_WIDGET(cd_menu_new ());
 	
 	gldi_menu_init (pMenu, pIcon);
 	
@@ -166,7 +148,7 @@ static gboolean _on_icon_destroyed (GtkWidget *pMenu, G_GNUC_UNUSED Icon *pIcon)
 	if (pParams)
 		pParams->pIcon = NULL;
 	// no sense in keeping the menu (and it might hold more stale references to pIcon)
-	gtk_widget_destroy (pMenu);
+	gtk_widget_unparent (pMenu);
 	return GLDI_NOTIFICATION_LET_PASS;
 }
 
@@ -186,19 +168,16 @@ static void _on_menu_destroyed (GtkWidget *pMenu, G_GNUC_UNUSED gpointer data)
 			NOTIFICATION_DESTROY,
 			(GldiNotificationFunc) _on_icon_destroyed,
 			pMenu);
-	if (pParams->cssProvider)
-	{
-		g_object_unref (pParams->cssProvider);  /// need to remove the provider from the style context ?... probably not since the style context will be destroyed and will release its reference on the provider
-	}
 	g_free (pParams);
 }
 
-static void _on_menu_deactivated (GtkMenuShell *pMenu, G_GNUC_UNUSED gpointer data)
+static void _on_menu_deactivated (GtkWidget *pMenu, G_GNUC_UNUSED gpointer data)
 {
 	GldiMenuParams *pParams = g_object_get_data (G_OBJECT (pMenu), "gldi-params");
 	if (!pParams)
 		return;
 	Icon *pIcon = pParams->pIcon;
+	gtk_widget_unparent (pMenu); // will destroy pMenu, since we should not have any other reference to it
 	if (!pIcon) return;
 	GldiContainer *pContainer = cairo_dock_get_icon_container (pIcon);
 	if (pIcon->iHideLabel > 0)
@@ -208,39 +187,26 @@ static void _on_menu_deactivated (GtkMenuShell *pMenu, G_GNUC_UNUSED gpointer da
 			gtk_widget_queue_draw (pContainer->pWidget);
 	}
 	// no need to test if we're running on Wayland, if not, this is a no-op
-	gldi_wayland_release_keyboard (pContainer, GLDI_KEYBOARD_RELEASE_MENU_CLOSED);
+	if (pContainer) gldi_wayland_release_keyboard (pContainer, GLDI_KEYBOARD_RELEASE_MENU_CLOSED);
 }
 
 static void _menu_realized_cb (GtkWidget *widget, gpointer user_data);
-static void _menu_popped_up_cb (GtkWidget *widget, G_GNUC_UNUSED void* rect1, G_GNUC_UNUSED void* rect2,
-	G_GNUC_UNUSED gboolean flipped_x, G_GNUC_UNUSED gboolean flipped_y, gpointer user_data)
-{
-	_menu_realized_cb (widget, user_data);
-}
 
 void gldi_menu_init (GtkWidget *pMenu, Icon *pIcon)
 {
 	g_return_if_fail (g_object_get_data (G_OBJECT (pMenu), "gldi-params") == NULL);
-	
-	#if (CAIRO_DOCK_FORCE_ICON_IN_MENUS == 1)
-	gtk_menu_set_reserve_toggle_size (GTK_MENU(pMenu), TRUE);
-	#endif
-
-	// connect to 'draw' event to draw the menu (background and items)
-	GtkWidget *pWindow = gtk_widget_get_toplevel (pMenu);
-	cairo_dock_set_default_rgba_visual (pWindow);
 	
 	g_signal_connect (G_OBJECT (pMenu),
 		"draw",
 		G_CALLBACK (_draw_menu),
 		pMenu);
 
-	gtk_style_context_add_class (gtk_widget_get_style_context (pMenu), "gldimenu");
+	gtk_widget_add_css_class (pMenu, "gldimenu");
 
 	// set params
 	GldiMenuParams *pParams = g_new0 (GldiMenuParams, 1);
 	g_object_set_data (G_OBJECT (pMenu), "gldi-params", pParams);
-	g_signal_connect (G_OBJECT (pMenu),
+	g_signal_connect (G_OBJECT (pMenu), // TODO: do we need this? / do we have this?
 		"destroy",
 		G_CALLBACK (_on_menu_destroyed),
 		NULL);
@@ -248,10 +214,10 @@ void gldi_menu_init (GtkWidget *pMenu, Icon *pIcon)
 	// Handle any adjustments necessary when the menu is first shown.
 	// This is a bit hacky: if we have an icon (so we are the first-level menu), we connect to the "realized" signal,
 	// which will allow us to resize the menu before it is positioned, leading to better results if it needs to be moved out
-	// of the way from the dock it's pointing at. For submenus, we connect to the "popped-up" signal, to better handle it
+	// of the way from the dock it's pointing at. For submenus, we connect to the "map" signal, to better handle it
 	// opening and closing multiple times.
 	if (pIcon) g_signal_connect (G_OBJECT (pMenu), "realize", G_CALLBACK (_menu_realized_cb), pParams);
-	else g_signal_connect (G_OBJECT (pMenu), "popped-up", G_CALLBACK (_menu_popped_up_cb), pParams);
+	else g_signal_connect (G_OBJECT (pMenu), "map", G_CALLBACK (_menu_realized_cb), pParams);
 	
 	// init a main menu
 	if (pIcon != NULL)  // the menu points on an icon
@@ -276,19 +242,19 @@ void gldi_menu_init (GtkWidget *pMenu, Icon *pIcon)
 			pParams->iMarginPosition = -1;
 			_set_margin_position (pMenu, pParams);
 			
-			// show the icon's label back when the menu is hidden
+			// show the icon's label back when the menu is hidden and destroy the menu
 			g_signal_connect (G_OBJECT (pMenu),
-				"deactivate",
+				"closed",
 				G_CALLBACK (_on_menu_deactivated),
 				NULL);
 			
-			// set transient for (parent relationship; needed for positioning on Wayland)
+			// set transient for (parent relationship; needed for positioning)
 			// note: it is an error to try to map (and position) a popup
 			// relative to a window that is not mapped; we need to take care of this
-			GtkWindow *tmp = GTK_WINDOW (pContainer->pWidget);
-			while (tmp && !gtk_widget_get_mapped (GTK_WIDGET(tmp)))
-				tmp = gtk_window_get_transient_for (tmp);
-			gtk_window_set_transient_for (GTK_WINDOW (pWindow), tmp);
+			GtkWidget *tmp = pContainer->pWidget;
+			while (tmp && !gtk_widget_get_mapped (tmp))
+				tmp = gtk_widget_get_parent (tmp);
+			gtk_widget_set_parent (pMenu, tmp);
 		}
 	}
 }
@@ -309,6 +275,8 @@ void gldi_menu_reinit (GtkWidget *pMenu, Icon *pIcon)
 			(GldiNotificationFunc) _on_icon_destroyed,
 			pMenu);
 	
+	//!! TODO: do we need to unparent pMenu??
+	
 	// link the menu to the new icon
 	g_object_set_data (G_OBJECT (pMenu), "gldi-icon", pIcon);
 	pParams->pIcon = pIcon;
@@ -319,19 +287,16 @@ void gldi_menu_reinit (GtkWidget *pMenu, Icon *pIcon)
 			(GldiNotificationFunc) _on_icon_destroyed,
 			GLDI_RUN_AFTER, pMenu);  // when the icon is destroyed, unlink the menu from it; when the menu is destroyed, the above notification will be unregistered on the icon in the "destroy" callback
 		
-	
-	
-		// set transient for (parent relationship; needed for positioning on Wayland)
+		// set new parent
 		// note: it is an error to try to map (and position) a popup
 		// relative to a window that is not mapped; we need to take care of this
 		GldiContainer *pContainer = cairo_dock_get_icon_container (pIcon);
 		if (pContainer)
 		{
-			GtkWidget *pWindow = gtk_widget_get_toplevel (pMenu);
-			GtkWindow *tmp = GTK_WINDOW (pContainer->pWidget);
-			while (tmp && !gtk_widget_get_mapped (GTK_WIDGET(tmp)))
-				tmp = gtk_window_get_transient_for (tmp);
-			gtk_window_set_transient_for (GTK_WINDOW (pWindow), tmp);
+			GtkWidget *tmp = pContainer->pWidget;
+			while (tmp && !gtk_widget_get_mapped (tmp))
+				tmp = gtk_widget_get_parent (tmp);
+			gtk_widget_set_parent (pMenu, tmp);
 		}
 	}
 }
@@ -348,6 +313,7 @@ static void _menu_realized_cb (GtkWidget *widget, gpointer user_data)
 	w = requisition.width;
 	h = requisition.height;
 	
+	/** TODO: is this still needed?
 	// constrain the menu's size to fit within the screen
 	// see https://github.com/wmww/gtk-layer-shell/issues/148
 	// (note: menus created here are always ultimately a child of a layer-shell window)
@@ -377,44 +343,50 @@ static void _menu_realized_cb (GtkWidget *widget, gpointer user_data)
 		}
 		else cd_warning ("menu has no associated GdkWindow!");
 	}
+	*/
 	
 	if (pParams->pIcon)
 		gldi_container_calculate_aimed_point (pParams->pIcon, widget, w, h, pParams->iMarginPosition,
 			pParams->fAlign, &(pParams->iAimedX), &(pParams->iAimedY));
 }
-
+/*
 static void _init_menu_item (GtkWidget *pMenuItem);
 static void _init_menu_item2 (GtkWidget *menu, G_GNUC_UNUSED gpointer dummy)
 {
 	_init_menu_item (menu);
 }
-
+*/
 static void _init_menu_item (GtkWidget *pMenuItem)
 {
-	GtkWidget *pSubMenu = gtk_menu_item_get_submenu (GTK_MENU_ITEM (pMenuItem));
+	(void)*pMenuItem;
+	return; // not needed
+	
+	//!! TODO: submenus not supported yet
+	// GtkWidget *pSubMenu = gtk_menu_item_get_submenu (GTK_MENU_ITEM (pMenuItem));
 	
 	// add our class on the menu-item; the style of this class is (will be) defined in a css, which will override the default gtkmenuitem style.
 	gboolean bStyleIsSet = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (pMenuItem), "gldi-style-set"));
 	if (! bStyleIsSet)  // not done yet -> do it once
 	{
 		// draw the menu items; actually, we only want to draw the separators, which are not well drawn by GTK
-		g_signal_connect (G_OBJECT (pMenuItem),
+		/* g_signal_connect (G_OBJECT (pMenuItem),
 			"draw",
 			G_CALLBACK (_draw_menu_item),
-			NULL);
+			NULL); */
 		
-		gtk_style_context_add_class (gtk_widget_get_style_context (pMenuItem), "gldimenuitem");
+		//!! TODO: not needed? (we now have cdmenuitem as the css name)
+		// gtk_style_context_add_class (gtk_widget_get_style_context (pMenuItem), "gldimenuitem");
 		
-		if (pSubMenu != NULL)  // if this item has a sub-menu, init it as well
-			gldi_menu_init (pSubMenu, NULL);
+		// if (pSubMenu != NULL)  // if this item has a sub-menu, init it as well
+		// 	gldi_menu_init (pSubMenu, NULL);
 		
 		g_object_set_data (G_OBJECT (pMenuItem), "gldi-style-set", GINT_TO_POINTER(1));
 		
 	}
 	
 	// iterate on sub-menu's items
-	if (pSubMenu != NULL)
-		gtk_container_forall (GTK_CONTAINER (pSubMenu), (GtkCallback) _init_menu_item2, NULL);
+	// if (pSubMenu != NULL)
+	// 	gtk_container_forall (GTK_CONTAINER (pSubMenu), (GtkCallback) _init_menu_item2, NULL);
 }
 
 static void _adjust_anchor (GdkGravity *anchor, gboolean bLeft)
@@ -438,7 +410,7 @@ static void _adjust_anchor (GdkGravity *anchor, gboolean bLeft)
 	}
 }
 
-static void _popup_menu (GtkWidget *menu, const GdkEvent *event)
+void gldi_menu_popup (GtkWidget *menu)
 {
 	GldiMenuParams *pParams = g_object_get_data (G_OBJECT(menu), "gldi-params");
 	g_return_if_fail (pParams != NULL);
@@ -450,8 +422,11 @@ static void _popup_menu (GtkWidget *menu, const GdkEvent *event)
 	if (pContainer && pContainer->iface.setup_menu)
 		pContainer->iface.setup_menu (pContainer, pIcon, menu);
 
+	// Not needed -- we can only add our own menuitems
 	// init each items (and sub-menus), in case it contains some foreign GtkMenuItems (for instance in case of an indicator menu or the gtk recent files sub-menu, which can have new items at any time)
-	gtk_container_forall (GTK_CONTAINER (menu), (GtkCallback) _init_menu_item2, NULL);  // init each menu-item style
+	// gtk_container_forall (GTK_CONTAINER (menu), (GtkCallback) _init_menu_item2, NULL);  // init each menu-item style
+	
+	GtkPopover *pPopover = GTK_POPOVER (menu);
 	
 	if (pIcon && pContainer)
 	{
@@ -462,17 +437,15 @@ static void _popup_menu (GtkWidget *menu, const GdkEvent *event)
 		
 		// ensure margin position is still correct
 		_set_margin_position (menu, pParams);
-	}
 
-	gtk_widget_show_all (GTK_WIDGET (menu));
-
-	if (pContainer && pIcon)
-	{
 		GdkRectangle rect = {0, 0, 1, 1};
-		GdkGravity rect_anchor = GDK_GRAVITY_NORTH;
-		GdkGravity menu_anchor = GDK_GRAVITY_SOUTH;
-		gldi_container_calculate_rect (pContainer, pIcon, &rect, &rect_anchor, &menu_anchor, FALSE);
+		GtkPositionType pos;
+		gldi_container_calculate_rect (pContainer, pIcon, &rect, &pos, FALSE);
 		
+		gtk_popover_set_position (pPopover, pos);
+		gtk_popover_set_pointing_to (pPopover, &rect);
+		
+		/** TODO: offsets !
 		if (pParams->fAlign == 0.0 || pParams->fAlign == 1.0)
 		{
 			// adjust anchors
@@ -480,7 +453,7 @@ static void _popup_menu (GtkWidget *menu, const GdkEvent *event)
 			_adjust_anchor (&menu_anchor, (pParams->fAlign == 0.0));
 		}
 		else
-		{
+		{*/
 			/* add an offset -- unfortunately, we can only add an absolute offset, but we
 			 * do not know our size, and by the time we get it in _menu_realized_cb (),
 			 * setting an offset does not have an effect
@@ -491,7 +464,7 @@ https://gitlab.gnome.org/GNOME/gtk/-/blob/e1d664da630ee32c4068c8ead4101bce94e7e2
 			 * so we just use a dummy size that works in most cases (note: this is only
 			 * used by the "modern" renderer, all others have fAlign == 0.0, 0.5 or 1.0
 			 * which is handled correctly by setting anchors)
-			 */
+			 *//*
 			const double dummy_width = 240.0;
 			const double dummy_height = 120.0;
 			if (pContainer->bIsHorizontal)
@@ -504,16 +477,12 @@ https://gitlab.gnome.org/GNOME/gtk/-/blob/e1d664da630ee32c4068c8ead4101bce94e7e2
 				int dy = (int) (dummy_height * (0.5 - pParams->fAlign));
 				g_object_set (G_OBJECT (menu), "rect-anchor-dy", dy, NULL);
 			}
-		}
-		
-		gtk_menu_popup_at_rect (GTK_MENU (menu), gtk_widget_get_window (pContainer->pWidget),
-			&rect, rect_anchor, menu_anchor, event);
+		}*/
 	}
-	else
-	{
-		gtk_menu_popup_at_pointer (GTK_MENU (menu), event);
-	}
+	
+	gtk_popover_popup (pPopover);
 }
+/*
 static gboolean _popup_menu_delayed (GtkWidget *menu)
 {
 	_popup_menu (menu, NULL);
@@ -536,14 +505,14 @@ void gldi_menu_popup_full (GtkWidget *menu, const GdkEvent *event)
 	{
 		g_timeout_add (250, (GSourceFunc)_popup_menu_delayed, menu);
 	}
-}
+}*/
 
 
   /////////////////
  /// MENU ITEM ///
 /////////////////
 
-
+/*
 static gboolean _draw_menu_item (GtkWidget *widget,
 	cairo_t *cr,
 	G_GNUC_UNUSED gpointer data)
@@ -586,190 +555,124 @@ static gboolean _draw_menu_item (GtkWidget *widget,
 	
 	return TRUE;  // intercept
 }
+*/
 
-GtkWidget *gldi_menu_item_new_full2 (const gchar *cLabel, const gchar *cImage, gboolean bUseMnemonic, GtkIconSize iSize, gboolean bUseStyle)
+static void _set_menu_item_image (CDMenuItem *pMenuItem, cairo_surface_t *surface)
 {
-	if (iSize == 0)
-		iSize = GTK_ICON_SIZE_MENU; // 16x16
+	g_return_if_fail (surface);
 	
-	(void)cImage; // avoid warnings if CAIRO_DOCK_FORCE_ICON_IN_MENUS == 0
-	GtkWidget *pMenuItem;
-#if (CAIRO_DOCK_FORCE_ICON_IN_MENUS == 1)
-	if (cImage)
-	{
-		if (! cLabel)
-			pMenuItem = gtk3_image_menu_item_new ();
-		else
-			pMenuItem = (bUseMnemonic ? gtk3_image_menu_item_new_with_mnemonic (cLabel) : gtk3_image_menu_item_new_with_label (cLabel));
-		
-		if (*cImage)
-		{
-			GtkWidget *image = NULL;
-			int size;
-			gtk_icon_size_lookup (iSize, &size, NULL);
-			size *= myDialogsParam.fUIScale;
-			
-			// note: this takes care to load the icon with the correct scale factor
-			cairo_surface_t *surface = cairo_dock_create_surface_from_icon (cImage, size, size);
-			if (surface)
-			{
-				image = gtk_image_new_from_surface (surface);
-				gtk3_image_menu_item_set_image (GTK3_IMAGE_MENU_ITEM (pMenuItem), image);
-				cairo_surface_destroy (surface); // note: this does not destroy the surface, only unrefs it			
-			}
-		}
-	}
-	else
-#endif
-	{
-		if (! cLabel)
-			pMenuItem = gtk_menu_item_new ();
-		else
-			pMenuItem = (bUseMnemonic ? gtk_menu_item_new_with_mnemonic (cLabel) : gtk_menu_item_new_with_label (cLabel));
-	}
-
-	if (bUseStyle) _init_menu_item (pMenuItem);
-
-	gtk_widget_show_all (pMenuItem);  // show immediately, so that the menu-item is realized when the menu is popped up
+	// we need to keep it since the GdkTexture we create may use the data directly
+	cairo_surface_reference (surface);
 	
-	return pMenuItem;
+	cairo_surface_flush (surface);
+	size_t h = cairo_image_surface_get_height (surface);
+	size_t stride = cairo_image_surface_get_stride (surface);
+	GBytes *bytes = g_bytes_new_with_free_func (
+		cairo_image_surface_get_data (surface),
+		stride * h,
+		(GDestroyNotify)cairo_surface_destroy,
+		surface); // takes ownership of our ref on surface
+	GdkTexture *texture = gdk_memory_texture_new (
+		cairo_image_surface_get_width (surface),
+		h,
+		GDK_MEMORY_B8G8R8A8_PREMULTIPLIED,
+		bytes,
+		stride);
+	g_bytes_unref (bytes);
+	
+	cd_menu_item_set_image (CD_MENU_ITEM (pMenuItem), GDK_PAINTABLE (texture));
+	g_object_unref (texture);
 }
 
-
-void gldi_menu_item_set_image (GtkWidget *pMenuItem, GtkWidget *image)
+void gldi_menu_item_set_image (GtkWidget *pMenuItem, cairo_surface_t *surface)
 {
-#if (CAIRO_DOCK_FORCE_ICON_IN_MENUS == 1)
-	gtk3_image_menu_item_set_image (GTK3_IMAGE_MENU_ITEM (pMenuItem), image);
-#else
-	(void)pMenuItem; // avoid warnings
-	g_object_ref_sink (image); // image will typically be newly allocated and have a floating reference
-	g_object_unref (image); // it is taken over here and freed in this case
-#endif
+	g_return_if_fail (pMenuItem && IS_CD_MENU_ITEM (pMenuItem));
+	_set_menu_item_image (CD_MENU_ITEM (pMenuItem), surface);
 }
+	
 
+/** TODO: return the GdkPaintable !!
 GtkWidget *gldi_menu_item_get_image (GtkWidget *pMenuItem)
 {
 	return gtk3_image_menu_item_get_image (GTK3_IMAGE_MENU_ITEM (pMenuItem));
 }
+*/
 
 
-// custom data to store with menu items that have a tooltip
-
-typedef struct _GldiMenuItemTooltip {
-	gchar *cText;
-	void (*pFunction)(GtkMenuItem*, gpointer);
-	gpointer pData;
-} GldiMenuItemTooltip;
-
-static void _free_tooltip_data (gpointer ptr, G_GNUC_UNUSED GObject* pObj)
+static GtkWidget *_menu_item_new_with_action (const gchar *cLabel, const gchar *cImage,
+	void (*pFunction)(GtkWidget*, gpointer), gpointer pData, CDMenu *pMenu)
 {
-	if (!ptr) return;
-	GldiMenuItemTooltip *pCustomData = (GldiMenuItemTooltip*)ptr;
-	g_free (pCustomData->cText);
-	g_free (pCustomData);
-	// note: pData is not managed by us
-}
-
-static void _enable_tooltip (GtkWidget* pWidget, gpointer ptr)
-{
-	if (!ptr) return; // should not happen
-	GldiMenuItemTooltip *pCustomData = (GldiMenuItemTooltip*)ptr;
-	gtk_widget_set_tooltip_text (pWidget, pCustomData->cText);
-}
-
-static void _tooltip_activate (GtkMenuItem* pMenuItem, gpointer ptr)
-{
-	gtk_widget_set_tooltip_text (GTK_WIDGET (pMenuItem), NULL);
-	if (!ptr) return; // should not happen
-	GldiMenuItemTooltip *pCustomData = (GldiMenuItemTooltip*)ptr;
-	if (pCustomData->pFunction)
-		(pCustomData->pFunction)(pMenuItem, pCustomData->pData);
-}
-
-static GtkWidget *_menu_item_new_with_action_and_tooltip (const gchar *cLabel, const gchar *cImage, const gchar *cToolTip, void (*pFunction)(GtkMenuItem*, gpointer), gpointer pData)
-{
-	GtkWidget *pMenuItem;
-	gboolean bCustomCallback = ((cToolTip != NULL) && gldi_wayland_manager_have_layer_shell ());
-	
-	if (bCustomCallback)
+	CDMenuItem *pMenuItem = cd_menu_item_new (cLabel, pMenu);
+	if (cImage && *cImage)
 	{
-		pMenuItem = gldi_menu_item_new (cLabel, cImage);
-		if (!pMenuItem) return NULL;
+		// for icons that are not stock-icons, we choose a bigger size; the reason is that these icons usually don't
+		// have a 16x16 version, and don't scale very well to such a small size (most of the time, it's the icon of an
+		// application, or the cairo-dock or recent-documents icon (note: for these 2, we could make a small version)).
+		// It's a workaround and a better solution may exist ^^
+		unsigned int iSize = (*cImage == '/') ? 24 : 16; // GTK_ICON_SIZE_LARGE_TOOLBAR : GTK_ICON_SIZE_MENU
 		
-		GldiMenuItemTooltip *pCustomData = g_new0 (GldiMenuItemTooltip, 1);
-		pCustomData->cText = g_strdup (cToolTip);
-		pCustomData->pFunction = pFunction;
-		pCustomData->pData = pData;
-		
-		g_object_weak_ref (G_OBJECT (pMenuItem), _free_tooltip_data, pCustomData);
-		g_signal_connect (G_OBJECT (pMenuItem), "map", G_CALLBACK (_enable_tooltip), pCustomData);
-		g_signal_connect (G_OBJECT (pMenuItem), "activate", G_CALLBACK (_tooltip_activate), pCustomData);
+		iSize *= myDialogsParam.fUIScale;
+		// note: this takes care to load the icon with the correct scale factor
+		cairo_surface_t *surface = cairo_dock_create_surface_from_icon (cImage, iSize, iSize);
+		_set_menu_item_image (pMenuItem, surface);
+		cairo_surface_destroy (surface); // ref was taken above, so it will not actually destroy it
 	}
-	else
-	{
-		pMenuItem = gldi_menu_item_new_with_action (cLabel, cImage, G_CALLBACK (pFunction), pData);
-		if (pMenuItem && cToolTip) gtk_widget_set_tooltip_text (pMenuItem, cToolTip);
-	}
-	return pMenuItem;
-}
-
-
-GtkWidget *gldi_menu_item_new_with_action (const gchar *cLabel, const gchar *cImage, GCallback pFunction, gpointer pData)
-{
-	GtkWidget *pMenuItem = gldi_menu_item_new (cLabel, cImage);
-	if (pFunction)
-		g_signal_connect (G_OBJECT (pMenuItem), "activate", G_CALLBACK (pFunction), pData);
-	return pMenuItem;
-}
-
-GtkWidget *gldi_menu_item_new_with_submenu (const gchar *cLabel, const gchar *cImage, GtkWidget **pSubMenuPtr)
-{
-	GtkIconSize iSize;
-	if (cImage && (*cImage == '/' || *cImage == '\0'))  // for icons that are not stock-icons, we choose a bigger size; the reason is that these icons usually don't have a 16x16 version, and don't scale very well to such a small size (most of the time, it's the icon of an application, or the cairo-dock or recent-documents icon (note: for these 2, we could make a small version)). it's a workaround and a better solution may exist ^^
-		iSize = GTK_ICON_SIZE_LARGE_TOOLBAR; // 24x24
-	else
-		iSize = 0;
-	GtkWidget *pMenuItem = gldi_menu_item_new_full (cLabel, cImage, FALSE, iSize);
-	GtkWidget *pSubMenu = gldi_submenu_new ();
-	gtk_menu_item_set_submenu (GTK_MENU_ITEM (pMenuItem), pSubMenu);
-	
-	*pSubMenuPtr = pSubMenu;
-	return pMenuItem;
+	if (pFunction) g_signal_connect (G_OBJECT (pMenuItem), "clicked", G_CALLBACK (pFunction), pData);
+	return GTK_WIDGET (pMenuItem);
 }
 
 GtkWidget *gldi_menu_add_item (GtkWidget *pMenu, const gchar *cLabel, const gchar *cImage, GCallback pFunction, gpointer pData)
 {
-	GtkWidget *pMenuItem = gldi_menu_item_new_with_action (cLabel, cImage, pFunction, pData);
-	gtk_menu_shell_append (GTK_MENU_SHELL (pMenu), pMenuItem);
+	g_return_val_if_fail (pMenu && IS_CD_MENU (pMenu), NULL);
+	
+	GtkWidget *pMenuItem = _menu_item_new_with_action (cLabel, cImage, pFunction, pData, CD_MENU (pMenu));
 	return pMenuItem;
 }
 
-GtkWidget *gldi_menu_add_item_with_tooltip (GtkWidget *pMenu, const gchar *cLabel, const gchar *cImage, const gchar *cToolTip, void (*pFunction)(GtkMenuItem*, gpointer), gpointer pData)
+GtkWidget *gldi_menu_add_item_with_tooltip (GtkWidget *pMenu, const gchar *cLabel, const gchar *cImage, const gchar *cToolTip, void (*pFunction)(GtkWidget*, gpointer), gpointer pData)
 {
-	GtkWidget *pMenuItem = _menu_item_new_with_action_and_tooltip (cLabel, cImage, cToolTip, pFunction, pData);
-	gtk_menu_shell_append (GTK_MENU_SHELL (pMenu), pMenuItem);
+	g_return_val_if_fail (pMenu && IS_CD_MENU (pMenu), NULL);
+	
+	GtkWidget *pMenuItem = _menu_item_new_with_action (cLabel, cImage, pFunction, pData, CD_MENU (pMenu));
+	if (cToolTip) gtk_widget_set_tooltip_text (pMenuItem, cToolTip);
 	return pMenuItem;
+}
+
+GtkWidget *gldi_menu_add_item_with_checkbox (GtkWidget *pMenu, const gchar *cLabel)
+{
+	g_return_val_if_fail (pMenu && IS_CD_MENU (pMenu), NULL);
+	
+	GtkWidget *pMenuItem = cd_menu_item_base_new (pMenu);
+	GtkWidget *pCheckBox = gtk_check_button_new_with_label (cLabel);
+	gtk_widget_set_margin_top (pCheckBox, 2);
+	gtk_widget_set_margin_bottom (pCheckBox, 2);
+	// gtk_widget_add_css_class (pMenuItem, "gldimenuitem");
+	gtk_box_append (GTK_BOX (pMenuItem), pCheckBox); // takes ref
+	return pCheckBox;
 }
 
 GtkWidget *gldi_menu_add_sub_menu_full (GtkWidget *pMenu, const gchar *cLabel, const gchar *cImage, GtkWidget **pMenuItemPtr)
 {
-	GtkWidget *pSubMenu;
-	GtkWidget *pMenuItem = gldi_menu_item_new_with_submenu (cLabel, cImage, &pSubMenu);
-	gtk_menu_shell_append (GTK_MENU_SHELL (pMenu), pMenuItem);
-	if (pMenuItemPtr)
-		*pMenuItemPtr = pMenuItem;
-	return pSubMenu; 
+	g_return_val_if_fail (pMenu && IS_CD_MENU (pMenu), NULL);
+	
+	GtkWidget *pMenuItem = _menu_item_new_with_action (cLabel, cImage, NULL, NULL, CD_MENU (pMenu));
+	if (pMenuItemPtr) *pMenuItemPtr = pMenuItem;
+	
+	GtkWidget *pSubMenu = gldi_menu_new (NULL);
+	cd_menu_item_set_submenu (CD_MENU_ITEM (pMenuItem), CD_MENU (pSubMenu));
+	
+	return pSubMenu;
 }
 
 void gldi_menu_add_separator (GtkWidget *pMenu)
 {
-	GtkWidget *pMenuItem = gtk_separator_menu_item_new ();
-	gtk_menu_shell_append (GTK_MENU_SHELL (pMenu), pMenuItem);
-	_init_menu_item (pMenuItem);
+	g_return_if_fail (pMenu && IS_CD_MENU (pMenu));
+	
+	cd_menu_separator_new (pMenu);
 }
 
-gboolean GLDI_IS_IMAGE_MENU_ITEM (GtkWidget *pMenuItem)  // defined as a function to not export gtk3imagemenuitem.h
+gboolean GLDI_IS_IMAGE_MENU_ITEM (GtkWidget *pMenuItem)  // defined as a function to not export cdwindow.h
 {
-	return GTK3_IS_IMAGE_MENU_ITEM (pMenuItem);
+	return IS_CD_MENU_ITEM (pMenuItem);
 }
 
