@@ -377,11 +377,7 @@ static gboolean _dock_handle_leave (CairoDock *pDock, gboolean bRealEvent)
 	if (bRealEvent) pDock->iMousePositionType = CAIRO_DOCK_MOUSE_OUTSIDE;
 	else
 	{
-		GdkSeat *pSeat = gdk_display_get_default_seat (gdk_display_get_default());
-		GdkDevice *pDevice = gdk_seat_get_pointer (pSeat);
-		double tmpx, tmpy;
-		GdkSurface *win = gdk_device_get_surface_at_position (pDevice, &tmpx, &tmpy);
-		if (win != gldi_container_get_gdk_window (CAIRO_CONTAINER (pDock)))
+		if (!gldi_container_update_mouse_position (CAIRO_CONTAINER (pDock), FALSE))
 			pDock->iMousePositionType = CAIRO_DOCK_MOUSE_OUTSIDE;
 	}
 	return (pDock->iMousePositionType == CAIRO_DOCK_MOUSE_OUTSIDE);

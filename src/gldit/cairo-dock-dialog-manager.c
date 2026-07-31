@@ -105,7 +105,7 @@ static void _unload_dialog_buttons (void)
 	}
 }
 
-
+/*
 static gboolean on_enter_dialog (G_GNUC_UNUSED GtkWidget* pWidget,
 	G_GNUC_UNUSED GdkEventCrossing* pEvent,
 	CairoDialog *pDialog)
@@ -137,7 +137,7 @@ static gboolean on_leave_dialog (G_GNUC_UNUSED GtkWidget* pWidget,
 	{
 		if (pIcon != NULL)
 		{
-			return FALSE;
+			return FALSE;*/
 			/*GldiContainer *pContainer = cairo_dock_search_container_from_icon (pIcon);
 			///if (!pContainer || !pContainer->bInside)  // peut arriver dans le cas d'un dock cache possedant un dialogue. Initialement les 2 se chevauchent, il faut considerer qu'on est hors du dialogue afin de pouvoir le replacer.
 			{
@@ -146,14 +146,14 @@ static gboolean on_leave_dialog (G_GNUC_UNUSED GtkWidget* pWidget,
 			}
 			//else
 			//	//g_print ("leave dialog\n");*/
-		}
+/*		}
 	}
 	
 	//g_print ("leave\n");
 	//cd_debug ("outside (%d;%d / %dx%d)", iMouseX, iMouseY, pDialog->container.iWidth, pDialog->container.iHeight);
 	pDialog->container.bInside = FALSE;
 	
-	if (pIcon != NULL /*&& (pEvent->state & GDK_BUTTON1_MASK) == 0*/)
+	if (pIcon != NULL)
 	{
 		pDialog->container.iMouseX = pEvent->x_root;
 		pDialog->container.iMouseY = pEvent->y_root;
@@ -183,14 +183,14 @@ static int _cairo_dock_find_clicked_button_in_dialog (GdkEventButton* pButton, C
 	}
 	return -1;
 }
-
+*/
 static inline void _answer (CairoDialog *pDialog, int iButton)
 {
 	pDialog->bInAnswer = TRUE;
 	pDialog->action_on_answer (iButton, pDialog->pInteractiveWidget, pDialog->pUserData, pDialog);
 	pDialog->bInAnswer = FALSE;
 }
-
+/*
 static gboolean on_button_press_dialog (G_GNUC_UNUSED GtkWidget* pWidget,
 	GdkEventButton* pButton,
 	CairoDialog *pDialog)
@@ -279,7 +279,7 @@ static gboolean on_key_press_dialog (G_GNUC_UNUSED GtkWidget *pWidget,
 	}
 	return FALSE;
 }
-
+*/
 static void _cairo_dock_dialog_delete (CairoDialog *pDialog)
 {
 	if (pDialog != NULL)
@@ -299,7 +299,7 @@ static gboolean _cairo_dock_dialog_auto_delete (CairoDialog *pDialog)
 	}
 	return FALSE;
 }
-
+/*
 static void _cairo_dock_draw_inside_dialog_opengl (CairoDialog *pDialog, double fAlpha)
 {
 	_cairo_dock_enable_texture ();
@@ -467,7 +467,7 @@ void gldi_dialogs_remove_on_icon (Icon *icon)  // gldi_icon_remove_dialog ?...
 
 static void _set_dialog_orientation (CairoDialog *pDialog, GldiContainer *pContainer)
 {
-	if (pContainer != NULL/* && pDialog->pIcon != NULL*/)
+	if (pContainer != NULL)
 	{
 		if (pContainer->bIsHorizontal == CAIRO_DOCK_HORIZONTAL)
 			pDialog->container.bDirectionUp = pContainer->bDirectionUp;
@@ -615,15 +615,15 @@ static void _refresh_all_dialogs (gboolean bReplace)
 		}
 	}
 }
-
+*/
 void gldi_dialogs_refresh_all (void)
 {
-	_refresh_all_dialogs (FALSE);
+	// _refresh_all_dialogs (FALSE);
 }
 
 void gldi_dialogs_replace_all (void)
 {
-	_refresh_all_dialogs (TRUE);
+	// _refresh_all_dialogs (TRUE);
 }
 
 
@@ -691,7 +691,7 @@ void gldi_dialog_unhide (CairoDialog *pDialog)
 		if (pIcon != NULL)
 		{
 			GldiContainer *pContainer = cairo_dock_get_icon_container (pIcon);
-			_place_dialog (pDialog, pContainer);
+			// _place_dialog (pDialog, pContainer);
 			
 			if (CAIRO_DOCK_IS_DOCK (pContainer) && cairo_dock_get_icon_max_scale (pIcon) < 1.01)  // same remark
 			{
@@ -706,7 +706,7 @@ void gldi_dialog_unhide (CairoDialog *pDialog)
 		}
 	}
 	pDialog->bPositionForced = FALSE;
-	gtk_window_present (GTK_WINDOW (pDialog->container.pWidget));
+	// gtk_window_present (GTK_WINDOW (pDialog->container.pWidget));
 }
 
 void gldi_dialog_toggle_visibility (CairoDialog *pDialog)
@@ -742,13 +742,13 @@ static gboolean on_icon_removed (G_GNUC_UNUSED gpointer pUserData, Icon *pIcon, 
 	}
 	return GLDI_NOTIFICATION_LET_PASS;
 }
-
+/*
 static gboolean on_icon_destroyed (G_GNUC_UNUSED gpointer pUserData, Icon *pIcon)
 {
 	gldi_dialogs_remove_on_icon (pIcon);
 	return GLDI_NOTIFICATION_LET_PASS;
 }
-
+*/
 CairoDialog *gldi_dialogs_foreach (GCompareFunc callback, gpointer data)
 {
 	CairoDialog *pDialog;
@@ -873,7 +873,7 @@ static void _init_menu_style (void)
 		if (cssProvider != NULL)
 		{
 			gldi_style_colors_freeze ();
-			gtk_style_context_remove_provider_for_screen (gdk_screen_get_default(), GTK_STYLE_PROVIDER(cssProvider));
+			gtk_style_context_remove_provider_for_display (gdk_display_get_default(), GTK_STYLE_PROVIDER(cssProvider));
 			gldi_style_colors_freeze ();
 			g_object_unref (cssProvider);
 			cssProvider = NULL;
@@ -887,7 +887,7 @@ static void _init_menu_style (void)
 		{
 			cssProvider = gtk_css_provider_new ();
 			gldi_style_colors_freeze ();
-			gtk_style_context_add_provider_for_screen (gdk_screen_get_default(), GTK_STYLE_PROVIDER(cssProvider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+			gtk_style_context_add_provider_for_display (gdk_display_get_default(), GTK_STYLE_PROVIDER(cssProvider), GTK_STYLE_PROVIDER_PRIORITY_USER);
 			gldi_style_colors_freeze ();
 		}
 		
@@ -906,19 +906,23 @@ static void _init_menu_style (void)
 		gldi_style_color_shade (&bg_color, GLDI_COLOR_SHADE_MEDIUM, &rgb);
 		GldiColor rgbb;  // menuitem border color and menuitem's child bg color (for instance, calendar, scale, etc): a little darker/lighter than the menuitem bg color
 		gldi_style_color_shade (&bg_color, GLDI_COLOR_SHADE_STRONG, &rgbb);
+		GldiColor arrow_color; // submenu arrow color -- a bit darker/lighter than the text color
+		gldi_style_color_shade (&text_color, GLDI_COLOR_SHADE_MEDIUM, &arrow_color);
 		
-		gchar *cssheader = g_strdup_printf ("@define-color menuitem_bg_color rgba (%d, %d, %d, %f); \n\
-		@define-color menuitem_text_color rgb (%d, %d, %d); \n\
-		@define-color menuitem_insensitive_text_color rgba (%d, %d, %d, .5); \n\
-		@define-color menuitem_separator_color rgb (%d, %d, %d); \n\
-		@define-color menuitem_child_bg_color rgba (%d, %d, %d, %f); \n\
-		@define-color menu_bg_color rgba (%d, %d, %d, %f);\n",
+		gchar *cssheader = g_strdup_printf ("@define-color menuitem_bg_color rgba(%d, %d, %d, %f); \n\
+		@define-color menuitem_text_color rgb(%d, %d, %d); \n\
+		@define-color menuitem_insensitive_text_color rgba(%d, %d, %d, .5); \n\
+		@define-color menuitem_separator_color rgb(%d, %d, %d); \n\
+		@define-color menuitem_child_bg_color rgba(%d, %d, %d, %f); \n\
+		@define-color menu_bg_color rgba(%d, %d, %d, %f);\n\
+		@define-color submenu_arrow_color rgba(%d, %d, %d, %f);\n",
 			(int)(rgb.rgba.red*255), (int)(rgb.rgba.green*255), (int)(rgb.rgba.blue*255), rgb.rgba.alpha,
 			(int)(text_color.rgba.red*255), (int)(text_color.rgba.green*255), (int)(text_color.rgba.blue*255),
 			(int)(text_color.rgba.red*255), (int)(text_color.rgba.green*255), (int)(text_color.rgba.blue*255),
 			(int)(rgb.rgba.red*255), (int)(rgb.rgba.green*255), (int)(rgb.rgba.blue*255),
 			(int)(rgbb.rgba.red*255), (int)(rgbb.rgba.green*255), (int)(rgbb.rgba.blue*255), rgbb.rgba.alpha,
-			(int)(bg_color.rgba.red*255), (int)(bg_color.rgba.green*255), (int)(bg_color.rgba.blue*255), bg_color.rgba.alpha);
+			(int)(bg_color.rgba.red*255), (int)(bg_color.rgba.green*255), (int)(bg_color.rgba.blue*255), bg_color.rgba.alpha,
+			(int)(arrow_color.rgba.red*255), (int)(arrow_color.rgba.green*255), (int)(arrow_color.rgba.blue*255), arrow_color.rgba.alpha);
 		
 		// css body: load a custom file if it exists
 		gchar *cCustomCss = NULL;
@@ -942,46 +946,40 @@ static void _init_menu_style (void)
 		else
 		{
 			gchar *cFontSize = (myDialogsParam.fMenuFontScale != 1.0) ?
-				g_strdup_printf (".gldimenuitem label { font-size: %f%%; }\n", myDialogsParam.fMenuFontScale * 100.0)
+				g_strdup_printf ("cdmenuitem label { font-size: %f%%; }\n", myDialogsParam.fMenuFontScale * 100.0)
 				: NULL;
 			
 			css = g_strconcat (cssheader,
-			".gldimenuitem * { \
-				/*engine: none;*/ \
-				-unico-focus-border-color: alpha (@menuitem_child_bg_color, .6); \
-				-unico-focus-fill-color: alpha (@menuitem_child_bg_color, .2); \
-			} \
-			.gldimenuitem { \
+			"\
+			cdmenu.background {\
+			background-color: rgba(0, 0, 0, 0.0);\
+			}\
+			cdmenu contents {\
+				box-shadow: 0 0 0 0;\
+				background-color: rgba(0, 0, 0, 0.0);\
+				border: none;\
+				border-radius: 0 0 0 0;\
+				padding: 0 0 0 0;\
+			}\
+			cdmenuitem { \
 				text-shadow: none; \
 				border-image: none; \
 				box-shadow: none; \
 				background: transparent; \
 				color: @menuitem_text_color; \
 				border-color: transparent; \
-				-unico-border-gradient: none; \
-				-unico-inner-stroke-width: 0px; \
-				-unico-outer-stroke-width: 0px; \
-				-unico-bullet-color: transparent; \
-				-unico-glow-color: transparent; \
-				-unico-glow-radius: 0; \
 			} \
-			.gldimenuitem GtkImage, \
-			.gldimenuitem .image { \
+			cdarrow {\
+				color: @submenu_arrow_color; \
+			} \
+			cdmenuitem GtkImage, \
+			cdmenuitem .image { \
 				background: transparent; \
 			} \
-			.gldimenuitem.separator, \
-			.gldimenuitem .separator { \
+			cdmenuseparator { \
 				color: @menuitem_separator_color; \
-				background-color: @menuitem_separator_color; \
-				border-width: 1px; \
-				border-style: solid; \
-				border-image: none; \
-				border-color: @menuitem_separator_color; \
-				border-bottom-color: alpha (@menuitem_separator_color, 0.6); \
-				border-right-color: alpha (@menuitem_separator_color, 0.6); \
-				-unico-inner-stroke-color: transparent; \
 			} \
-			.gldimenuitem:hover{ \
+			cdmenuitem:hover { \
 				background-color: @menuitem_bg_color; \
 				background-image: none; \
 				text-shadow: none; \
@@ -991,28 +989,23 @@ static void _init_menu_style (void)
 				border-radius: 5px; \
 				border-style: solid; \
 				border-color: @menuitem_child_bg_color; \
-				-unico-inner-stroke-color: transparent; \
 			} \
-			.gldimenuitem *:disabled { \
+			cdmenuitem *:disabled { \
 				text-shadow: none; \
 				color: @menuitem_insensitive_text_color; \
 				background: transparent; \
 			} \
-			.gldimenuitem .entry, \
-			.gldimenuitem.entry { \
+			cdmenuitem .entry, \
+			cdmenuitem.entry { \
 				background: @menuitem_bg_color; \
 				border-width: 1px; \
 				border-style: solid; \
 				border-image: none; \
 				border-color: @menuitem_child_bg_color; \
 				color: @menuitem_text_color; \
-				-unico-border-gradient: none; \
-				-unico-border-width: 0px; \
-				-unico-inner-stroke-width: 0px; \
-				-unico-outer-stroke-width: 0px; \
 			} \
-			.gldimenuitem .button, \
-			.gldimenuitem.button { \
+			cdmenuitem .button, \
+			cdmenuitem.button { \
 				background-color: @menuitem_bg_color; \
 				background-image: none; \
 				box-shadow: none; \
@@ -1020,7 +1013,6 @@ static void _init_menu_style (void)
 				border-color: @menuitem_child_bg_color; \
 				border-width: 1px; \
 				border-style: solid;padding: 2px; \
-				-unico-focus-outer-stroke-color: transparent; \
 			} \
 			.gldimenuitem .scale, \
 			.gldimenuitem.scale { \
@@ -1030,23 +1022,12 @@ static void _init_menu_style (void)
 				border-width: 1px; \
 				border-style: solid; \
 				border-image: none; \
-				border-color: @menuitem_child_bg_color; \
-				-unico-border-width: 0px; \
-				-unico-inner-stroke-width: 0px; \
-				-unico-outer-stroke-width: 0px; \
 			} \
 			.gldimenuitem .scale.left, \
 			.gldimenuitem.scale.left { \
 				background-color: @menuitem_bg_color; \
 				background-image: none; \
 				border-image: none; \
-				-unico-border-gradient: none; \
-				-unico-inner-stroke-color: transparent; \
-				-unico-inner-stroke-gradient: none; \
-				-unico-inner-stroke-width: 0px; \
-				-unico-outer-stroke-color: transparent; \
-				-unico-outer-stroke-gradient: none; \
-				-unico-outer-stroke-width: 0; \
 			} \
 			.gldimenuitem .scale.slider, \
 			.gldimenuitem.scale.slider { \
@@ -1067,7 +1048,7 @@ static void _init_menu_style (void)
 				background-image: none; \
 			} \
 			.gldimenuitem GtkCalendar:indeterminate { \
-				color: shade (@menuitem_child_bg_color, 0.6); \
+				color: shade(@menuitem_child_bg_color, 0.6); \
 			} \
 			.gldimenuitem .toolbar .button, \
 			.gldimenuitem column-header .button  { \
@@ -1087,8 +1068,8 @@ static void _init_menu_style (void)
 				background-image: none; \
 				border-color: @menuitem_child_bg_color; \
 			} \
-			.gldimenuitem .check, \
-			.gldimenuitem.check{ \
+			cdmenuitem check, \
+			cdmenuitem radio { \
 				color: @menuitem_text_color; \
 				background-color: @menuitem_bg_color; \
 				background-image: none; \
@@ -1096,16 +1077,6 @@ static void _init_menu_style (void)
 				border-style: solid; \
 				border-image: none; \
 				border-color: @menuitem_child_bg_color; \
-				-unico-focus-outer-stroke-color: transparent; \
-				-unico-focus-inner-stroke-color: transparent; \
-				-unico-inner-stroke-width: 0px; \
-				-unico-outer-stroke-width: 0px; \
-				-unico-border-gradient: none; \
-				-unico-border-width: 0px; \
-				-unico-border-gradient: none; \
-				-unico-bullet-color: @menuitem_text_color; \
-				-unico-bullet-outline-color: @menuitem_text_color; \
-				-unico-border-gradient: none; \
 			} \
 			.gldimenu { \
 				background-color: @menu_bg_color; \
@@ -1124,8 +1095,7 @@ static void _init_menu_style (void)
 		}
 		
 		gldi_style_colors_freeze ();
-		gtk_css_provider_load_from_data (cssProvider,
-			css, -1, NULL);  // (should) clear any previously loaded information
+		gtk_css_provider_load_from_string (cssProvider, css);  // (should) clear any previously loaded information
 		gldi_style_colors_freeze ();
 		g_free (cssheader);
 		g_free (css);
@@ -1194,7 +1164,7 @@ static void _reload_dialogs (void)
 	for (d = s_pDialogList; d != NULL; d = d->next)
 	{
 		pDialog = d->data;
-
+/*
 		// re-set the GTK style class (global style may have changed between system / custom)
 		GtkStyleContext *ctx = gtk_widget_get_style_context (pDialog->pWidgetLayout);
 
@@ -1202,14 +1172,14 @@ static void _reload_dialogs (void)
 		gtk_style_context_remove_class (ctx, "gldimenuitem");
 
 		gtk_style_context_add_class (ctx, myDialogsParam.bUseDefaultColors && myStyleParam.bUseSystemColors ? GTK_STYLE_CLASS_MENUITEM : "gldimenuitem");
-
+*/
 		// reload the text buffer (color or font may have changed)
 		if (pDialog->cText != NULL)
 		{
-			gchar *cText = pDialog->cText;
+/*			gchar *cText = pDialog->cText;
 			pDialog->cText = NULL;
 			gldi_dialog_set_message (pDialog, cText);
-			g_free (cText);
+			g_free (cText);*/
 		}
 	}
 	
@@ -1229,14 +1199,14 @@ static gboolean on_style_changed (G_GNUC_UNUSED gpointer data)
 
 static void init (void)
 {
-	gldi_object_register_notification (&myDialogObjectMgr,
+/*	gldi_object_register_notification (&myDialogObjectMgr,
 		NOTIFICATION_RENDER,
 		(GldiNotificationFunc) _cairo_dock_render_dialog_notification,
 		GLDI_RUN_AFTER, NULL);
 	gldi_object_register_notification (&myDockObjectMgr,
 		NOTIFICATION_REMOVE_ICON,
 		(GldiNotificationFunc) on_icon_removed,
-		GLDI_RUN_AFTER, NULL);
+		GLDI_RUN_AFTER, NULL); */
 	gldi_object_register_notification (&myStyleMgr,
 		NOTIFICATION_STYLE_CHANGED,
 		(GldiNotificationFunc) on_style_changed,
@@ -1246,7 +1216,7 @@ static void init (void)
   ///////////////
  /// MANAGER ///
 ///////////////
-
+/*
 static void init_object (GldiObject *obj, gpointer attr)
 {
 	CairoDialog *pDialog = (CairoDialog*)obj;
@@ -1388,7 +1358,7 @@ static void reset_object (GldiObject *obj)
 		_trigger_replace_all_dialogs ();
 	}
 }
-
+*/
 void gldi_register_dialogs_manager (void)
 {
 	// Manager
@@ -1415,8 +1385,8 @@ void gldi_register_dialogs_manager (void)
 	myDialogObjectMgr.cName 	= "Dialog";
 	myDialogObjectMgr.iObjectSize    = sizeof (CairoDialog);
 	// interface
-	myDialogObjectMgr.init_object    = init_object;
-	myDialogObjectMgr.reset_object   = reset_object;
+	// myDialogObjectMgr.init_object    = init_object;
+	// myDialogObjectMgr.reset_object   = reset_object;
 	// signals
 	gldi_object_install_notifications (&myDialogObjectMgr, NB_NOTIFICATIONS_DIALOG);
 	// parent object

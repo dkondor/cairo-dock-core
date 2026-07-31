@@ -36,7 +36,7 @@
 #include "cairo-dock-opengl-priv.h"
 #include "cairo-dock-animations.h"  // cairo_dock_animation_will_be_visible
 #include "cairo-dock-desktop-manager.h"  // gldi_desktop_get_width
-// #include "cairo-dock-menu.h"  // gldi_menu_new
+#include "cairo-dock-menu.h"  // gldi_menu_new
 #include "cdwindow.h"
 #define _MANAGER_DEF_
 #include "cairo-dock-container-priv.h"
@@ -67,10 +67,30 @@ void cairo_dock_set_containers_non_sticky (void)
 	s_bSticky = FALSE;
 }
 
-inline void gldi_container_update_mouse_position (GldiContainer *pContainer)
+gboolean gldi_container_update_mouse_position (GldiContainer *pContainer, gboolean bUpdateAlways)
 {
-	if (s_backend.update_mouse_position)
-		s_backend.update_mouse_position (pContainer);
+	if (!gtk_widget_is_visible (pContainer->pWidget)) return FALSE;
+	
+	GdkSeat *pSeat = gdk_display_get_default_seat (gdk_display_get_default());
+	GdkDevice *pDevice = gdk_seat_get_pointer (pSeat);
+	double x, y;
+	gboolean ret = gdk_surface_get_device_position (
+		gldi_container_get_gdk_window (pContainer), pDevice, &x, &y, NULL);
+	
+	if (ret || bUpdateAlways)
+	{
+		if (pContainer->bIsHorizontal)
+		{
+			pContainer->iMouseX = x;
+			pContainer->iMouseY = y;
+		}
+		else
+		{
+			pContainer->iMouseX = y;
+			pContainer->iMouseY = x;
+		}
+	}
+	return ret;
 }
 
 void gldi_container_handle_scroll (GtkEventControllerScroll *pCtrl, gdouble dx, gdouble dy, GldiContainer *pContainer, Icon *pIcon)
@@ -535,15 +555,13 @@ void gldi_container_manager_register_backend (GldiContainerManagerBackend *pBack
 }
 
 
-// static GtkWidget *s_pMenu = NULL;  // right-click menu
+static GtkWidget *s_pMenu = NULL;  // right-click menu
 GtkWidget *gldi_container_build_menu (GldiContainer *pContainer, Icon *icon)
 {
-	cd_warning ("menus disabled");
-	return NULL;
-/*	if (s_pMenu != NULL)
+	if (s_pMenu != NULL)
 	{
 		//g_print ("previous menu still alive\n");
-		gtk_widget_destroy (GTK_WIDGET (s_pMenu));  // -> 's_pMenu' becomes NULL thanks to the weak pointer.
+		gtk_widget_unparent (s_pMenu);  // -> 's_pMenu' becomes NULL thanks to the weak pointer.
 	}
 	g_return_val_if_fail (pContainer != NULL, NULL);
 	
@@ -555,7 +573,7 @@ GtkWidget *gldi_container_build_menu (GldiContainer *pContainer, Icon *icon)
 	gldi_object_notify (pContainer, NOTIFICATION_BUILD_CONTAINER_MENU, icon, pContainer, menu, &bDiscardMenu);
 	if (bDiscardMenu)
 	{
-		gtk_widget_destroy (menu);
+		gtk_widget_unparent (menu);
 		return NULL;
 	}
 	
@@ -564,7 +582,7 @@ GtkWidget *gldi_container_build_menu (GldiContainer *pContainer, Icon *icon)
 	s_pMenu = menu;
 	g_object_add_weak_pointer (G_OBJECT (menu), (gpointer*)&s_pMenu);  // will nullify 's_pMenu' as soon as the menu is destroyed.
 	// TODO: it would make sense to destroy the menu as soon as it is closed, since it will not be reused
-	return menu; */
+	return menu;
 }
 
 

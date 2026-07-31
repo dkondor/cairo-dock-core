@@ -1531,28 +1531,10 @@ static gboolean _can_reserve_space (int iNumScreen, gboolean bDirectionUp, gbool
 	return TRUE;
 }
 
-static void _update_mouse_position (GldiContainer *pContainer)
-{
-	GdkSeat *pSeat = gdk_display_get_default_seat (gdk_display_get_default());
-	GdkDevice *pDevice = gdk_seat_get_pointer (pSeat);
-	double x, y;
-	gdk_surface_get_device_position (gldi_container_get_gdk_window (pContainer), pDevice, &x, &y, NULL);
-	if ((pContainer)->bIsHorizontal)
-	{
-		pContainer->iMouseX = x;
-		pContainer->iMouseY = y;
-	}
-	else
-	{
-		pContainer->iMouseX = y;
-		pContainer->iMouseY = x;
-	}
-}
-
 static gboolean _dock_handle_leave (CairoDock *pDock, gboolean bRealEvent)
 {
-	if (bRealEvent)
-		_update_mouse_position (CAIRO_CONTAINER (pDock)); // need to update the position since the event does not report it
+	 // need to update the position since the event does not report it
+	if (bRealEvent) gldi_container_update_mouse_position (CAIRO_CONTAINER (pDock), TRUE);
 	
 	// this function is just the _mouse_is_really_outside () function from cairo-dock-dock-factory.c
 	// this check only makes sense on X11
@@ -1870,7 +1852,6 @@ static void init (void)
 	cmb.move_resize_dock = _move_resize_dock;
 	// cmb.update_polling_screen_edge = _update_polling_screen_edge;
 	cmb.can_reserve_space = _can_reserve_space;
-	cmb.update_mouse_position = _update_mouse_position;
 	cmb.dock_handle_leave = _dock_handle_leave;
 	cmb.dock_check_if_mouse_inside_linear = _dock_check_if_mouse_inside_linear;
 	cmb.adjust_aimed_point = _adjust_aimed_point;

@@ -190,10 +190,15 @@ struct _GldiContainer {
 
 #define gldi_container_is_visible(pContainer) gtk_widget_get_visible ((pContainer)->pWidget)
 
-/* NOTE: this does nothing on Wayland (no global mouse position, we need
- * to rely on the motion notify and leave / enter events).
- * Beyond event handling, this is only used in the Toons applet which is not expected to work on Wayland. */
-void gldi_container_update_mouse_position (GldiContainer *pContainer);
+/** Check if the mouse is inside the given dock and update the mouse position if it is.
+*@param pDock the dock to check
+*@param bUpdateAlways whether to (try to) update the mouse coordinates even if it is
+*         not inside the dock; this only makes sense on X11 where we have access to
+*         global mouse coordinated.
+*@return whether the mouse is inside the given dock.
+*
+* Note: beyond event handling, this function is only used in the Toons applet which is not expected to work on Wayland. */
+gboolean gldi_container_update_mouse_position (GldiContainer *pContainer, gboolean bUpdateAlways);
 
 /** Tell if a Container is the current active window (similar to gtk_window_is_active but actually works).
 *@param pContainer the container

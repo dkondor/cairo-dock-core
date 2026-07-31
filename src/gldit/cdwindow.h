@@ -6,6 +6,9 @@
 #include <gtk/gtk.h>
 #include <glib-object.h>
 #include <glib.h>
+#include <stdlib.h>
+#include <string.h>
+#include <gdk/gdk.h>
 
 G_BEGIN_DECLS
 
@@ -41,6 +44,61 @@ typedef struct _CDPopup CDPopup;
 typedef struct _CDPopupClass CDPopupClass;
 typedef struct _CDPopupPrivate CDPopupPrivate;
 
+#define TYPE_CD_MENU (cd_menu_get_type ())
+#define CD_MENU(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_CD_MENU, CDMenu))
+#define CD_MENU_CLASS(klass) (G_TYPE_CHECK_CLASS_CAST ((klass), TYPE_CD_MENU, CDMenuClass))
+#define IS_CD_MENU(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), TYPE_CD_MENU))
+#define IS_CD_MENU_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), TYPE_CD_MENU))
+#define CD_MENU_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_CD_MENU, CDMenuClass))
+
+typedef struct _CDMenu CDMenu;
+typedef struct _CDMenuClass CDMenuClass;
+typedef struct _CDMenuPrivate CDMenuPrivate;
+
+#define TYPE_CD_ARROW (cd_arrow_get_type ())
+#define CD_ARROW(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_CD_ARROW, CDArrow))
+#define CD_ARROW_CLASS(klass) (G_TYPE_CHECK_CLASS_CAST ((klass), TYPE_CD_ARROW, CDArrowClass))
+#define IS_CD_ARROW(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), TYPE_CD_ARROW))
+#define IS_CD_ARROW_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), TYPE_CD_ARROW))
+#define CD_ARROW_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_CD_ARROW, CDArrowClass))
+
+typedef struct _CDArrow CDArrow;
+typedef struct _CDArrowClass CDArrowClass;
+typedef struct _CDArrowPrivate CDArrowPrivate;
+
+#define TYPE_CD_MENU_ITEM_BASE (cd_menu_item_base_get_type ())
+#define CD_MENU_ITEM_BASE(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_CD_MENU_ITEM_BASE, CDMenuItemBase))
+#define CD_MENU_ITEM_BASE_CLASS(klass) (G_TYPE_CHECK_CLASS_CAST ((klass), TYPE_CD_MENU_ITEM_BASE, CDMenuItemBaseClass))
+#define IS_CD_MENU_ITEM_BASE(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), TYPE_CD_MENU_ITEM_BASE))
+#define IS_CD_MENU_ITEM_BASE_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), TYPE_CD_MENU_ITEM_BASE))
+#define CD_MENU_ITEM_BASE_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_CD_MENU_ITEM_BASE, CDMenuItemBaseClass))
+
+typedef struct _CDMenuItemBase CDMenuItemBase;
+typedef struct _CDMenuItemBaseClass CDMenuItemBaseClass;
+typedef struct _CDMenuItemBasePrivate CDMenuItemBasePrivate;
+
+#define TYPE_CD_MENU_ITEM (cd_menu_item_get_type ())
+#define CD_MENU_ITEM(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_CD_MENU_ITEM, CDMenuItem))
+#define CD_MENU_ITEM_CLASS(klass) (G_TYPE_CHECK_CLASS_CAST ((klass), TYPE_CD_MENU_ITEM, CDMenuItemClass))
+#define IS_CD_MENU_ITEM(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), TYPE_CD_MENU_ITEM))
+#define IS_CD_MENU_ITEM_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), TYPE_CD_MENU_ITEM))
+#define CD_MENU_ITEM_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_CD_MENU_ITEM, CDMenuItemClass))
+
+typedef struct _CDMenuItem CDMenuItem;
+typedef struct _CDMenuItemClass CDMenuItemClass;
+typedef struct _CDMenuItemPrivate CDMenuItemPrivate;
+
+#define TYPE_CD_MENU_SEPARATOR (cd_menu_separator_get_type ())
+#define CD_MENU_SEPARATOR(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_CD_MENU_SEPARATOR, CDMenuSeparator))
+#define CD_MENU_SEPARATOR_CLASS(klass) (G_TYPE_CHECK_CLASS_CAST ((klass), TYPE_CD_MENU_SEPARATOR, CDMenuSeparatorClass))
+#define IS_CD_MENU_SEPARATOR(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), TYPE_CD_MENU_SEPARATOR))
+#define IS_CD_MENU_SEPARATOR_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), TYPE_CD_MENU_SEPARATOR))
+#define CD_MENU_SEPARATOR_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_CD_MENU_SEPARATOR, CDMenuSeparatorClass))
+
+typedef struct _CDMenuSeparator CDMenuSeparator;
+typedef struct _CDMenuSeparatorClass CDMenuSeparatorClass;
+typedef struct _CDMenuSeparatorPrivate CDMenuSeparatorPrivate;
+
 struct _CDWindow {
 	GtkWindow parent_instance;
 	CDWindowPrivate * priv;
@@ -53,10 +111,57 @@ struct _CDWindowClass {
 struct _CDPopup {
 	GtkPopover parent_instance;
 	CDPopupPrivate * priv;
+	gboolean snapshot_base_first;
 };
 
 struct _CDPopupClass {
 	GtkPopoverClass parent_class;
+};
+
+struct _CDMenu {
+	CDPopup parent_instance;
+	CDMenuPrivate * priv;
+};
+
+struct _CDMenuClass {
+	CDPopupClass parent_class;
+};
+
+struct _CDArrow {
+	GtkWidget parent_instance;
+	CDArrowPrivate * priv;
+};
+
+struct _CDArrowClass {
+	GtkWidgetClass parent_class;
+};
+
+struct _CDMenuItemBase {
+	GtkBox parent_instance;
+	CDMenuItemBasePrivate * priv;
+	CDMenu* submenu;
+};
+
+struct _CDMenuItemBaseClass {
+	GtkBoxClass parent_class;
+};
+
+struct _CDMenuItem {
+	CDMenuItemBase parent_instance;
+	CDMenuItemPrivate * priv;
+};
+
+struct _CDMenuItemClass {
+	CDMenuItemBaseClass parent_class;
+};
+
+struct _CDMenuSeparator {
+	GtkWidget parent_instance;
+	CDMenuSeparatorPrivate * priv;
+};
+
+struct _CDMenuSeparatorClass {
+	GtkWidgetClass parent_class;
 };
 
 VALA_EXTERN GType cd_window_get_type (void) G_GNUC_CONST ;
@@ -67,6 +172,42 @@ VALA_EXTERN GType cd_popup_get_type (void) G_GNUC_CONST ;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (CDPopup, g_object_unref)
 VALA_EXTERN CDPopup* cd_popup_new (void);
 VALA_EXTERN CDPopup* cd_popup_construct (GType object_type);
+VALA_EXTERN GType cd_menu_get_type (void) G_GNUC_CONST ;
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (CDMenu, g_object_unref)
+VALA_EXTERN CDMenu* cd_menu_new (void);
+VALA_EXTERN CDMenu* cd_menu_construct (GType object_type);
+VALA_EXTERN void cd_menu_add_menu_item (CDMenu* self,
+                            GtkWidget* item);
+VALA_EXTERN void cd_menu_popup_submenu (CDMenu* self,
+                            CDMenu* submenu);
+VALA_EXTERN void cd_menu_close_submenu (CDMenu* self);
+VALA_EXTERN void cd_menu_popdown_recursive (CDMenu* self);
+VALA_EXTERN GType cd_arrow_get_type (void) G_GNUC_CONST ;
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (CDArrow, g_object_unref)
+VALA_EXTERN CDArrow* cd_arrow_new (void);
+VALA_EXTERN CDArrow* cd_arrow_construct (GType object_type);
+VALA_EXTERN GType cd_menu_item_base_get_type (void) G_GNUC_CONST ;
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (CDMenuItemBase, g_object_unref)
+VALA_EXTERN CDMenuItemBase* cd_menu_item_base_new (CDMenu* parent_menu);
+VALA_EXTERN CDMenuItemBase* cd_menu_item_base_construct (GType object_type,
+                                             CDMenu* parent_menu);
+VALA_EXTERN CDMenu* cd_menu_item_base_get_parent_menu (CDMenuItemBase* self);
+VALA_EXTERN GType cd_menu_item_get_type (void) G_GNUC_CONST ;
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (CDMenuItem, g_object_unref)
+VALA_EXTERN CDMenuItem* cd_menu_item_new (const gchar* label,
+                              CDMenu* parent_menu);
+VALA_EXTERN CDMenuItem* cd_menu_item_construct (GType object_type,
+                                    const gchar* label,
+                                    CDMenu* parent_menu);
+VALA_EXTERN void cd_menu_item_set_image (CDMenuItem* self,
+                             GdkPaintable* new_img);
+VALA_EXTERN void cd_menu_item_set_submenu (CDMenuItem* self,
+                               CDMenu* menu);
+VALA_EXTERN GType cd_menu_separator_get_type (void) G_GNUC_CONST ;
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (CDMenuSeparator, g_object_unref)
+VALA_EXTERN CDMenuSeparator* cd_menu_separator_new (CDMenu* parent_menu);
+VALA_EXTERN CDMenuSeparator* cd_menu_separator_construct (GType object_type,
+                                              CDMenu* parent_menu);
 
 G_END_DECLS
 

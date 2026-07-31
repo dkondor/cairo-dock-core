@@ -43,7 +43,7 @@
 #include "cairo-dock-launcher-manager.h"
 #include "cairo-dock-config.h"  // cairo_dock_is_loading
 #include "cairo-dock-log.h"
-// #include "cairo-dock-menu.h"  // gldi_menu_popup
+#include "cairo-dock-menu.h"  // gldi_menu_popup
 #include "cairo-dock-themes-manager.h"  // cairo_dock_update_conf_file, cairo_dock_add_conf_file
 #include "cairo-dock-dock-visibility.h"  // gldi_dock_visibility_refresh
 #include "cairo-dock-backends-manager.h"
@@ -512,7 +512,7 @@ static void _hide_parent_dock (CairoDock *pDock);
  */
 static void _on_leave_notify2 (GtkEventControllerMotion *pCtrl, CairoDock *pDock, gboolean bRecheckMouse)
 {
-	// cd_debug ("bIsMainDock : %d; bInside:%d; iState:%d; iRefCount:%d, pDock: %p, pCtrl: %p", pDock->bIsMainDock, pDock->container.bInside, pDock->iInputState, pDock->iRefCount, pDock, pCtrl);
+	cd_debug ("bIsMainDock : %d; bInside:%d; iState:%d; iRefCount:%d, pDock: %p, pCtrl: %p", pDock->bIsMainDock, pDock->container.bInside, pDock->iInputState, pDock->iRefCount, pDock, pCtrl);
 	//\_______________ On tire le dock => on ignore le signal.
 	/* TODO: dragging the dock is not supported yet !!
 	if (pCtrl)
@@ -718,13 +718,13 @@ static void _on_leave_notify (GtkEventControllerMotion *pCtrl, CairoDock *pDock)
 void gldi_dock_leave_synthetic (CairoDock *pDock)
 {
 	// actualize the coordinates of the pointer, since they are most probably out-dated (because the mouse has left the dock, or because a right-click generates an event with (0;0) coordinates)
-	gldi_container_update_mouse_position (&pDock->container);
+	gldi_container_update_mouse_position (&pDock->container, FALSE);
 	_on_leave_notify2 (NULL, pDock, TRUE);
 }
 
 void gldi_dock_leave_synthetic_full (CairoDock *pDock, gboolean bRecheck)
 {
-	if (bRecheck) gldi_container_update_mouse_position (&pDock->container);
+	if (bRecheck) gldi_container_update_mouse_position (&pDock->container, FALSE);
 	_on_leave_notify2 (NULL, pDock, bRecheck);
 }
 
@@ -765,7 +765,7 @@ static void _on_dock_unmap (G_GNUC_UNUSED GtkWidget* pWidget, CairoDock *pDock)
 
 static void _on_enter_notify (GtkEventControllerMotion *pCtrl, gdouble x, gdouble y, CairoDock *pDock)
 {
-	// cd_debug ("bIsMainDock : %d; bInside: %d; state: %d; pDock: %p, pCtrl: %p", pDock->bIsMainDock, pDock->container.bInside, pDock->iInputState, pDock, pCtrl);
+	cd_debug ("bIsMainDock : %d; bInside: %d; state: %d; pDock: %p, pCtrl: %p", pDock->bIsMainDock, pDock->container.bInside, pDock->iInputState, pDock, pCtrl);
 	if (! cairo_dock_entrance_is_allowed (pDock))
 	{
 		cd_message ("* entree non autorisee");
@@ -797,6 +797,8 @@ static void _on_enter_notify (GtkEventControllerMotion *pCtrl, gdouble x, gdoubl
 		g_source_remove (pDock->iSidTestMouseOutside);
 		pDock->iSidTestMouseOutside = 0;
 	}
+	
+	if (pDock->bHasModalWindow) return; // do not animate ourselves if a menu is active
 	
 	// input shape desactivee, le dock devient actif.
 	if ((pDock->pShapeBitmap || pDock->pHiddenShapeBitmap) && pDock->iInputState != CAIRO_DOCK_INPUT_ACTIVE)
@@ -915,7 +917,7 @@ static gboolean _check_mouse_outside (CairoDock *pDock)  // ce test est principa
 		return FALSE;
 	}
 	
-	gldi_container_update_mouse_position (CAIRO_CONTAINER (pDock));
+	gldi_container_update_mouse_position (CAIRO_CONTAINER (pDock), FALSE);
 	// g_print (" -> (%d, %d)\n", pDock->container.iMouseX, pDock->container.iMouseY);
 	
 	cairo_dock_calculate_dock_icons (pDock);  // pour faire retrecir le dock si on n'est pas dedans, merci X de nous faire sortir du dock alors que la souris est toujours dedans :-/
@@ -992,7 +994,7 @@ static void _on_button_press (GtkGestureClick *pCtrl, gint n_press, gdouble x, g
 		}
 		GtkWidget *menu = gldi_container_build_menu (CAIRO_CONTAINER (pDock), icon);  // genere un CAIRO_DOCK_BUILD_CONTAINER_MENU et CAIRO_DOCK_BUILD_ICON_MENU.
 		
-		// gldi_menu_popup (menu);
+		gldi_menu_popup (menu);
 	}
 	else if (button == 2 && n_press == 1)  // clique milieu.
 	{
@@ -1187,7 +1189,7 @@ static gboolean _on_configure (GtkWidget* pWidget, GdkEventConfigure* pEvent, Ca
 	if (bSizeUpdated)  // changement de taille
 	{
 		// update mouse relative position inside the window
-		gldi_container_update_mouse_position (CAIRO_CONTAINER (pDock));
+		gldi_container_update_mouse_position (CAIRO_CONTAINER (pDock), FALSE);
 		if (pDock->container.iMouseX < 0 || pDock->container.iMouseX > pDock->container.iWidth)  // utile ?
 			pDock->container.iMouseX = 0;
 		
@@ -1593,7 +1595,7 @@ static gboolean _cairo_dock_grow_up (CairoDock *pDock)
 			pDock->fFoldingFactor = 0;
 	}
 	
-	gldi_container_update_mouse_position (CAIRO_CONTAINER (pDock));
+	gldi_container_update_mouse_position (CAIRO_CONTAINER (pDock), FALSE);
 	
 	Icon *pLastPointedIcon = cairo_dock_get_pointed_icon (pDock->icons);
 	Icon *pPointedIcon = cairo_dock_calculate_dock_icons (pDock);
@@ -1663,7 +1665,7 @@ static gboolean _cairo_dock_shrink_down (CairoDock *pDock)
 		pDock->fDecorationsOffsetX = 0.;
 	
 	//\_________________ On recupere la position de la souris manuellement (car a priori on est hors du dock).
-	gldi_container_update_mouse_position (CAIRO_CONTAINER (pDock));  // ce n'est pas le motion_notify qui va nous donner des coordonnees en dehors du dock, et donc le fait d'etre dedans va nous faire interrompre le shrink_down et re-grossir, du coup il faut le faire ici. L'inconvenient, c'est que quand on sort par les cotes, il n'y a soudain plus d'icone pointee, et donc le dock devient tout plat subitement au lieu de le faire doucement. Heureusement j'ai trouve une astuce. ^_^
+	gldi_container_update_mouse_position (CAIRO_CONTAINER (pDock), FALSE);  // ce n'est pas le motion_notify qui va nous donner des coordonnees en dehors du dock, et donc le fait d'etre dedans va nous faire interrompre le shrink_down et re-grossir, du coup il faut le faire ici. L'inconvenient, c'est que quand on sort par les cotes, il n'y a soudain plus d'icone pointee, et donc le dock devient tout plat subitement au lieu de le faire doucement. Heureusement j'ai trouve une astuce. ^_^
 	
 	//\_________________ On recalcule les icones.
 	///if (iPrevMagnitudeIndex != 0)
@@ -1992,16 +1994,18 @@ static gboolean _cairo_dock_dock_animation_loop (GldiContainer *pContainer)
 		return TRUE;
 }
 
-/*
+
 static gboolean _on_dock_destroyed (GtkWidget *menu, GldiContainer *pContainer);
-static void _on_menu_deactivated (G_GNUC_UNUSED GtkMenuShell *menu, CairoDock *pDock)
+static void _on_menu_deactivated (G_GNUC_UNUSED GtkPopover *menu, CairoDock *pDock)
 {
 	//g_print ("\n+++ %s ()\n\n", __func__);
 	g_return_if_fail (CAIRO_DOCK_IS_DOCK (pDock));
 	if (pDock->bHasModalWindow)  // don't send the signal if the menu was already deactivated.
 	{
 		pDock->bHasModalWindow = FALSE;
-		gldi_dock_leave_synthetic (pDock);
+		if (gldi_container_update_mouse_position (CAIRO_CONTAINER (pDock), FALSE))
+			gldi_dock_enter_synthetic (pDock); // mouse is still inside the dock
+		else gldi_dock_leave_synthetic (pDock);
 	}
 }
 static void _on_menu_destroyed (GtkWidget *menu, CairoDock *pDock)
@@ -2049,7 +2053,7 @@ static void _setup_menu (GldiContainer *pContainer, G_GNUC_UNUSED Icon *pIcon, G
 	{
 		// when the menu is deactivated, hide the dock back if necessary.
 		g_signal_connect (G_OBJECT (pMenu),
-			"deactivate",
+			"closed",
 			G_CALLBACK (_on_menu_deactivated),
 			pContainer);
 		// when the menu is destroyed, remove the 'destroyed' notification on the dock.
@@ -2064,7 +2068,7 @@ static void _setup_menu (GldiContainer *pContainer, G_GNUC_UNUSED Icon *pIcon, G
 			GLDI_RUN_AFTER, pMenu);  // the menu can stay alive even if the container disappear, so we need to ensure we won't call the callbacks then.
 	}
 }
-*/
+
 static gboolean _destroy_empty_dock (CairoDock *pDock)
 {
 	if (pDock->bIconIsFlyingAway)  // keep the dock alive for now, in case the user re-inserts the flying icon in it.
@@ -2317,7 +2321,7 @@ void gldi_dock_detach_applet (CairoDock *pDock, GldiModuleInstance *pInstance)
 void gldi_dock_init_internals (CairoDock *pDock)
 {
 	pDock->container.iface.animation_loop = _cairo_dock_dock_animation_loop;
-	// pDock->container.iface.setup_menu = _setup_menu;
+	pDock->container.iface.setup_menu = _setup_menu;
 	pDock->container.iface.detach_icon = _detach_icon;
 	pDock->container.iface.insert_icon = _insert_icon;
 	
@@ -2345,6 +2349,7 @@ void gldi_dock_init_internals (CairoDock *pDock)
 	gtk_widget_add_controller (pWindow, pEventKey);
 	
 	GtkGesture *pEventClick = gtk_gesture_click_new ();
+	gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (pEventClick), 0); // all buttons
 	g_signal_connect (G_OBJECT (pEventClick), "pressed",
 		G_CALLBACK (_on_button_press), pDock);
 	g_signal_connect (G_OBJECT (pEventClick), "released",

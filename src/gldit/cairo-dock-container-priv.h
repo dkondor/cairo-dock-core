@@ -73,8 +73,6 @@ struct _GldiContainerManagerBackend {
 	void (*update_polling_screen_edge) ();
 	/// determines if it is possible to reserve space for a dock on a given screen with a given orientation; returns TRUE by default
 	gboolean (*can_reserve_space) (int iNumScreen, gboolean bDirectionUp, gboolean bIsHorizontal);
-	/// update the mouse position based on global coordinates -- only supported on X11
-	void (*update_mouse_position) (GldiContainer *pContainer);
 	/// backend-specific handling of leave / enter events on a dock
 	/// on Wayland, these update iMousePositionType (this is the only place we can do this)
 	/// the leave event handler should return if the mouse is really outside the dock

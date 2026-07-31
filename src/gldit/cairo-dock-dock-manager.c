@@ -1083,7 +1083,7 @@ static void _show_dock_at_mouse (CairoDock *pDock, G_GNUC_UNUSED gpointer data)
 	else  // invisible -> show
 	{
 		// calculate the position where the dock will be shown (under the mouse)
-		gldi_container_update_mouse_position (CAIRO_CONTAINER (pDock));
+		gldi_container_update_mouse_position (CAIRO_CONTAINER (pDock), FALSE);
 	
 		int W = gldi_dock_get_screen_width (pDock), H = gldi_dock_get_screen_height (pDock);
 		int iScreenOffsetX = gldi_dock_get_screen_offset_x (pDock), iScreenOffsetY = gldi_dock_get_screen_offset_y (pDock);
