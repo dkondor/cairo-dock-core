@@ -288,6 +288,10 @@ void gldi_desktop_get_current (int *iCurrentDesktop, int *iCurrentViewportX, int
 
 /// Get the list of monitors currently managed -- caller should not modify the GdkMonitor* pointers stored here
 GdkMonitor *const *gldi_desktop_get_monitors (int *iNumMonitors);
+/// Get the description of the ith monitor or NULL if i is out of range. The caller should free the return value with g_free().
+char *gldi_desktop_get_monitor_description (int i);
+/// Get the (connector) name of the ith monitor or NULL if i is out of range. The return value belongs to the desktop manager and should not be freed.
+const char *gldi_desktop_get_monitor_name (int i);
 
   ////////////////////////
  // Desktop background //
