@@ -51,8 +51,10 @@ typedef void (*GldiManagerInitFunc) (void);
 typedef void (*GldiManagerLoadFunc) (void);
 typedef void (*GldiManagerUnloadFunc) (void);
 typedef void (* GldiManagerReloadFunc) (GldiManagerConfigPtr pPrevConfig, GldiManagerConfigPtr pNewConfig);
-typedef gboolean (* GldiManagerGetConfigFunc) (GKeyFile *pKeyFile, GldiManagerConfigPtr pConfig);
-typedef void (* GldiManagerResetConfigFunc) (GldiManagerConfigPtr pConfig);
+typedef gboolean (*GldiManagerGetConfigFunc) (GKeyFile *pKeyFile, GldiManagerConfigPtr pConfig);
+typedef void (*GldiManagerResetConfigFunc) (GldiManagerConfigPtr pConfig);
+typedef void (*GldiManagerLoadCustomWidgetFunc) (GKeyFile *pKeyFile, GSList *pWidgetList);
+typedef void (*GldiManagerSaveCustomWidgetFunc) (GKeyFile *pKeyFile, GSList *pWidgetList);
 /// Definition of a Manager.
 struct _GldiManager {
 	/// object
@@ -74,6 +76,9 @@ struct _GldiManager {
 	GldiManagerGetConfigFunc get_config;
 	/// function called when resetting the current theme, or a part of it.
 	GldiManagerResetConfigFunc reset_config;
+	/** Functions used for defining custom widgets for configuring this manager. */
+	GldiManagerLoadCustomWidgetFunc load_custom_widget;
+	GldiManagerSaveCustomWidgetFunc save_custom_widget;
 	//\_____________ Instance.
 	GldiManagerConfigPtr pConfig;
 	GldiManagerDataPtr pData;
