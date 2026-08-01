@@ -1493,7 +1493,6 @@ static gboolean get_config (GKeyFile *pKeyFile, CairoDocksParam *pDocksParam)
 		cairo_dock_get_integer_list_key_value (pKeyFile, "Position", "screen_geometry", &bFlushConfFileNeeded, geom, 4, NULL, NULL, NULL);
 		pPosition->screenReqGeom.x = geom[0]; pPosition->screenReqGeom.y = geom[1];
 		pPosition->screenReqGeom.width = geom[2]; pPosition->screenReqGeom.height = geom[3];
-		
 	}
 	else
 	{
@@ -1659,6 +1658,199 @@ static void reset_config (CairoDocksParam *pDocksParam)
 	// position
 	g_free (pPosition->cScreenReqDesc);
 	g_free (pPosition->cScreenReqName);
+}
+
+
+  //////////////////
+ /// CONFIG GUI ///
+//////////////////
+
+typedef enum {
+	CD_SCREEN_LABEL = 0,   // displayed name
+	CD_SCREEN_DESCRIPTION, // screen_description
+	CD_SCREEN_NAME,        // screen_name
+	CD_SCREEN_INDEX,       // num_screen
+	CD_SCREEN_GEOM,        // screen_geometry
+	CD_SCREEN_NB_COLUMNS
+	} CDScreenModelColumns;
+
+static void _load_custom_widget (G_GNUC_UNUSED GKeyFile *pKeyFile, GSList *pWidgetList)
+{
+	GtkListStore *pListStore = gtk_list_store_new (CD_SCREEN_NB_COLUMNS,
+		G_TYPE_STRING,   /* CD_SCREEN_LABEL*/
+		G_TYPE_STRING,   /* CD_SCREEN_DESCRIPTION*/
+		G_TYPE_STRING,   /* CD_SCREEN_NAME*/
+		G_TYPE_INT,      /* CD_SCREEN_INDEX*/
+		GDK_TYPE_RECTANGLE);  /* CD_SCREEN_GEOM*/
+	gtk_tree_sortable_set_sort_column_id (GTK_TREE_SORTABLE (pListStore), CD_SCREEN_INDEX, GTK_SORT_ASCENDING);
+	
+	/* default: empty label, keep the current screen */
+	GtkTreeIter iter;
+	memset (&iter, 0, sizeof (GtkTreeIter));
+	gtk_list_store_append (GTK_LIST_STORE (pListStore), &iter);
+	
+	gtk_list_store_set (GTK_LIST_STORE (pListStore), &iter,
+		CD_SCREEN_LABEL, "",
+		CD_SCREEN_INDEX, -1,
+		-1);
+	
+	int N = 0;
+	GdkMonitor *const *pMonitors = gldi_desktop_get_monitors (&N);
+	
+	GdkRectangle rect;
+	int xmax=0, ymax=0, i;
+	for (i = 0; i < N; i++)
+	{
+		gdk_monitor_get_geometry (pMonitors[i], &rect); // more accurate than cairo_dock_get_screen_position_x/_y
+		if (rect.x > xmax) xmax = rect.x;
+		if (rect.y > ymax) ymax = rect.y;
+	}
+	
+	// gboolean bFound = FALSE; // TODO: whether the current monitor setting was found
+	const gchar *xpos;
+	const gchar *ypos;
+	GString *sLabel = g_string_new (NULL);
+	for (i = 0; i < N; i++)
+	{
+		GdkRectangle rect;
+		gdk_monitor_get_geometry (pMonitors[i], &rect);
+		
+		xpos = ypos = NULL;
+		
+		if (xmax > 0)  // at least 2 screens horizontally
+		{
+			if (rect.x == 0)
+				xpos = _("left");
+			else if (rect.x == xmax)
+				xpos = _("right");
+			else
+				xpos = _("middle");
+			
+		}
+		if (ymax > 0)  // at least 2 screens vertically
+		{
+			if (rect.y == 0)
+				ypos = _("top");
+			else if (rect.y == ymax)
+				ypos = _("bottom");
+			else
+				ypos = _("middle");
+			
+		}
+		
+		g_string_printf (sLabel, "%s %d", _("Screen"), i);
+		if (xpos || ypos)
+			g_string_append_printf (sLabel, " (%s%s%s)", xpos ? xpos : "", (xpos && ypos) ? " - " : "", ypos ? ypos : "");
+		
+		gchar *cDesc = gldi_desktop_get_monitor_description (i);
+		const gchar *cName = gldi_desktop_get_monitor_name (i);
+		
+		if (cDesc) g_string_append_printf (sLabel, ": %s", cDesc);
+		if (cName) g_string_append_printf (sLabel, " [%s]", cName);
+		
+		memset (&iter, 0, sizeof (GtkTreeIter));
+		gtk_list_store_append (GTK_LIST_STORE (pListStore), &iter);
+		
+		gtk_list_store_set (GTK_LIST_STORE (pListStore), &iter,
+			CD_SCREEN_LABEL, sLabel->str,
+			CD_SCREEN_DESCRIPTION, cDesc,
+			CD_SCREEN_NAME, cName,
+			CD_SCREEN_INDEX, i,
+			CD_SCREEN_GEOM, &rect,
+			-1);
+		
+		g_free (cDesc);
+	}
+	
+	g_string_free (sLabel, TRUE);
+	
+	GtkWidget *pOneWidget = gtk_combo_box_new_with_model (GTK_TREE_MODEL (pListStore));
+	GtkCellRenderer *rend = gtk_cell_renderer_text_new ();
+	gtk_cell_layout_pack_start (GTK_CELL_LAYOUT (pOneWidget), rend, FALSE);
+	gtk_cell_layout_set_attributes (GTK_CELL_LAYOUT (pOneWidget), rend, "text", CD_SCREEN_LABEL, NULL);
+	g_object_unref (G_OBJECT (pListStore)); // the others all have floating references
+	
+	// gtk_combo_box_set_active_iter (GTK_COMBO_BOX (pOneWidget), &iter);
+	CairoDockGroupKeyWidget *pGroupKeyWidget = cairo_dock_gui_find_group_key_widget_in_list (pWidgetList, "Behavior", "num_screen");
+	if (!pGroupKeyWidget)
+	{
+		pGroupKeyWidget = cairo_dock_gui_find_group_key_widget_in_list (pWidgetList, "Position", "num_screen");
+		if (!pGroupKeyWidget)
+		{
+			cd_warning ("Cannot find widget for dock position");
+			g_object_unref (G_OBJECT(pOneWidget));
+			return;
+		}
+	}
+	
+	gtk_box_pack_end (GTK_BOX (pGroupKeyWidget->pKeyBox), pOneWidget, FALSE, FALSE, 0);
+}
+
+static void _save_custom_widget (GKeyFile *pKeyFile, GSList *pWidgetList)
+{
+	const gchar *cGroup = "Position"; // only in the main config file
+	if (!g_key_file_has_group (pKeyFile, cGroup))
+	{
+		cGroup = "Behavior";
+		if (!g_key_file_has_group (pKeyFile, cGroup))
+		{
+			cd_warning ("Config file group does not exist!");
+			return;
+		}
+	}
+	
+	CairoDockGroupKeyWidget *pGroupKeyWidget = cairo_dock_gui_find_group_key_widget_in_list (pWidgetList, cGroup, "num_screen");
+	if (!pGroupKeyWidget)
+	{
+		cd_warning ("Widget not found!");
+		return;
+	}
+	
+	GList *l = gtk_container_get_children (GTK_CONTAINER (pGroupKeyWidget->pKeyBox));
+	GList *l2 = l ? g_list_last (l) : NULL;
+	GtkWidget *pCombo = l2 ? (GtkWidget*)l2->data : NULL;
+	if (l) g_list_free (l);
+	if (!GTK_IS_COMBO_BOX (pCombo))
+	{
+		cd_warning ("Widget not found!");
+		return;
+	}
+	
+	GtkTreeIter iter;
+	if (!gtk_combo_box_get_active_iter (GTK_COMBO_BOX (pCombo), &iter))
+	{
+		cd_warning ("No item selected!");
+		return;
+	}
+	
+	GtkTreeModel *pModel = gtk_combo_box_get_model (GTK_COMBO_BOX (pCombo));
+	gchar *cDesc;
+	gchar *cName;
+	int ix;
+	GdkRectangle *rect = NULL;
+	gtk_tree_model_get (pModel, &iter,
+		CD_SCREEN_DESCRIPTION, &cDesc,
+		CD_SCREEN_NAME, &cName,
+		CD_SCREEN_INDEX, &ix,
+		CD_SCREEN_GEOM, &rect,
+		-1);
+	
+	if (ix >= 0) // don't save results if the "empty" item is selected
+	{
+		g_key_file_set_integer (pKeyFile, cGroup, "num_screen", ix);
+		g_key_file_set_string (pKeyFile, cGroup, "screen_description", cDesc ? cDesc : "");
+		g_key_file_set_string (pKeyFile, cGroup, "screen_name", cName ? cName : "");
+		if (rect)
+		{
+			int geom[4] = {rect->x, rect->y, rect->width, rect->height};
+			g_key_file_set_integer_list (pKeyFile, cGroup, "screen_geometry", geom, 4);
+		}
+		else g_key_file_set_string (pKeyFile, cGroup, "screen_geometry", ""); // set it to empty
+	}
+	
+	g_free (cDesc);
+	g_free (cName);
+	if (rect) g_free (rect);
 }
 
 
@@ -2238,6 +2430,8 @@ void gldi_register_docks_manager (void)
 	myDocksMgr.reload        = (GldiManagerReloadFunc)reload;
 	myDocksMgr.get_config    = (GldiManagerGetConfigFunc)get_config;
 	myDocksMgr.reset_config  = (GldiManagerResetConfigFunc)reset_config;
+	myDocksMgr.load_custom_widget = _load_custom_widget;
+	myDocksMgr.save_custom_widget = _save_custom_widget;
 	// Config
 	memset (&myDocksParam, 0, sizeof (CairoDocksParam));
 	myDocksMgr.pConfig = (GldiManagerConfigPtr)&myDocksParam;
