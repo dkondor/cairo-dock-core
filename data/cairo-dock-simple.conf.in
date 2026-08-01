@@ -9,9 +9,11 @@ frame_pos =
 #l-[bottom;top;right;left] Choose which border of the screen the dock will be placed on:
 screen border = 0
 
-#r- Multi-screens
+#_ Multi-screens
 num_screen = 0
-
+screen_description = 
+screen_name = 
+screen_geometry = 
 
 #F-[Visibility of the main dock;@pkgdatadir@/icons/icon-visibility.svg]
 frame_visi =
