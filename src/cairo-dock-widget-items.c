@@ -226,16 +226,26 @@ static gboolean _on_select_one_item_in_tree (G_GNUC_UNUSED GtkTreeSelection * se
 				gldi_dock_add_conf_file_for_name (cDockName);
 			}
 			
-			pDataGarbage = g_ptr_array_new ();
-			pItemsWidget->pCurrentLauncherWidget = cairo_dock_build_conf_file_widget (cConfFilePath,
-				NULL,
-				GTK_WIDGET (pItemsWidget->pMainWindow),
-				&pWidgetList,
-				pDataGarbage,
-				NULL);
-			
-			pItemsWidget->pCurrentContainer = CAIRO_CONTAINER (pDock);
-			
+			GKeyFile* pKeyFile = cairo_dock_open_key_file (cConfFilePath);
+			if (pKeyFile == NULL) cd_warning ("Cannot open key file: %s", cConfFilePath);
+			else
+			{
+				pDataGarbage = g_ptr_array_new ();
+				pItemsWidget->pCurrentLauncherWidget = cairo_dock_build_key_file_widget (
+					pKeyFile, NULL, GTK_WIDGET (pItemsWidget->pMainWindow), &pWidgetList, pDataGarbage, NULL);
+				
+				pItemsWidget->pCurrentContainer = CAIRO_CONTAINER (pDock);
+				
+				// We need to add a custom widget for setting the screen
+				GldiManager *pManager = gldi_manager_get ("Docks");
+				if (!pManager) cd_warning ("Cannot find docks manager!");
+				else
+				{
+					if (pManager->load_custom_widget)
+						pManager->load_custom_widget (pKeyFile, pWidgetList);
+				}
+				g_key_file_free (pKeyFile);
+			}
 			g_free (cConfFilePath);
 		}
 		else  // main dock, we display a message
@@ -838,6 +848,15 @@ static void _items_widget_apply (CDWidget *pCdWidget)
 			
 			// update the keys with the widgets.
 			cairo_dock_update_keyfile_from_widget_list (pKeyFile, pWidgetList);
+			
+			// We need to save the screen setting separately
+			GldiManager *pManager = gldi_manager_get ("Docks");
+			if (!pManager) cd_warning ("Cannot find docks manager!");
+			else
+			{
+				if (pManager->save_custom_widget)
+					pManager->save_custom_widget (pKeyFile, pWidgetList);
+			}
 			
 			// write everything in the conf file.
 			cairo_dock_write_keys_to_conf_file (pKeyFile, cConfFilePath);

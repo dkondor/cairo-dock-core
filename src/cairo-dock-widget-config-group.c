@@ -42,8 +42,6 @@ static void _config_group_widget_apply (CDWidget *pCdWidget)
 	g_return_if_fail (pKeyFile != NULL);
 
 	cairo_dock_update_keyfile_from_widget_list (pKeyFile, pCdWidget->pWidgetList);
-	cairo_dock_write_keys_to_conf_file (pKeyFile, g_cConfFile);
-	g_key_file_free (pKeyFile);
 	
 	// reload the associated managers.
 	const gchar *cManagerName, *cModuleName;
@@ -59,7 +57,9 @@ static void _config_group_widget_apply (CDWidget *pCdWidget)
 		cManagerName = m->data;
 		pManager = gldi_manager_get (cManagerName);
 		g_return_if_fail (pManager != NULL);
-		gldi_object_reload (GLDI_OBJECT(pManager), TRUE);
+		
+		if (pManager->save_custom_widget)
+			pManager->save_custom_widget (pKeyFile, pCdWidget->pWidgetList);
 		
 		// reload the extensions too
 		for (e = pManager->pExternalModules; e != NULL && w != NULL; e = e->next)
@@ -84,9 +84,32 @@ static void _config_group_widget_apply (CDWidget *pCdWidget)
 			
 			cairo_dock_update_keyfile_from_widget_list (pExtraKeyFile, pExtraWidgetList);
 			if (pModule->pInterface->save_custom_widget != NULL)
-				pModule->pInterface->save_custom_widget (pExtraInstance, pKeyFile, pExtraWidgetList);
+				pModule->pInterface->save_custom_widget (pExtraInstance, pExtraKeyFile, pExtraWidgetList);
 			cairo_dock_write_keys_to_conf_file (pExtraKeyFile, pExtraInstance->cConfFilePath);
 			g_key_file_free (pExtraKeyFile);
+		}
+	}
+	
+	cairo_dock_write_keys_to_conf_file (pKeyFile, g_cConfFile);
+	g_key_file_free (pKeyFile);
+	
+	for (m = pConfigGroupWidget->pManagers; m != NULL; m = m->next)
+	{
+		cManagerName = m->data;
+		pManager = gldi_manager_get (cManagerName);
+		gldi_object_reload (GLDI_OBJECT(pManager), TRUE);
+	
+		for (e = pManager->pExternalModules; e != NULL && w != NULL; e = e->next)
+		{
+			// get the extension
+			cModuleName = e->data;
+			pModule = gldi_module_get (cModuleName);
+			if (!pModule)
+				continue;
+			
+			pExtraInstance = pModule->pInstancesList->data;
+			if (pExtraInstance == NULL)
+				continue;
 			
 			// reload it
 			gldi_object_reload (GLDI_OBJECT(pExtraInstance), TRUE);
@@ -237,6 +260,9 @@ ConfigGroupWidget *cairo_dock_config_group_widget_new (GList *pGroups, GList *pM
 			
 			g_key_file_free (pExtraKeyFile);
 		}
+		
+		if (pManager->load_custom_widget)
+			pManager->load_custom_widget (pKeyFile, pConfigGroupWidget->widget.pWidgetList);
 	}
 	
 	pConfigGroupWidget->widget.pWidget = (pNoteBook ? pNoteBook : pWidget);

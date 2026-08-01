@@ -177,6 +177,15 @@ static GKeyFile *_make_simple_conf_file (ConfigWidget *pConfigWidget)
 	
 	g_key_file_set_string (pSimpleKeyFile, "Behavior", "raise shortcut", myDocksParam.cRaiseDockShortcut);
 	
+	g_key_file_set_integer (pSimpleKeyFile, "Behavior", "num_screen", myDocksParam.iScreenReq);
+	
+	g_key_file_set_string (pSimpleKeyFile, "Behavior", "screen_description", myDocksParam.cScreenReqDesc ? myDocksParam.cScreenReqDesc : "");
+	
+	g_key_file_set_string (pSimpleKeyFile, "Behavior", "screen_name", myDocksParam.cScreenReqName ? myDocksParam.cScreenReqName : "");
+	
+	int geom[4] = {myDocksParam.screenReqGeom.x, myDocksParam.screenReqGeom.y, myDocksParam.screenReqGeom.width, myDocksParam.screenReqGeom.height};
+	g_key_file_set_integer_list (pSimpleKeyFile, "Behavior", "screen_geometry", geom, 4);
+	
 	int iTaskbarType;
 	if (! myTaskbarParam.bShowAppli)
 		iTaskbarType = 0;
@@ -385,6 +394,15 @@ static void _build_config_widget (ConfigWidget *pConfigWidget)
 	pConfigWidget->widget.pWidgetList = pWidgetList;
 	pConfigWidget->widget.pDataGarbage = pDataGarbage;
 	
+	//\_____________ complete the main dock screen selection widget.
+	GldiManager *pManager = gldi_manager_get ("Docks");
+	if (!pManager) cd_warning ("Cannot find docks manager!");
+	else
+	{
+		if (pManager->load_custom_widget)
+			pManager->load_custom_widget (pKeyFile, pWidgetList);
+	}
+	
 	//\_____________ complete with the animations widgets.
 	_make_double_anim_widget (pWidgetList, pKeyFile, "Behavior", "anim_hover");
 	_make_double_anim_widget (pWidgetList, pKeyFile, "Behavior", "anim_click");
@@ -433,6 +451,15 @@ static void _config_widget_apply (CDWidget *pCdWidget)
 	// update the keys with the widgets.
 	cairo_dock_update_keyfile_from_widget_list (pSimpleKeyFile, pConfigWidget->widget.pWidgetList);
 	
+	// We need to save the screen setting separately
+	GldiManager *pManager = gldi_manager_get ("Docks");
+	if (!pManager) cd_warning ("Cannot find docks manager!");
+	else
+	{
+		if (pManager->save_custom_widget)
+			pManager->save_custom_widget (pSimpleKeyFile, pConfigWidget->widget.pWidgetList);
+	}
+	
 	cairo_dock_write_keys_to_file (pSimpleKeyFile, cConfFilePath);
 	g_free (cConfFilePath);
 	
@@ -454,6 +481,24 @@ static void _config_widget_apply (CDWidget *pCdWidget)
 	gchar *cRaiseDockShortcut = g_key_file_get_string (pSimpleKeyFile, "Behavior", "raise shortcut", NULL);
 	g_key_file_set_string (pKeyFile, "Accessibility", "raise shortcut", cRaiseDockShortcut);
 	g_free (cRaiseDockShortcut);
+	
+	int iScreenReq = g_key_file_get_integer (pSimpleKeyFile, "Behavior", "num_screen", NULL);
+	g_key_file_set_integer (pKeyFile, "Position", "num_screen", iScreenReq);
+	
+	gchar *tmp = g_key_file_get_string (pSimpleKeyFile, "Behavior", "screen_description", NULL);
+	g_key_file_set_string (pKeyFile, "Position", "screen_description", tmp ? tmp : "");
+	g_free (tmp);
+	
+	tmp = g_key_file_get_string (pSimpleKeyFile, "Behavior", "screen_name", NULL);
+	g_key_file_set_string (pKeyFile, "Position", "screen_name", tmp ? tmp : "");
+	g_free (tmp);
+	
+	int default_geom[4] = {0, 0, 0, 0};
+	gsize len = 0;
+	int *geom = g_key_file_get_integer_list (pSimpleKeyFile, "Behavior", "screen_geometry", &len, NULL);
+	if (geom && len > 4) len = 4;
+	g_key_file_set_integer_list (pKeyFile, "Position", "screen_geometry", geom ? geom : default_geom, geom ? len : 4);
+	g_free (geom);
 	
 	int iShowOnClick = (g_key_file_get_integer (pSimpleKeyFile, "Behavior", "show_on_click", NULL) == 1);
 	g_key_file_set_integer (pKeyFile, "Accessibility", "show_on_click", iShowOnClick);
@@ -721,7 +766,6 @@ static void _config_widget_apply (CDWidget *pCdWidget)
 	cairo_dock_write_keys_to_conf_file (pKeyFile, g_cConfFile);
 	
 	//\_____________ reload modules that are concerned by these changes
-	GldiManager *pManager;
 	if (bUpdateColors)
 	{
 		cd_reload ("Style");
