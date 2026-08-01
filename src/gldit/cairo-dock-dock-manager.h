@@ -72,6 +72,9 @@ struct _CairoDocksParam {
 	CairoDockPositionType iScreenBorder;
 	gdouble fAlign;
 	gint iScreenReq;
+	gchar *cScreenReqDesc;
+	gchar *cScreenReqName;
+	GdkRectangle screenReqGeom;
 	// Root dock visibility
 	CairoDockVisibility iVisibility;
 	gchar *cHideEffect;
