@@ -719,7 +719,7 @@ static void _place_dialog (CairoDialog *pDialog, GldiContainer *pContainer)
 	if (gldi_container_use_new_positioning_code ())
 	{
 		Icon* pPointedIcon = pDialog->pIcon;
-		if (pPointedIcon && pContainer)
+		if (pContainer)
 		{
 			GdkRectangle rect = {0, 0, 1, 1};
 			GdkGravity rect_anchor = GDK_GRAVITY_NORTH, dialog_anchor = GDK_GRAVITY_SOUTH;
@@ -790,7 +790,7 @@ static void _refresh_all_dialogs (gboolean bReplace)
 			next = ic->next;
 			pDialog = next->data;
 			pIcon = pDialog->pIcon;
-			pContainer = cairo_dock_get_icon_container (pIcon);
+			pContainer = pIcon ? cairo_dock_get_icon_container (pIcon) : NULL;
 			gboolean bDelete = FALSE;
 			if (pContainer && !gldi_container_is_visible (pContainer))
 			{
