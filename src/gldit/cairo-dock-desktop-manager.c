@@ -567,6 +567,12 @@ char *gldi_desktop_get_monitor_description (int i)
 	if (i < 0 || i >= g_desktopGeometry.iNbScreens)
 		return NULL;
 	
+	if (s_backend.get_monitor_description)
+	{
+		char *tmp = s_backend.get_monitor_description (s_pMonitors[i]);
+		if (tmp) return tmp; // if there is some useful info, return it, otherwise fall back to GdkMonitor
+	}
+	
 	const char *cManufacturer = gdk_monitor_get_manufacturer (s_pMonitors[i]);
 	const char *cModel = gdk_monitor_get_model (s_pMonitors[i]);
 	// We don't want "Unknown" -- see e.g. https://gitlab.freedesktop.org/wlroots/wlroots/-/merge_requests/5045
@@ -584,6 +590,7 @@ char *gldi_desktop_get_monitor_description (int i)
 
 const char *gldi_desktop_get_monitor_name (G_GNUC_UNUSED int i)
 {
+	if (s_backend.get_monitor_name) return s_backend.get_monitor_name (s_pMonitors[i]);
 	return NULL; // not supported yet
 }
 
