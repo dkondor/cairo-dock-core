@@ -94,6 +94,10 @@ if(WaylandScanner_FOUND)
 		impl_SRCS
 		PROTOCOL "proto/xdg-shell.xml"
 		BASENAME "xdg-shell")
+	ecm_add_wayland_client_protocol(
+		impl_SRCS
+		PROTOCOL "proto/xdg-output-unstable-v1.xml"
+		BASENAME "xdg-output")
 endif()
 
 add_library(implementations STATIC ${impl_SRCS})
