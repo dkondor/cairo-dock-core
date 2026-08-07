@@ -567,49 +567,60 @@ GldiIconSizeEnum cairo_dock_convert_icon_size_to_enum (int iIconSize)
 	return s;
 }
 
-static void _update_dock_screen_num (CairoDock *pDock)
+static int _find_matching_monitor (const char *cScreenReqDesc, const GdkRectangle *pScreenReqGeom, const char *cScreenReqName, gboolean bFuzzy)
 {
-	int i, numMonitors = 0;
+	int i, j, numMonitors = 0;
 	GdkMonitor *const *pMonitors = gldi_desktop_get_monitors (&numMonitors);
-	if (! numMonitors)
-	{
-		pDock->iNumScreen = 0;
-		return;
-	}
+	if (! numMonitors) return -1;
+	
+	int *pMatches = NULL;
+	int nMatched = 0;
 	
 	// first, try to match the description
-	if (pDock->cScreenReqDesc && *pDock->cScreenReqDesc)
+	if (cScreenReqDesc && *cScreenReqDesc)
 	{
+		pMatches = g_new (int, numMonitors);
 		for (i = 0; i < numMonitors; i++)
 		{
 			char *cDesc = gldi_desktop_get_monitor_description (i);
 			if (cDesc)
 			{
-				gboolean bMatched = !(strcmp (pDock->cScreenReqDesc, cDesc));
+				gboolean bMatched = !(strcmp (cScreenReqDesc, cDesc));
 				g_free (cDesc);
 				if (bMatched)
 				{
-					pDock->iNumScreen = i;
-					return;
+					pMatches[nMatched] = i;
+					nMatched++;
 				}
 			}
 		}
 	}
 	
+	if (nMatched == 1)
+	{
+		// unique match, return it
+		i = pMatches[0];
+		g_free (pMatches);
+		return i;
+	}
+	
 	// next, the geometry (name can be a connector name that is unreliable)
-	if (pDock->screenReqGeom.width > 0 && pDock->screenReqGeom.height > 0)
+	int n = nMatched ? nMatched : numMonitors;
+	if (pScreenReqGeom->width > 0 && pScreenReqGeom->height > 0)
 	{
 		int iBestMatch = numMonitors;
-		for (i = 0; i < numMonitors; i++)
+		for (j = 0; j < n; j++)
 		{
+			i = nMatched ? pMatches[j] : j;
 			GdkRectangle rect;
 			gdk_monitor_get_geometry (pMonitors[i], &rect);
-			if (rect.x == pDock->screenReqGeom.x && rect.y == pDock->screenReqGeom.y)
+			if (rect.x == pScreenReqGeom->x && rect.y == pScreenReqGeom->y)
 			{
-				if (rect.width == pDock->screenReqGeom.width && rect.height == pDock->screenReqGeom.height)
+				if (rect.width == pScreenReqGeom->width && rect.height == pScreenReqGeom->height)
 				{
-					pDock->iNumScreen = i;
-					return;
+					// exact match, we can just return it (assuming that there will be no two overlapping monitors
+					g_free (pMatches);
+					return i;
 				}
 				if (iBestMatch == numMonitors) iBestMatch = i;
 			}
@@ -617,27 +628,38 @@ static void _update_dock_screen_num (CairoDock *pDock)
 		
 		if (iBestMatch < numMonitors)
 		{
-			pDock->iNumScreen = iBestMatch;
-			return;
+			// fuzzy match
+			g_free (pMatches);
+			return bFuzzy ? iBestMatch : -1;
 		}
 	}
 	
+	if (!bFuzzy && !pMatches) return -1; // don't allow non-fuzzy match based only on the name field
+	
 	// next, the name
-	if (pDock->cScreenReqName && *pDock->cScreenReqName)
+	if (cScreenReqName && *cScreenReqName)
 	{
-		for (i = 0; i < numMonitors; i++)
+		for (j = 0; j < n; j++)
 		{
+			i = nMatched ? pMatches[j] : j;
 			const char *cName = gldi_desktop_get_monitor_name (i);
-			if (cName && !(strcmp (pDock->cScreenReqName, cName)))
+			if (cName && !(strcmp (cScreenReqName, cName)))
 			{
-				pDock->iNumScreen = i;
-				return;
+				g_free (pMatches);
+				return i;
 			}
 		}
 	}
 	
-	// finally the numeric request
-	pDock->iNumScreen = pDock->iScreenReq;
+	g_free (pMatches);
+	return -1;
+}
+
+static void _update_dock_screen_num (CairoDock *pDock)
+{
+	pDock->iNumScreen = _find_matching_monitor (pDock->cScreenReqDesc, &pDock->screenReqGeom, pDock->cScreenReqName, TRUE);
+	if (pDock->iNumScreen < 0) pDock->iNumScreen = pDock->iScreenReq; // finally the numeric request (old behavior)
+	
 	if (pDock->iNumScreen < 0 || pDock->iNumScreen >= g_desktopGeometry.iNbScreens)
 		pDock->iNumScreen = 0;
 }
@@ -1674,8 +1696,19 @@ typedef enum {
 	CD_SCREEN_NB_COLUMNS
 	} CDScreenModelColumns;
 
-static void _load_custom_widget (G_GNUC_UNUSED GKeyFile *pKeyFile, GSList *pWidgetList)
+static void _load_custom_widget (GKeyFile *pKeyFile, GSList *pWidgetList)
 {
+	const gchar *cGroup = "Position"; // only in the main config file
+	if (!g_key_file_has_group (pKeyFile, cGroup))
+	{
+		cGroup = "Behavior";
+		if (!g_key_file_has_group (pKeyFile, cGroup))
+		{
+			cd_warning ("Config file group does not exist!");
+			return;
+		}
+	}
+	
 	GtkListStore *pListStore = gtk_list_store_new (CD_SCREEN_NB_COLUMNS,
 		G_TYPE_STRING,   /* CD_SCREEN_LABEL*/
 		G_TYPE_STRING,   /* CD_SCREEN_DESCRIPTION*/
@@ -1684,15 +1717,44 @@ static void _load_custom_widget (G_GNUC_UNUSED GKeyFile *pKeyFile, GSList *pWidg
 		GDK_TYPE_RECTANGLE);  /* CD_SCREEN_GEOM*/
 	gtk_tree_sortable_set_sort_column_id (GTK_TREE_SORTABLE (pListStore), CD_SCREEN_INDEX, GTK_SORT_ASCENDING);
 	
-	/* default: empty label, keep the current screen */
-	GtkTreeIter iter;
-	memset (&iter, 0, sizeof (GtkTreeIter));
-	gtk_list_store_append (GTK_LIST_STORE (pListStore), &iter);
-	
-	gtk_list_store_set (GTK_LIST_STORE (pListStore), &iter,
-		CD_SCREEN_LABEL, "",
-		CD_SCREEN_INDEX, -1,
-		-1);
+	/* default: current screen in config */
+	int iCurrent = -1;
+	gboolean bDisconnected = FALSE;
+	{
+		char *cScreenReqDesc = g_key_file_get_string (pKeyFile, cGroup, "screen_description", NULL);
+		char *cScreenReqName = g_key_file_get_string (pKeyFile, cGroup, "screen_name", NULL);
+		int geom[] = {0, 0, 0, 0};
+		cairo_dock_get_integer_list_key_value (pKeyFile, cGroup, "screen_geometry", NULL, geom, 4, NULL, NULL, NULL);
+		GdkRectangle rect;
+		rect.x = geom[0]; rect.y = geom[1]; rect.width = geom[2]; rect.height = geom[3];
+		
+		iCurrent = _find_matching_monitor (cScreenReqDesc, &rect, cScreenReqName, FALSE);
+		
+		if (iCurrent == -1 && ((cScreenReqDesc && *cScreenReqDesc) ||
+			(cScreenReqName && *cScreenReqName) ||
+			(rect.width > 0 && rect.height > 0)))
+		{
+			bDisconnected = TRUE;
+			GtkTreeIter iter;
+			memset (&iter, 0, sizeof (GtkTreeIter));
+			gtk_list_store_append (GTK_LIST_STORE (pListStore), &iter);
+			
+			char *cLabel = g_strdup_printf ("(Disconnected): %s [%s]", cScreenReqDesc ? cScreenReqDesc : "",
+				cScreenReqName ? cScreenReqName : ""); //!! TODO: add position (at least if we don't have the other fields?)
+			
+			gtk_list_store_set (GTK_LIST_STORE (pListStore), &iter,
+				CD_SCREEN_LABEL, cLabel,
+				CD_SCREEN_DESCRIPTION, cScreenReqDesc,
+				CD_SCREEN_NAME, cScreenReqName,
+				CD_SCREEN_INDEX, -1,
+				CD_SCREEN_GEOM, &geom,
+				-1);
+			g_free (cLabel);
+		}
+		
+		g_free (cScreenReqDesc);
+		g_free (cScreenReqName);
+	}
 	
 	int N = 0;
 	GdkMonitor *const *pMonitors = gldi_desktop_get_monitors (&N);
@@ -1748,6 +1810,7 @@ static void _load_custom_widget (G_GNUC_UNUSED GKeyFile *pKeyFile, GSList *pWidg
 		if (cDesc) g_string_append_printf (sLabel, ": %s", cDesc);
 		if (cName) g_string_append_printf (sLabel, " [%s]", cName);
 		
+		GtkTreeIter iter;
 		memset (&iter, 0, sizeof (GtkTreeIter));
 		gtk_list_store_append (GTK_LIST_STORE (pListStore), &iter);
 		
@@ -1770,7 +1833,10 @@ static void _load_custom_widget (G_GNUC_UNUSED GKeyFile *pKeyFile, GSList *pWidg
 	gtk_cell_layout_set_attributes (GTK_CELL_LAYOUT (pOneWidget), rend, "text", CD_SCREEN_LABEL, NULL);
 	g_object_unref (G_OBJECT (pListStore)); // the others all have floating references
 	
-	// gtk_combo_box_set_active_iter (GTK_COMBO_BOX (pOneWidget), &iter);
+	if (bDisconnected) gtk_combo_box_set_active (GTK_COMBO_BOX (pOneWidget), 0); // screen set, but not found (it was added first)
+	else if (iCurrent >= 0) gtk_combo_box_set_active (GTK_COMBO_BOX (pOneWidget), iCurrent); // screen set and found
+	// note: if there is no setting, the combo box will be blank, since we don't have access to which screen the dock is actually on
+	
 	CairoDockGroupKeyWidget *pGroupKeyWidget = cairo_dock_gui_find_group_key_widget_in_list (pWidgetList, "Behavior", "num_screen");
 	if (!pGroupKeyWidget)
 	{
