@@ -167,6 +167,8 @@ struct _GldiDesktopManagerBackend {
 	void (*grab_shortkey) (GldiShortkey *pBinding, gboolean grab, CairoDockGrabKeyResult cb); // note: cb will only be called if grab == TRUE
 	void (*add_workspace) (void); // gldi_desktop_add_workspace ()
 	void (*remove_last_workspace) (void); // gldi_desktop_remove_last_workspace ()
+	gchar* (*get_monitor_description) (GdkMonitor *pMonitor);
+	const gchar* (*get_monitor_name) (GdkMonitor *pMonitor);
 	};
 
 /// Definition of a Desktop Background Buffer. It has a reference count so that it can be shared across all the lib.
@@ -288,6 +290,10 @@ void gldi_desktop_get_current (int *iCurrentDesktop, int *iCurrentViewportX, int
 
 /// Get the list of monitors currently managed -- caller should not modify the GdkMonitor* pointers stored here
 GdkMonitor *const *gldi_desktop_get_monitors (int *iNumMonitors);
+/// Get the description of the ith monitor or NULL if i is out of range. The caller should free the return value with g_free().
+char *gldi_desktop_get_monitor_description (int i);
+/// Get the (connector) name of the ith monitor or NULL if i is out of range. The return value belongs to the desktop manager and should not be freed.
+const char *gldi_desktop_get_monitor_name (int i);
 
   ////////////////////////
  // Desktop background //

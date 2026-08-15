@@ -146,8 +146,12 @@ struct _CairoDock {
 	gint iNumScreen;
 	/// number of the screen requested by the user
 	gint iScreenReq;
-	/// name of the screen requested by the user -- TODO: not used yet, should implement saving screen names !
-	gchar *cScreenReq;
+	/// description of the screen requested by the user (combination of gdk_monitor_get_manufacturer() - gdk_monitor_get_model ())
+	gchar *cScreenReqDesc;
+	/// name of the screen requested by the user (currently only on Wayland, the xdg_output.name() property)
+	gchar *cScreenReqName;
+	/// geometry of the screen requested by the user (from gdk_monitor_get_geometry ())
+	GdkRectangle screenReqGeom;
 	
 	// icons
 	/// icon size, as specified in the config of the dock

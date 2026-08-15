@@ -51,6 +51,7 @@
 #include "cairo-dock-plasma-virtual-desktop.h"
 #include "cairo-dock-ext-workspaces.h"
 #include "cairo-dock-wayland-wm.h"
+#include "wayland-xdg-output-client-protocol.h"
 #endif
 #include "cairo-dock-wayland-hotspots.h"
 #include "cairo-dock-egl.h"
@@ -74,6 +75,8 @@ extern gboolean g_bUseOpenGL;
 static struct wl_display *s_pDisplay = NULL;
 static struct wl_compositor* s_pCompositor = NULL;
 static gboolean s_bHave_Layer_Shell = FALSE;
+
+static struct zxdg_output_manager_v1 *s_pXdgOutput = NULL;
 
 static GldiWaylandCompositorType s_CompositorType = WAYLAND_COMPOSITOR_NONE;
 
@@ -468,6 +471,102 @@ static void _adjust_aimed_point (const Icon *pIcon, G_GNUC_UNUSED GtkWidget *pWi
 
 
 ////////////////////////////////////////////////////////////////////////
+// Outputs
+typedef struct _XdgOutputInto {
+	char *cDescription;
+	char *cName;
+	struct zxdg_output_v1 *output;
+} XdgOutputInfo;
+
+static void _xdg_output_info_free (gpointer ptr)
+{
+	if (!ptr) return;
+	XdgOutputInfo *info = (XdgOutputInfo*)ptr;
+	if (info->output) zxdg_output_v1_destroy (info->output);
+	g_free (info->cDescription);
+	g_free (info->cName);
+	g_free (info);
+}
+
+static GHashTable *s_pOutputMap = NULL; // key: GdkMonitor, value: XdgOutputInfo
+
+static char *_get_output_description (GdkMonitor *mon)
+{
+	if (!s_pOutputMap) return NULL;
+	XdgOutputInfo *info = g_hash_table_lookup (s_pOutputMap, mon);
+	return info ? g_strdup (info->cDescription) : NULL; // strdup() handles NULL as well
+}
+
+static const char *_get_output_name (GdkMonitor *mon)
+{
+	if (!s_pOutputMap) return NULL;
+	XdgOutputInfo *info = g_hash_table_lookup (s_pOutputMap, mon);
+	return info ? info->cName : NULL;
+}
+
+static void _output_dummy (G_GNUC_UNUSED void *data,
+	G_GNUC_UNUSED struct zxdg_output_v1 *zxdg_output_v1, G_GNUC_UNUSED int32_t x, G_GNUC_UNUSED int32_t y)
+{
+	// no-op (works for both position and size events)
+}
+
+static void _output_done (void *data, struct zxdg_output_v1 *output)
+{
+	XdgOutputInfo *info = (XdgOutputInfo*)data;
+	info->output = NULL;
+	zxdg_output_v1_destroy (output); // no need to keep it, should not change
+}
+
+static void _output_description (void *data, G_GNUC_UNUSED struct zxdg_output_v1 *output, const char *description)
+{
+	XdgOutputInfo *info = (XdgOutputInfo*)data;
+	g_free (info->cDescription);
+	if (description && *description) info->cDescription = g_strdup (description);
+	else info->cDescription = NULL;
+}
+
+static void _output_name (void *data, G_GNUC_UNUSED struct zxdg_output_v1 *output, const char *name)
+{
+	XdgOutputInfo *info = (XdgOutputInfo*)data;
+	g_free (info->cName);
+	if (name && *name) info->cName = g_strdup (name);
+	else info->cName = NULL;
+}
+
+static struct zxdg_output_v1_listener s_output_listener = {
+	.logical_position = _output_dummy,
+	.logical_size = _output_dummy,
+	.done = _output_done,
+	.name = _output_name,
+	.description = _output_description
+};
+
+static void _add_monitor (G_GNUC_UNUSED GdkDisplay *dsp, GdkMonitor *mon, G_GNUC_UNUSED gpointer data)
+{
+	struct wl_output *wloutput = gdk_wayland_monitor_get_wl_output (mon);
+	g_return_if_fail (wloutput != NULL && s_pOutputMap != NULL);
+	
+	if (g_hash_table_lookup (s_pOutputMap, mon)) return; // already added
+	XdgOutputInfo *info = g_new0 (XdgOutputInfo, 1);
+	g_hash_table_insert (s_pOutputMap, mon, info);
+	info->output = zxdg_output_manager_v1_get_xdg_output (s_pXdgOutput, wloutput);
+	zxdg_output_v1_add_listener (info->output, &s_output_listener, info);
+}
+
+static void _remove_monitor (G_GNUC_UNUSED GdkDisplay *dsp, GdkMonitor *mon, G_GNUC_UNUSED gpointer data)
+{
+	g_return_if_fail (s_pOutputMap != NULL);
+	g_hash_table_remove (s_pOutputMap, mon);
+}
+
+static gboolean _check_output_done (G_GNUC_UNUSED gpointer key, gpointer value, G_GNUC_UNUSED gpointer data)
+{
+	XdgOutputInfo *info = (XdgOutputInfo*)value;
+	return !!(info->output); // if the xdg-output object has been freed, we have received the done event already
+}
+
+
+////////////////////////////////////////////////////////////////////////
 // Registry
 struct wl_registry *s_pRegistry = NULL;
 static GHashTable *s_pProtocolMap = NULL; // key: name (owned), value: GldiWaylandProtocolInfo (owned)
@@ -490,6 +589,13 @@ static void _registry_global_cb ( G_GNUC_UNUSED void *data, struct wl_registry *
 	g_hash_table_insert (s_pProtocolMap, key, info);
 	g_hash_table_insert (s_pProtocolMapRev, GUINT_TO_POINTER (id), key);
 	/// TODO: send out a notification?
+	
+	if (!strcmp (interface, zxdg_output_manager_v1_interface.name) && version >= 2)
+	{
+		// we need version == 2 which already includes name and description, but
+		// still sends out a done event separately
+		s_pXdgOutput = wl_registry_bind (registry, id, &zxdg_output_manager_v1_interface, 2);
+	}
 #else
 	(void)version; // avoid warning
 #endif
@@ -540,6 +646,36 @@ static void init (void)
 		wl_display_roundtrip (s_pDisplay);
 	}
 	while (s_bInitializing);
+	
+	// init monitor tracking
+#ifdef HAVE_WAYLAND_PROTOCOLS
+	if (s_pXdgOutput)
+	{
+		s_pOutputMap = g_hash_table_new_full (NULL, NULL, NULL, _xdg_output_info_free);
+		
+		GdkDisplay *dsp = gdk_display_get_default();
+		int i, N = gdk_display_get_n_monitors (dsp);
+		for (i = 0; i < N; i++) _add_monitor (NULL, gdk_display_get_monitor (dsp, i), NULL);
+		
+		g_signal_connect (G_OBJECT (dsp), "monitor-added", G_CALLBACK (_add_monitor), NULL);
+		g_signal_connect (G_OBJECT (dsp), "monitor-removed", G_CALLBACK (_remove_monitor), NULL);
+		
+		// do roundtrips while all info is received -- this is a bit crude, but we want this to
+		// be available before docks are created
+		while (1)
+		{
+			wl_display_roundtrip (s_pDisplay);
+			gpointer tmp = g_hash_table_find (s_pOutputMap, _check_output_done, NULL);
+			if (!tmp) break; // all are initialized
+		}
+		
+		GldiDesktopManagerBackend dmb;
+		memset (&dmb, 0, sizeof (GldiDesktopManagerBackend));
+		dmb.get_monitor_description = _get_output_description;
+		dmb.get_monitor_name = _get_output_name;
+		gldi_desktop_manager_register_backend (&dmb, "xdg-output");
+	}
+#endif
 	
 	GldiContainerManagerBackend cmb;
 	memset (&cmb, 0, sizeof (GldiContainerManagerBackend));	
