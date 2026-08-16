@@ -588,8 +588,11 @@ char *gldi_desktop_get_monitor_description (int i)
 	return NULL;
 }
 
-const char *gldi_desktop_get_monitor_name (G_GNUC_UNUSED int i)
+const char *gldi_desktop_get_monitor_name (int i)
 {
+	if (i < 0 || i >= g_desktopGeometry.iNbScreens)
+		return NULL;
+	
 	if (s_backend.get_monitor_name) return s_backend.get_monitor_name (s_pMonitors[i]);
 	return NULL; // not supported yet
 }
