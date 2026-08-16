@@ -567,12 +567,10 @@ char *gldi_desktop_get_monitor_description (int i)
 	if (i < 0 || i >= g_desktopGeometry.iNbScreens)
 		return NULL;
 	
-	if (s_backend.get_monitor_description)
-	{
-		char *tmp = s_backend.get_monitor_description (s_pMonitors[i]);
-		if (tmp) return tmp; // if there is some useful info, return it, otherwise fall back to GdkMonitor
-	}
+	const char *cDescription = gdk_monitor_get_description (s_pMonitors[i]);
+	if (cDescription && *cDescription) return g_strdup (cDescription);
 	
+	// Especially on X11, cDescription can be empty, "synthetize" it from the manufacturer and model name
 	const char *cManufacturer = gdk_monitor_get_manufacturer (s_pMonitors[i]);
 	const char *cModel = gdk_monitor_get_model (s_pMonitors[i]);
 	// We don't want "Unknown" -- see e.g. https://gitlab.freedesktop.org/wlroots/wlroots/-/merge_requests/5045
@@ -593,8 +591,7 @@ const char *gldi_desktop_get_monitor_name (int i)
 	if (i < 0 || i >= g_desktopGeometry.iNbScreens)
 		return NULL;
 	
-	if (s_backend.get_monitor_name) return s_backend.get_monitor_name (s_pMonitors[i]);
-	return NULL; // not supported yet
+	return gdk_monitor_get_connector (s_pMonitors[i]);
 }
 
 
@@ -651,8 +648,9 @@ void gldi_register_desktop_manager (void)
 	// set up notifications for screens added / removed
 	// g_signal_connect (G_OBJECT (screen), "monitors-changed", G_CALLBACK (_refresh_monitors), (gpointer)TRUE);
 	// g_signal_connect (G_OBJECT (screen), "size-changed", G_CALLBACK (_refresh_monitors_size), (gpointer)TRUE);
-	g_signal_connect (G_OBJECT (dsp), "monitor-added", G_CALLBACK (_monitor_added), (gpointer)TRUE);
-	g_signal_connect (G_OBJECT (dsp), "monitor-removed", G_CALLBACK (_monitor_removed), (gpointer)TRUE);
+	//!! TODO: connect to the "items-changed" signal on pList below instead !!
+	// g_signal_connect (G_OBJECT (dsp), "monitor-added", G_CALLBACK (_monitor_added), (gpointer)TRUE);
+	// g_signal_connect (G_OBJECT (dsp), "monitor-removed", G_CALLBACK (_monitor_removed), (gpointer)TRUE);
 	
 	GListModel *pList = gdk_display_get_monitors (dsp);
 	guint i;

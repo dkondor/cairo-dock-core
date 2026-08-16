@@ -167,8 +167,6 @@ struct _GldiDesktopManagerBackend {
 	void (*grab_shortkey) (GldiShortkey *pBinding, gboolean grab, CairoDockGrabKeyResult cb); // note: cb will only be called if grab == TRUE
 	void (*add_workspace) (void); // gldi_desktop_add_workspace ()
 	void (*remove_last_workspace) (void); // gldi_desktop_remove_last_workspace ()
-	gchar* (*get_monitor_description) (GdkMonitor *pMonitor);
-	const gchar* (*get_monitor_name) (GdkMonitor *pMonitor);
 	};
 
 /// Definition of a Desktop Background Buffer. It has a reference count so that it can be shared across all the lib.
