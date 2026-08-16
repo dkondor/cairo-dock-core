@@ -293,8 +293,6 @@ int gldi_dialog_show_and_wait (const gchar *cText, Icon *pIcon, GldiContainer *p
 */
 GtkWidget *gldi_dialog_steal_interactive_widget (CairoDialog *pDialog);
 
-void gldi_dialog_redraw_interactive_widget (CairoDialog *pDialog);
-
 void gldi_dialog_set_message (CairoDialog *pDialog, const gchar *cMessage);
 void gldi_dialog_set_message_printf (CairoDialog *pDialog, const gchar *cMessageFormat, ...);
 

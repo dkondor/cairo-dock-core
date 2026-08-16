@@ -38,9 +38,6 @@ G_BEGIN_DECLS
 
 void gldi_dialog_init_internals (CairoDialog *pDialog, CairoDialogAttr *pAttribute);
 
-// should be elsewhere (note: used by desklet-factory as well for widgets in desklets)
-GtkWidget *cairo_dock_steal_widget_from_its_container (GtkWidget *pWidget);
-
 void gldi_dialog_set_icon (CairoDialog *pDialog, const gchar *cImageFilePath);
 void gldi_dialog_set_icon_surface (CairoDialog *pDialog, cairo_surface_t *pNewIconSurface, int iNewIconSize);
 

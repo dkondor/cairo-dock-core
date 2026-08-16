@@ -105,67 +105,20 @@ static void _unload_dialog_buttons (void)
 	}
 }
 
-/*
-static gboolean on_enter_dialog (G_GNUC_UNUSED GtkWidget* pWidget,
-	G_GNUC_UNUSED GdkEventCrossing* pEvent,
+static void _on_enter_dialog (G_GNUC_UNUSED GtkEventControllerMotion *pCtrl,
+	G_GNUC_UNUSED gdouble x,
+	G_GNUC_UNUSED gdouble y,
 	CairoDialog *pDialog)
 {
-	//cd_debug ("inside");
 	pDialog->container.bInside = TRUE;
-	return FALSE;
 }
 
-static gboolean on_leave_dialog (G_GNUC_UNUSED GtkWidget* pWidget,
-	GdkEventCrossing* pEvent,
-	CairoDialog *pDialog)
+static void _on_leave_dialog (G_GNUC_UNUSED GtkEventControllerMotion *pCtrl, CairoDialog *pDialog)
 {
-	Icon *pIcon = pDialog->pIcon;
-	int iMouseX, iMouseY;
-	if (pEvent != NULL)
-	{
-		iMouseX = pEvent->x_root;
-		iMouseY = pEvent->y_root;
-		if (gldi_container_is_wayland_backend ()) pDialog->container.bInside = FALSE;
-	}
-	else
-	{
-		gldi_container_update_mouse_position (CAIRO_CONTAINER (pDialog));
-		iMouseX = pDialog->container.iMouseX;
-		iMouseY = pDialog->container.iMouseY;
-	}
-	if (iMouseX > 0 && iMouseX < pDialog->container.iWidth && iMouseY > 0 && iMouseY < pDialog->container.iHeight && pDialog->pInteractiveWidget != NULL)  // en fait on est dedans (peut arriver si le dialogue a un widget a l'interieur).
-	{
-		if (pIcon != NULL)
-		{
-			return FALSE;*/
-			/*GldiContainer *pContainer = cairo_dock_search_container_from_icon (pIcon);
-			///if (!pContainer || !pContainer->bInside)  // peut arriver dans le cas d'un dock cache possedant un dialogue. Initialement les 2 se chevauchent, il faut considerer qu'on est hors du dialogue afin de pouvoir le replacer.
-			{
-				//g_print ("en fait on est dedans\n");
-				return FALSE;
-			}
-			//else
-			//	//g_print ("leave dialog\n");*/
-/*		}
-	}
-	
-	//g_print ("leave\n");
-	//cd_debug ("outside (%d;%d / %dx%d)", iMouseX, iMouseY, pDialog->container.iWidth, pDialog->container.iHeight);
 	pDialog->container.bInside = FALSE;
-	
-	if (pIcon != NULL)
-	{
-		pDialog->container.iMouseX = pEvent->x_root;
-		pDialog->container.iMouseY = pEvent->y_root;
-		GldiContainer *pContainer = cairo_dock_get_icon_container (pIcon);
-		//_place_dialog (pDialog, pContainer);
-		_set_dialog_orientation (pDialog, pContainer);
-	}
-
-	return FALSE;
 }
 
-static int _cairo_dock_find_clicked_button_in_dialog (GdkEventButton* pButton, CairoDialog *pDialog)
+static int _cairo_dock_find_clicked_button_in_dialog (gdouble x, gdouble y, CairoDialog *pDialog)
 {
 	int iButtonX, iButtonY;
 	int i, n = pDialog->iNbButtons;
@@ -176,95 +129,98 @@ static int _cairo_dock_find_clicked_button_in_dialog (GdkEventButton* pButton, C
 	for (i = 0; i < pDialog->iNbButtons; i++)
 	{
 		iButtonX = iMinButtonX + i * (CAIRO_DIALOG_BUTTON_GAP + myDialogsParam.iDialogButtonWidth);
-		if (pButton->x >= iButtonX && pButton->x <= iButtonX + myDialogsParam.iDialogButtonWidth && pButton->y >= iButtonY && pButton->y <= iButtonY + myDialogsParam.iDialogButtonHeight)
+		if (x >= iButtonX && x <= iButtonX + myDialogsParam.iDialogButtonWidth && y >= iButtonY && y <= iButtonY + myDialogsParam.iDialogButtonHeight)
 		{
 			return i;
 		}
 	}
 	return -1;
 }
-*/
+
 static inline void _answer (CairoDialog *pDialog, int iButton)
 {
 	pDialog->bInAnswer = TRUE;
 	pDialog->action_on_answer (iButton, pDialog->pInteractiveWidget, pDialog->pUserData, pDialog);
 	pDialog->bInAnswer = FALSE;
 }
-/*
-static gboolean on_button_press_dialog (G_GNUC_UNUSED GtkWidget* pWidget,
-	GdkEventButton* pButton,
-	CairoDialog *pDialog)
-{
-	// g_print ("press button on dialog (%d > %d)\n", pButton->time, pDialog->iButtonPressTime);
-	if (pButton->button == 1 && pButton->time > pDialog->iButtonPressTime)  // left-click, and not a click on the interactive widget that has been passed to the dialog.
-	{
-		// the interactive widget may have holes (for instance, a gtk-calendar); ignore them, otherwise it's really easy to close the dialog unexpectedly.
-		if (pDialog->pInteractiveWidget)
-		{
-			GtkAllocation allocation;
-			gtk_widget_get_allocation (pDialog->pInteractiveWidget, &allocation);
-			if (pButton->x >= allocation.x && pButton->x <= allocation.x + allocation.width
-			&& pButton->y >= allocation.y && pButton->y <= allocation.y + allocation.height)  // the click is inside the widget.
-				return FALSE;
-		}
-		if (pButton->type == GDK_BUTTON_PRESS)
-		{
-			if (pDialog->pButtons == NULL)  // not a dialog that can be closed by a button => we close it here
-			{
-				if (pDialog->bHideOnClick) gldi_dialog_hide (pDialog);
-				else pDialog->bPendingClose = TRUE; // wait until the release event before closing
-			}
-			else if (pButton->button == 1)  // left click on a button.
-			{
-				int iButton = _cairo_dock_find_clicked_button_in_dialog (pButton, pDialog);
-				if (iButton >= 0 && iButton < pDialog->iNbButtons)
-				{
-					pDialog->pButtons[iButton].iOffset = CAIRO_DIALOG_BUTTON_OFFSET;
-					gtk_widget_queue_draw (pDialog->container.pWidget);
-				}
-			}
-		}
-		else if (pButton->type == GDK_BUTTON_RELEASE)
-		{
-			if (pDialog->bPendingClose)
-			{
-				gldi_object_unref (GLDI_OBJECT(pDialog));
-				return FALSE;
-			}
-			if (pDialog->pButtons != NULL && pButton->button == 1)  // release left click with buttons present
-			{
-				int iButton = _cairo_dock_find_clicked_button_in_dialog (pButton, pDialog);
-				cd_debug ("clic on button %d", iButton);
-				if (iButton >= 0 && iButton < pDialog->iNbButtons && pDialog->pButtons[iButton].iOffset != 0)
-				{
-					pDialog->pButtons[iButton].iOffset = 0;
-					_answer (pDialog, iButton);
-					gtk_widget_queue_draw (pDialog->container.pWidget);  // in case the unref below wouldn't destroy it
-					gldi_object_unref (GLDI_OBJECT(pDialog));  // and then destroy the dialog (it might not be destroyed if the ation callback took a ref on it).
-				}
-				else
-				{
-					int i;
-					for (i = 0; i < pDialog->iNbButtons; i++)
-						pDialog->pButtons[i].iOffset = 0;
-					gtk_widget_queue_draw (pDialog->container.pWidget);
-				}
-			}
-		}
-	}
 
+static gboolean _is_button_press_in_widget (gdouble x, gdouble y, CairoDialog *pDialog)
+{
+	graphene_rect_t allocation;
+	if (gtk_widget_compute_bounds (pDialog->pInteractiveWidget, pDialog->container.pWidget, &allocation))
+		return (x >= allocation.origin.x && x <= allocation.origin.x + allocation.size.width
+			&& y >= allocation.origin.y && y <= allocation.origin.y + allocation.size.height);  // the click is inside the widget.
 	return FALSE;
 }
 
-static gboolean on_key_press_dialog (G_GNUC_UNUSED GtkWidget *pWidget,
-	GdkEventKey *pKey,
-	CairoDialog *pDialog)
+static void _on_button_press_dialog (G_GNUC_UNUSED GtkGestureClick *pCtrl, G_GNUC_UNUSED gint n_press, gdouble x, gdouble y, CairoDialog *pDialog)
 {
-	cd_debug ("key pressed on dialog: %d / %d", pKey->state, GDK_CONTROL_MASK | GDK_MOD1_MASK);
+	// note: we already know it is the left button
+	//!! TODO: we should consider that the widget inside the dialog might pass on the click to us??
+	//!! if (pButton->time == pDialog->iButtonPressTime) return;
 	
-	if (pKey->type == GDK_KEY_PRESS && ((pKey->state & (GDK_CONTROL_MASK | GDK_MOD1_MASK | GDK_SHIFT_MASK)) == 0) && pDialog->action_on_answer != NULL)
+	// the interactive widget may have holes (for instance, a gtk-calendar); ignore them, otherwise it's really easy to close the dialog unexpectedly.
+	if (pDialog->pInteractiveWidget)
+		if (_is_button_press_in_widget (x, y, pDialog)) return;
+	
+	if (pDialog->pButtons == NULL)  // not a dialog that can be closed by a button => we close it here
 	{
-		switch (pKey->keyval)
+		if (pDialog->bHideOnClick) gldi_dialog_hide (pDialog);
+		else pDialog->bPendingClose = TRUE; // wait until the release event before closing
+	}
+	else // left click on a button.
+	{
+		int iButton = _cairo_dock_find_clicked_button_in_dialog (x, y, pDialog);
+		if (iButton >= 0 && iButton < pDialog->iNbButtons)
+		{
+			pDialog->pButtons[iButton].iOffset = CAIRO_DIALOG_BUTTON_OFFSET;
+			gtk_widget_queue_draw (pDialog->container.pWidget);
+		}
+	}
+}
+
+static void _on_button_release_dialog (G_GNUC_UNUSED GtkGestureClick *pCtrl, G_GNUC_UNUSED gint n_press, gdouble x, gdouble y, CairoDialog *pDialog)
+{
+	// note: we already know it is the left button
+	
+	// the interactive widget may have holes (for instance, a gtk-calendar); ignore them, otherwise it's really easy to close the dialog unexpectedly.
+	if (pDialog->pInteractiveWidget)
+		if (_is_button_press_in_widget (x, y, pDialog)) return;
+	
+	if (pDialog->bPendingClose)
+	{
+		gldi_object_unref (GLDI_OBJECT(pDialog));
+		return;
+	}
+	if (pDialog->pButtons != NULL)  // release left click with buttons present
+	{
+		int iButton = _cairo_dock_find_clicked_button_in_dialog (x, y, pDialog);
+		cd_debug ("clic on button %d", iButton);
+		if (iButton >= 0 && iButton < pDialog->iNbButtons && pDialog->pButtons[iButton].iOffset != 0)
+		{
+			pDialog->pButtons[iButton].iOffset = 0;
+			_answer (pDialog, iButton);
+			gtk_widget_queue_draw (pDialog->container.pWidget);  // in case the unref below wouldn't destroy it
+			gldi_object_unref (GLDI_OBJECT(pDialog));  // and then destroy the dialog (it might not be destroyed if the ation callback took a ref on it).
+		}
+		else
+		{
+			int i;
+			for (i = 0; i < pDialog->iNbButtons; i++)
+				pDialog->pButtons[i].iOffset = 0;
+			gtk_widget_queue_draw (pDialog->container.pWidget);
+		}
+	}
+}
+
+static gboolean _on_key_press_dialog (G_GNUC_UNUSED GtkEventControllerKey *pCtrl, guint keyval,
+	G_GNUC_UNUSED guint keycode, GdkModifierType state, CairoDialog *pDialog)
+{
+	cd_debug ("key pressed on dialog: %d / %d", state, GDK_CONTROL_MASK | GDK_ALT_MASK | GDK_SHIFT_MASK);
+	
+	if (((state & (GDK_CONTROL_MASK | GDK_ALT_MASK | GDK_SHIFT_MASK)) == 0) && pDialog->action_on_answer != NULL)
+	{
+		switch (keyval)
 		{
 			case GDK_KEY_Return :
 			case GDK_KEY_KP_Enter :
@@ -279,7 +235,7 @@ static gboolean on_key_press_dialog (G_GNUC_UNUSED GtkWidget *pWidget,
 	}
 	return FALSE;
 }
-*/
+
 static void _cairo_dock_dialog_delete (CairoDialog *pDialog)
 {
 	if (pDialog != NULL)
@@ -350,7 +306,7 @@ static void _cairo_dock_draw_inside_dialog_opengl (CairoDialog *pDialog, double 
 	if (pDialog->pRenderer != NULL && pDialog->pRenderer->render_opengl)
 		pDialog->pRenderer->render_opengl (pDialog, fAlpha);
 }
-
+*/
 #define _paint_inside_dialog(pCairoContext, fAlpha) do { \
 	if (fAlpha != 0) \
 		cairo_paint_with_alpha (pCairoContext, fAlpha); \
@@ -415,7 +371,7 @@ static void _cairo_dock_draw_inside_dialog (cairo_t *pCairoContext, CairoDialog 
 
 static gboolean _cairo_dock_render_dialog_notification (G_GNUC_UNUSED gpointer data, CairoDialog *pDialog, cairo_t *pCairoContext)
 {
-	if (pCairoContext == NULL)
+/*	if (pCairoContext == NULL)
 	{
 		_cairo_dock_draw_inside_dialog_opengl (pDialog, 0.);
 		if (pDialog->container.bUseReflect)
@@ -427,7 +383,7 @@ static gboolean _cairo_dock_render_dialog_notification (G_GNUC_UNUSED gpointer d
 			_cairo_dock_draw_inside_dialog_opengl (pDialog, pDialog->container.fRatio);
 		}
 	}
-	else
+	else*/
 	{
 		_cairo_dock_draw_inside_dialog (pCairoContext, pDialog, 0.);
 		
@@ -504,37 +460,13 @@ static void _place_dialog (CairoDialog *pDialog, GldiContainer *pContainer)
 	if (pContainer)
 	{
 		GdkRectangle rect = {0, 0, 1, 1};
-		GdkGravity rect_anchor = GDK_GRAVITY_NORTH, dialog_anchor = GDK_GRAVITY_SOUTH;
-		gldi_container_calculate_rect (pContainer, pPointedIcon, &rect, &rect_anchor, &dialog_anchor, TRUE);
-		gdouble fAlignX = 0.0;
+		GtkPositionType pos;
+		gldi_container_calculate_rect (pContainer, pPointedIcon, &rect, &pos, FALSE);
 		
-		if (pContainer->bIsHorizontal == CAIRO_DOCK_VERTICAL)
-		{
-			gboolean bTopHalf = pDialog->container.bDirectionUp;
-			if (rect_anchor == GDK_GRAVITY_WEST)
-			{
-				rect_anchor = bTopHalf ? GDK_GRAVITY_NORTH_WEST : GDK_GRAVITY_SOUTH_WEST;
-				dialog_anchor = bTopHalf ? GDK_GRAVITY_SOUTH_EAST : GDK_GRAVITY_NORTH_EAST;
-			}
-			else
-			{
-				rect_anchor = bTopHalf ? GDK_GRAVITY_NORTH_EAST : GDK_GRAVITY_SOUTH_EAST;
-				dialog_anchor = bTopHalf ? GDK_GRAVITY_SOUTH_WEST : GDK_GRAVITY_NORTH_WEST;
-			}
-		}
-		else fAlignX = 0.5 - pDialog->fAlign;
+		gtk_popover_set_position (GTK_POPOVER (pDialog->container.pWidget), pos);
+		gtk_popover_set_pointing_to (GTK_POPOVER (pDialog->container.pWidget), &rect);
 		
-		// note: moving a dialog will only work if it is not mapped yet;
-		// if it is already shown, we need to hide and re-show it
-		GtkWidget *gtk_window = pDialog->container.pWidget;
-		gboolean bMapped = gtk_widget_get_mapped (gtk_window) && gldi_container_is_wayland_backend ();
-		if (bMapped) {
-			pDialog->bAllowMinimize = TRUE;
-			gtk_widget_hide (gtk_window);
-		}
-		gldi_container_move_to_rect (CAIRO_CONTAINER (pDialog), &rect,
-			rect_anchor, dialog_anchor, GDK_ANCHOR_SLIDE, fAlignX, 0);
-		if (bMapped) gtk_widget_show_all (gtk_window);
+		//!! TODO: gtk_popover_set_offset() to set an offset based on pDialog->fAlign ! (now it will be in the middle)
 	}
 }
 
@@ -570,7 +502,7 @@ static void _refresh_all_dialogs (gboolean bReplace)
 			if (pDialog->bHideOnClick)
 			{
 				if (gldi_container_is_visible (CAIRO_CONTAINER (pDialog)))
-					gtk_widget_hide (pDialog->container.pWidget);
+					gtk_widget_set_visible (pDialog->container.pWidget, FALSE);
 			}
 			else
 			{
@@ -609,21 +541,22 @@ static void _refresh_all_dialogs (gboolean bReplace)
 				else
 					_set_dialog_orientation (pDialog, pContainer);
 				
+				//!! TODO: iAimedX will likely not change
 				if (iAimedX != pDialog->iAimedX || iAimedY != pDialog->iAimedY)
 					gtk_widget_queue_draw (pDialog->container.pWidget);  // on redessine si la pointe change de position.
 			}
 		}
 	}
 }
-*/
+
 void gldi_dialogs_refresh_all (void)
 {
-	// _refresh_all_dialogs (FALSE);
+	_refresh_all_dialogs (FALSE);
 }
 
 void gldi_dialogs_replace_all (void)
 {
-	// _refresh_all_dialogs (TRUE);
+	_refresh_all_dialogs (TRUE);
 }
 
 
@@ -671,7 +604,7 @@ void gldi_dialog_hide (CairoDialog *pDialog)
 	if (gldi_container_is_visible (CAIRO_CONTAINER (pDialog)))
 	{
 		pDialog->bAllowMinimize = TRUE;
-		gtk_widget_hide (pDialog->container.pWidget);
+		gtk_widget_set_visible (pDialog->container.pWidget, FALSE);
 		pDialog->container.bInside = FALSE;
 		
 		_trigger_replace_all_dialogs ();
@@ -691,7 +624,7 @@ void gldi_dialog_unhide (CairoDialog *pDialog)
 		if (pIcon != NULL)
 		{
 			GldiContainer *pContainer = cairo_dock_get_icon_container (pIcon);
-			// _place_dialog (pDialog, pContainer);
+			_place_dialog (pDialog, pContainer);
 			
 			if (CAIRO_DOCK_IS_DOCK (pContainer) && cairo_dock_get_icon_max_scale (pIcon) < 1.01)  // same remark
 			{
@@ -706,7 +639,7 @@ void gldi_dialog_unhide (CairoDialog *pDialog)
 		}
 	}
 	pDialog->bPositionForced = FALSE;
-	// gtk_window_present (GTK_WINDOW (pDialog->container.pWidget));
+	gtk_popover_popup (GTK_POPOVER (pDialog->container.pWidget));
 }
 
 void gldi_dialog_toggle_visibility (CairoDialog *pDialog)
@@ -742,13 +675,13 @@ static gboolean on_icon_removed (G_GNUC_UNUSED gpointer pUserData, Icon *pIcon, 
 	}
 	return GLDI_NOTIFICATION_LET_PASS;
 }
-/*
+
 static gboolean on_icon_destroyed (G_GNUC_UNUSED gpointer pUserData, Icon *pIcon)
 {
 	gldi_dialogs_remove_on_icon (pIcon);
 	return GLDI_NOTIFICATION_LET_PASS;
 }
-*/
+
 CairoDialog *gldi_dialogs_foreach (GCompareFunc callback, gpointer data)
 {
 	CairoDialog *pDialog;
@@ -1176,10 +1109,10 @@ static void _reload_dialogs (void)
 		// reload the text buffer (color or font may have changed)
 		if (pDialog->cText != NULL)
 		{
-/*			gchar *cText = pDialog->cText;
+			gchar *cText = pDialog->cText;
 			pDialog->cText = NULL;
 			gldi_dialog_set_message (pDialog, cText);
-			g_free (cText);*/
+			g_free (cText);
 		}
 	}
 	
@@ -1199,14 +1132,14 @@ static gboolean on_style_changed (G_GNUC_UNUSED gpointer data)
 
 static void init (void)
 {
-/*	gldi_object_register_notification (&myDialogObjectMgr,
+	gldi_object_register_notification (&myDialogObjectMgr,
 		NOTIFICATION_RENDER,
 		(GldiNotificationFunc) _cairo_dock_render_dialog_notification,
 		GLDI_RUN_AFTER, NULL);
 	gldi_object_register_notification (&myDockObjectMgr,
 		NOTIFICATION_REMOVE_ICON,
 		(GldiNotificationFunc) on_icon_removed,
-		GLDI_RUN_AFTER, NULL); */
+		GLDI_RUN_AFTER, NULL);
 	gldi_object_register_notification (&myStyleMgr,
 		NOTIFICATION_STYLE_CHANGED,
 		(GldiNotificationFunc) on_style_changed,
@@ -1216,7 +1149,7 @@ static void init (void)
   ///////////////
  /// MANAGER ///
 ///////////////
-/*
+
 static void init_object (GldiObject *obj, gpointer attr)
 {
 	CairoDialog *pDialog = (CairoDialog*)obj;
@@ -1224,14 +1157,14 @@ static void init_object (GldiObject *obj, gpointer attr)
 	
 	// set parent -- note: on Wayland, it is an error to try to map (and position) a popup
 	// relative to a window that is not mapped; we need to take care of this
-	GtkWindow *tmp = GTK_WINDOW (pAttribute->pContainer->pWidget);
-	while (tmp && !gtk_widget_get_mapped (GTK_WIDGET(tmp)))
-		tmp = gtk_window_get_transient_for (tmp);
-	gtk_window_set_transient_for (GTK_WINDOW (pDialog->container.pWidget), tmp);
-	gldi_container_init_layer (&(pDialog->container), NULL); // dialogs are popups, we don't care about their namespace
+	GtkWidget *tmp = pAttribute->pContainer->pWidget;
+	while (tmp && !gtk_widget_get_mapped (tmp))
+		tmp = gtk_widget_get_parent (tmp);
+	gtk_widget_set_parent (pDialog->container.pWidget, tmp);
 	
 	//\________________ set up its orientation (do it now, as we need bDirectionUp to place the internal widgets)
 	pDialog->pIcon = pAttribute->pIcon;
+	//!! TODO: called by _place_dialog() below, might not be necessary !!
 	_set_dialog_orientation (pDialog, pAttribute->pContainer);  // renseigne aussi bDirectionUp, bIsHorizontal, et iHeight.
 	
 	gldi_dialog_init_internals (pDialog, pAttribute);
@@ -1241,15 +1174,14 @@ static void init_object (GldiObject *obj, gpointer attr)
 	//\________________ Interactive dialogs are set modal, to be fixed.
 	if ((pDialog->pInteractiveWidget || pDialog->pButtons || pAttribute->iTimeLength == 0) && ! pDialog->bNoInput)
 	{
-		gtk_window_set_modal (GTK_WINDOW (pDialog->container.pWidget), TRUE);  // Note: there is a bug in Ubuntu version of GTK: gtkscrolledwindow in dialog breaks his modality (http://www.gtkforums.com/viewtopic.php?f=3&t=55727, LP: https://bugs.launchpad.net/ubuntu/+source/overlay-scrollbar/+bug/903302).
+		gtk_popover_set_autohide (GTK_POPOVER (pDialog->container.pWidget), TRUE);
 		if (CAIRO_DOCK_IS_DOCK (pContainer))
 		{
-			CAIRO_DOCK (pContainer)->bHasModalWindow = TRUE;
-			gldi_dock_enter_synthetic (CAIRO_DOCK (pContainer));  // to prevent the dock from hiding. We want to see it while the dialog is visible (a leave event will be emitted when it disappears).
+			// to prevent the dock from hiding. We want to see it while the dialog is visible (a leave event will be emitted when it disappears).
+			gldi_dock_enter_synthetic (CAIRO_DOCK (pContainer));
 		}
 	}
-	else if (CAIRO_DOCK_IS_DOCK (pContainer))
-		CAIRO_DOCK (pContainer)->bHasModalWindow = TRUE;
+	if (CAIRO_DOCK_IS_DOCK (pContainer)) CAIRO_DOCK (pContainer)->bHasModalWindow = TRUE;
 	pDialog->bHideOnClick = pAttribute->bHideOnClick;
 	
 	Icon *pIcon = pAttribute->pIcon;
@@ -1264,37 +1196,37 @@ static void init_object (GldiObject *obj, gpointer attr)
 	//\________________ on le place parmi les autres.
 	_place_dialog (pDialog, pContainer);  // renseigne aussi bDirectionUp, bIsHorizontal, et iHeight.
 	
-	//\ Finally show the dialog
-	gtk_widget_show_all (pDialog->container.pWidget);
-	
 	//\________________ On connecte les signaux utiles.
-	g_signal_connect (G_OBJECT (pDialog->container.pWidget),
-		"button-press-event",
-		G_CALLBACK (on_button_press_dialog),
-		pDialog);
-	g_signal_connect (G_OBJECT (pDialog->container.pWidget),
-		"button-release-event",
-		G_CALLBACK (on_button_press_dialog),
-		pDialog);
-	g_signal_connect (G_OBJECT (pDialog->container.pWidget),
-		"key-press-event",
-		G_CALLBACK (on_key_press_dialog),
-		pDialog);
+	GtkGesture *pEventClick = gtk_gesture_click_new ();
+	gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (pEventClick), 1); // only left button
+	g_signal_connect (G_OBJECT (pEventClick), "pressed",
+		G_CALLBACK (_on_button_press_dialog), pDialog);
+	g_signal_connect (G_OBJECT (pEventClick), "released",
+		G_CALLBACK (_on_button_release_dialog), pDialog);
+	gtk_widget_add_controller (pDialog->container.pWidget, GTK_EVENT_CONTROLLER (pEventClick));
+	
+	GtkEventController *pEventKey = gtk_event_controller_key_new ();
+	g_signal_connect (G_OBJECT (pEventKey), "key-pressed",
+		G_CALLBACK (_on_key_press_dialog), pDialog);
+	gtk_widget_add_controller (pDialog->container.pWidget, pEventKey);
+	
 	if (pIcon != NULL)  // on inhibe le deplacement du dialogue lorsque l'utilisateur est dedans.
 	{
-		g_signal_connect (G_OBJECT (pDialog->container.pWidget),
-			"enter-notify-event",
-			G_CALLBACK (on_enter_dialog),
-			pDialog);
-		g_signal_connect (G_OBJECT (pDialog->container.pWidget),
-			"leave-notify-event",
-			G_CALLBACK (on_leave_dialog),
-			pDialog);
+		GtkEventController *pEventMotion = gtk_event_controller_motion_new ();
+		g_signal_connect (G_OBJECT (pEventMotion), "enter",
+			G_CALLBACK (_on_enter_dialog), pDialog);
+		g_signal_connect (G_OBJECT (pEventMotion), "leave",
+			G_CALLBACK (_on_leave_dialog), pDialog);
+		gtk_widget_add_controller (pDialog->container.pWidget, pEventMotion);
 		gldi_object_register_notification (pIcon,
 			NOTIFICATION_DESTROY,
 			(GldiNotificationFunc) on_icon_destroyed,
 			GLDI_RUN_AFTER, NULL);
 	}
+	
+	//\ Finally show the dialog
+	gtk_popover_popup (GTK_POPOVER (pDialog->container.pWidget));
+	if (pDialog->pInteractiveWidget) gtk_widget_grab_focus (pDialog->pInteractiveWidget); //!! TODO: is this necessary?
 	
 	//\________________ schedule the auto-destruction
 	if (pAttribute->iTimeLength != 0)
@@ -1312,6 +1244,8 @@ static void reset_object (GldiObject *obj)
 	{
 		g_source_remove (pDialog->iSidTimer);
 	}
+	
+	gtk_widget_unparent (pDialog->container.pWidget);
 	
 	// destroy private data
 	if (pDialog->pTextBuffer != NULL)
@@ -1358,7 +1292,7 @@ static void reset_object (GldiObject *obj)
 		_trigger_replace_all_dialogs ();
 	}
 }
-*/
+
 void gldi_register_dialogs_manager (void)
 {
 	// Manager
@@ -1385,8 +1319,8 @@ void gldi_register_dialogs_manager (void)
 	myDialogObjectMgr.cName 	= "Dialog";
 	myDialogObjectMgr.iObjectSize    = sizeof (CairoDialog);
 	// interface
-	// myDialogObjectMgr.init_object    = init_object;
-	// myDialogObjectMgr.reset_object   = reset_object;
+	myDialogObjectMgr.init_object    = init_object;
+	myDialogObjectMgr.reset_object   = reset_object;
 	// signals
 	gldi_object_install_notifications (&myDialogObjectMgr, NB_NOTIFICATIONS_DIALOG);
 	// parent object
