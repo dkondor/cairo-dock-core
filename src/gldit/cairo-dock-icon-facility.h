@@ -65,6 +65,7 @@ G_BEGIN_DECLS
 	(icon)->iRequestedWidth = 0; \
 	(icon)->iRequestedHeight = 0; } while(0)
 
+/** << **/
 #define cairo_dock_icon_get_requested_width(icon) (icon)->iRequestedWidth
 
 #define cairo_dock_icon_get_requested_height(icon) (icon)->iRequestedHeight
@@ -80,6 +81,7 @@ G_BEGIN_DECLS
 #define cairo_dock_icon_get_allocated_width(icon) (icon)->iAllocatedWidth
 
 #define cairo_dock_icon_get_allocated_height(icon) (icon)->iAllocatedHeight
+/** >> **/
 
 
 void gldi_icon_set_appli (Icon *pIcon, GldiWindowActor *pAppli);
@@ -228,9 +230,11 @@ Icon *cairo_dock_get_icon_with_name (GList *pIconList, const gchar *cName);
 */
 Icon *cairo_dock_get_icon_with_subdock (GList *pIconList, CairoDock *pSubDock);
 
+/** << **/
 Icon *gldi_icons_get_without_dialog (GList *pIconList);
 
 #define gldi_icons_get_any_without_dialog(...) gldi_icons_get_without_dialog (g_pMainDock?g_pMainDock->icons:NULL);
+/** >> **/
 
 gboolean gldi_icon_has_dialog (Icon *pIcon);
 
@@ -264,6 +268,7 @@ void cairo_dock_normalize_icons_order (GList *pIconList, CairoDockIconGroup iGro
 
 void cairo_dock_move_icon_after_icon (CairoDock *pDock, Icon *icon1, Icon *icon2);
 
+/** << **/
 /** Make an icon static or not. Static icons are not animated when mouse hovers them.
 *@param icon an icon.
 *@param _bStatic static or not.
@@ -279,8 +284,17 @@ void cairo_dock_move_icon_after_icon (CairoDock *pDock, Icon *icon1, Icon *icon2
 /** Set the label of an icon. If it has a sub-dock, it is renamed (the name is possibly altered to stay unique). The label buffer is updated too.
 *@param pIcon the icon.
 *@param cIconName the new label of the icon. You can even pass pIcon->cName. Can be NULL, but not recommended as it will result in missing name in the UI.
+*
+* Note: cIconName will be checked with g_utf8_validate() and truncated to only include valid UTF-8.
 */
 void gldi_icon_set_name (Icon *pIcon, const gchar *cIconName);
+
+/** Set the label of an icon. If it has a sub-dock, it is renamed (the name is possibly altered to stay unique). The label buffer is updated too.
+ * Same as \ref gldi_icon_set_name(), but the caller has to ensure that the passed name is valid UTF-8.
+*@param pIcon the icon.
+*@param cIconName the new label of the icon. You can even pass pIcon->cName. Can be NULL, but not recommended as it will result in missing name in the UI.
+*/
+void gldi_icon_set_name_utf8 (Icon *pIcon, const gchar *cIconName);
 
 /** Same as above, but takes a printf-like format string.
 *@param pIcon the icon.
@@ -301,7 +315,7 @@ void gldi_icon_set_quick_info (Icon *pIcon, const gchar *cQuickInfo);
 *@param ... data to be inserted into the string.
 */
 void gldi_icon_set_quick_info_printf (Icon *pIcon, const gchar *cQuickInfoFormat, ...) G_GNUC_PRINTF (2, 3);
-
+/** >> **/
 
 #define cairo_dock_listen_for_double_click(pIcon) (pIcon)->iNbDoubleClickListeners ++
 
@@ -335,8 +349,9 @@ void gldi_theme_icon_write_container_name_in_conf_file (Icon *pIcon, const gchar
 
 void gldi_theme_icon_write_order_in_conf_file (Icon *pIcon, double fOrder);
 
-
+/** << **/
 gboolean gldi_icon_launch_command (Icon *pIcon);
+/** >> **/
 
 /** Mark an Icon as 'launching'. This states lasts until the corresponding window appears (with a timeout of 15 seconds).
  * Typically used to prevent the program from being started 2 times in a row, or to keep the animation running until the program is started.
