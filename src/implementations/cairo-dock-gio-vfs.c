@@ -263,7 +263,7 @@ static void cairo_dock_gio_vfs_get_file_info (const gchar *cBaseURI, gchar **cNa
 		G_FILE_ATTRIBUTE_TIME_MODIFIED","
 		G_FILE_ATTRIBUTE_TIME_ACCESS","
 		G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE","
-		G_FILE_ATTRIBUTE_STANDARD_NAME","
+		G_FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME","
 		G_FILE_ATTRIBUTE_STANDARD_ICON","
 		G_FILE_ATTRIBUTE_THUMBNAIL_PATH","
 		G_FILE_ATTRIBUTE_STANDARD_TARGET_URI;
@@ -281,7 +281,7 @@ static void cairo_dock_gio_vfs_get_file_info (const gchar *cBaseURI, gchar **cNa
 		return ;
 	}
 	
-	const gchar *cFileName = g_file_info_get_name (pFileInfo);
+	const gchar *cFileName = g_file_info_get_display_name (pFileInfo); // in UTF-8 encoding
 	const gchar *cMimeType = g_file_info_get_content_type (pFileInfo);
 	GFileType iFileType = g_file_info_get_file_type (pFileInfo);
 	const gchar *cTargetURI = g_file_info_get_attribute_string (pFileInfo, G_FILE_ATTRIBUTE_STANDARD_TARGET_URI);
@@ -435,11 +435,11 @@ static GList *cairo_dock_gio_vfs_list_directory (const gchar *cBaseURI, CairoDoc
 		cURI = (*cBaseURI == '/' ? g_strconcat ("file://", cBaseURI, NULL) : g_strdup (cBaseURI));
 	*cValidUri = cURI;
 	
-	GFile *pFile = g_file_new_for_uri (cURI);
+	GFile *pFile = g_file_new_for_uri (cURI); // cURI in UTF-8
 	GError *erreur = NULL;
 	const gchar *cAttributes = G_FILE_ATTRIBUTE_STANDARD_TYPE","
 		G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE","
-		G_FILE_ATTRIBUTE_STANDARD_NAME","
+		G_FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME","
 		G_FILE_ATTRIBUTE_STANDARD_ICON","
 		G_FILE_ATTRIBUTE_THUMBNAIL_PATH","
 		G_FILE_ATTRIBUTE_STANDARD_IS_HIDDEN","
@@ -486,14 +486,14 @@ static GList *cairo_dock_gio_vfs_list_directory (const gchar *cBaseURI, CairoDoc
 				cd_message ("No ICON");
 				continue;
 			}
-			const gchar *cFileName = g_file_info_get_name (pFileInfo);
+			const gchar *cFileName = g_file_info_get_display_name (pFileInfo);
 			const gboolean bInfoHasContentType = g_file_info_has_attribute (pFileInfo, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE);
 			const gchar *cMimeType = bInfoHasContentType ? g_file_info_get_content_type (pFileInfo) : NULL;
 			gchar *cName = NULL;
 			
 			icon = cairo_dock_create_dummy_launcher (NULL, NULL, NULL, NULL, 0);
 			icon->iGroup = iNewIconsGroup;
-			icon->cBaseURI = g_strconcat (*cValidUri, "/", cFileName, NULL);
+			icon->cBaseURI = g_strconcat (*cValidUri, "/", cFileName, NULL); // UTF-8
 			//g_print	 ("+ %s (mime:%s)n", icon->cBaseURI, cMimeType);
 			
 			if (iFileType == G_FILE_TYPE_MOUNTABLE)
@@ -555,23 +555,22 @@ static GList *cairo_dock_gio_vfs_list_directory (const gchar *cBaseURI, CairoDoc
 				icon->cCommand = g_strdup (icon->cBaseURI);
 			icon->cName = cName;
 			icon->cFileName = g_strdup (g_file_info_get_attribute_byte_string (pFileInfo, G_FILE_ATTRIBUTE_THUMBNAIL_PATH));
-			if (cMimeType != NULL && strncmp (cMimeType, "image", 5) == 0)
+			if (icon->cFileName == NULL && cMimeType != NULL && strncmp (cMimeType, "image", 5) == 0)
 			{
 				gchar *cHostname = NULL;
-				gchar *cFilePath = g_filename_from_uri (icon->cBaseURI, &cHostname, &erreur);
+				GUri *pURI = g_uri_parse (icon->cBaseURI, G_URI_FLAGS_NONE, &erreur);
 				if (erreur != NULL)
 				{
 					g_error_free (erreur);
 					erreur = NULL;
 				}
-				else if (cHostname == NULL || strcmp (cHostname, "localhost") == 0)  // we get thumbnails only for local files.
+				else
 				{
-					icon->cFileName = g_strdup (cFilePath);
-					cairo_dock_remove_html_spaces (icon->cFileName);
+					const char *cHostname = g_uri_get_host (pURI);
+					if (cHostname == NULL || strcmp (cHostname, "localhost") == 0)  // we get thumbnails only for local files.
+						icon->cFileName = g_strdup (g_uri_get_path (pURI)); //!! TODO: this is also UTF-8
+					g_uri_unref (pURI);
 				}
-
-				g_free (cHostname);
-				g_free (cFilePath);
 			}
 			if (icon->cFileName == NULL)
 			{
