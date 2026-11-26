@@ -58,9 +58,9 @@ static void _get_dock_geometry (const CairoDock *pDock, GtkAllocation *pArea)
 		pArea->y = pDock->container.iWindowPositionX;
 	}
 	
-	if (gldi_container_is_wayland_backend ())
+	if (gldi_container_is_wayland_backend () && !gldi_window_manager_are_outputs_independent ())
 	{
-		// adjust based on the corresponding output's coordinates
+		// adjust based on the corresponding output's coordinates if needed
 		//!! TODO: move this to the container backends !!
 		gboolean bFound = FALSE;
 		GdkMonitor *monitor = NULL;
