@@ -435,6 +435,16 @@ gboolean gldi_window_manager_can_move_to_desktop (void)
 	return (s_backend.move_to_nth_desktop || s_backend.move_to_viewport_abs);
 }
 
+gboolean gldi_window_manager_are_outputs_independent (void)
+{
+	return (GPOINTER_TO_INT (s_backend.flags) & GLDI_WM_INDEPENDENT_OUTPUTS);
+}
+
+gboolean gldi_window_is_on_same_output_as_dock (const GldiWindowActor *actor, const CairoDock *pDock)
+{
+	if (s_backend.is_same_output) return s_backend.is_same_output (actor, pDock);
+	return TRUE; // default: same coordinate system
+}
 
 gchar* gldi_window_parse_class(const gchar* res_class, const gchar* res_name) {
 	gchar *cClass = NULL;

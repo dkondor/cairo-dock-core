@@ -27,7 +27,8 @@ typedef enum {
 	GLDI_WM_GEOM_REL_TO_VIEWPORT = 1, // if present, windows' geometry is relative to the viewport they are present on (and not to the current viewport)
 	GLDI_WM_NO_VIEWPORT_OVERLAP = 2, // if present, windows cannot span multiple viewports
 	GLDI_WM_HAVE_WINDOW_GEOMETRY = 4, // the WM provides valid window geometry information (in _GldiWindowActor::windowGeometry)
-	GLDI_WM_HAVE_WORKSPACES = 8 // the WM tracks which workspace (desktop, viewport) a window is on (in iNumDesktop, iViewPortX, iViewPortY)
+	GLDI_WM_HAVE_WORKSPACES = 8, // the WM tracks which workspace (desktop, viewport) a window is on (in iNumDesktop, iViewPortX, iViewPortY)
+	GLDI_WM_INDEPENDENT_OUTPUTS = 16 // each output has an independent coordinate system; the backend must provide the is_same_output() function
 	} GldiWMBackendFlags;
 
 /// Definition of the Windows Manager backend.
@@ -57,6 +58,7 @@ struct _GldiWindowManagerBackend {
 	void (*move_to_viewport_abs) (GldiWindowActor *actor, int iNumDesktop, int iViewportX, int iViewportY); // like move_to_nth_desktop, but use absolute viewport coordinates
 	gpointer flags; // GldiWMBackendFlags, cast to pointer
 	void (*get_supported_actions) (gboolean *bCanFullscreen, gboolean *bCanSticky, gboolean *bCanBelow, gboolean *bCanAbove, gboolean *bCanKill);
+	gboolean (*is_same_output) (const GldiWindowActor *actor, const CairoDock *pDock); // TRUE if actor and pDock are on the same output -- used only by the dock visibility backend
 	} ;
 
 /** Register a Window Manager backend. NULL functions are simply ignored.
@@ -123,6 +125,23 @@ void gldi_window_manager_get_supported_actions (
 	gboolean *bCanBelow,
 	gboolean *bCanAbove,
 	gboolean *bCanKill);
+
+/** Get whether each output has its independent coordinate system or whether
+* all outputs are arranged in one coordinate space.
+*/
+gboolean gldi_window_manager_are_outputs_independent (void);
+
+
+/** Get whether a window is on the same output as the given dock.
+* Only supported if gldi_window_manager_are_outputs_independent() return TRUE
+* (otherwise, this function always returns TRUE).
+*
+*@param actor the window to test
+*@param pDock the dock to test
+*@return TRUE if the given window and dock are on the same output.
+*/
+gboolean gldi_window_is_on_same_output_as_dock (const GldiWindowActor *actor, const CairoDock *pDock);
+
 
 /** Utility for parsing special cases in the window class / app ID;
 * used by both the X and Wayland backends.
