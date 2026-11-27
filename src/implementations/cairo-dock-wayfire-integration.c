@@ -24,8 +24,10 @@
 #ifdef HAVE_WAYLAND_PROTOCOLS
 
 #include "cairo-dock-wayland-wm.h"
-#include "cairo-dock-windows-manager.h"
+#include "cairo-dock-windows-manager-priv.h"
 #include "cairo-dock-wayland-manager-priv.h"
+#include "cairo-dock-foreign-toplevel.h"
+#include "wayland-wlr-foreign-toplevel-management-client-protocol.h" // zwlr_foreign_toplevel_handle_v1_destroy
 
 #ifdef HAVE_JSON
 
@@ -75,6 +77,24 @@ struct wf_keybinding
 };
 GList *s_pBindings = NULL; // list of registered keybindings (wf_keybinding structs)
 
+static GldiObjectManager myWayfireWindowObjectMgr;
+
+struct _GldiWfWindowActor {
+	GldiWaylandWindowActor wactor;
+	
+	uint32_t view_id; // IPC ID of this view -- note: a valid view ID is > 0 (Wayfire IPC IDs start from 0, but it will always be assigned to wf::compositor_core_t)
+	uint32_t output_id; // IPC ID of the output associated with this view
+	
+	gboolean bAbove; // whether this view is always on top
+	gboolean bPropsChecked; // whether we already queried the menu DBus properties for this view
+};
+typedef struct _GldiWfWindowActor GldiWfWindowActor;
+
+typedef enum {
+	NB_NOTIFICATIONS_WAYFIRE_WINDOW_MANAGER = NB_NOTIFICATIONS_WAYLAND_WM_MANAGER
+} CairoWfWMNotifications;
+
+
 // Helper function to signal failure and free one element of the queue
 void _cb_fail (gpointer data)
 {
@@ -93,7 +113,6 @@ void _cb_fail (gpointer data)
 	}
 }
 
-static void _vis_handle_broken_socket (void);
 void _handle_broken_socket (void)
 {
 	if (s_sidIO) g_source_remove (s_sidIO); // will close the socket and free s_pIOChannel as well
@@ -102,7 +121,6 @@ void _handle_broken_socket (void)
 	g_queue_clear_full (&s_cb_queue, _cb_fail);
 	g_list_free_full (s_pBindings, g_free);
 	s_pBindings = NULL;
-	_vis_handle_broken_socket ();
 }
 
 /*
@@ -389,35 +407,25 @@ static void _start_watch_events (void);
 static gboolean s_bHaveAbove = FALSE; // whether Wayfire provides the "view-above" event
 static gboolean s_bCanSticky = FALSE;
 static gboolean s_bCanAbove = FALSE;
-static gboolean s_bNeedStickyAbove = FALSE; // toplevel manager requested the above functionality
 static gboolean s_bHaveMenuProps = FALSE; // if gtk-shell and kde-appmenu properties are available
 static gboolean s_bCoordsFloat = FALSE; // coordinates are reported as floats (newer Wayfire versions)
 
 static gboolean s_bWatchWMEvents = FALSE;
 // hash table mapping view IPC IDs to window actors
-static GHashTable *s_pActorMap = NULL; // key: IPC ID, value: GldiWaylandWindowActor*
-// hash table IDs seen in the IPC interface but not with a matching GldiWaylandWindowActor
-typedef enum {
+static GHashTable *s_pActorMap = NULL; // key: IPC ID, value: GldiWfWindowActor*
+// hash table IDs seen in the IPC interface but not with a matching GldiWfWindowActor
+typedef struct _WfMissingActorData {
+	gboolean bSticky;
+	gboolean bAbove;
+	uint32_t output_id;
+	GtkAllocation windowGeometry;
+} WfMissingActorData;
+
+/*typedef enum {
 	MISSING_ACTOR_STATE_STICKY = 1,
 	MISSING_ACTOR_STATE_ABOVE = 2
-} WfMissingActorState;
-static GHashTable *s_pMissingActors = NULL; // key: IPC ID, value: WfMissingActorState
-
-// extra data to store with views
-typedef struct _wf_view_data {
-	uint32_t id; // IPC ID of this view
-	gboolean bAbove; // whether this view is always on top
-	gboolean bPropsChecked; // whether we already queried the menu DBus properties for this view
-} wf_view_data;
-
-// function to free view data in s_pActorMap
-static void _reset_view_data (gpointer data)
-{
-	GldiWaylandWindowActor *wactor = (GldiWaylandWindowActor*)data;
-	if (!wactor->pExtraData) return;
-	g_free (wactor->pExtraData);
-	wactor->pExtraData = NULL;
-}
+} WfMissingActorState; */
+static GHashTable *s_pMissingActors = NULL; // key: IPC ID, value: WfMissingActorData
 
 typedef enum {
 	PROP_GTK_BUS_NAME,
@@ -522,18 +530,17 @@ static void _check_menu_props (uint32_t id)
 static gboolean _wf_on_window_created (G_GNUC_UNUSED gpointer data, GldiWindowActor *actor)
 {
 	if (!(s_bCanAbove || s_bCanSticky || s_bHaveMenuProps)) return GLDI_NOTIFICATION_LET_PASS;
-	if (!GLDI_OBJECT_IS_WAYLAND_WINDOW (actor)) return GLDI_NOTIFICATION_LET_PASS;
+	if (!gldi_object_is_manager_child (GLDI_OBJECT(actor), &myWayfireWindowObjectMgr)) return GLDI_NOTIFICATION_LET_PASS;
 	
-	GldiWaylandWindowActor *wactor = (GldiWaylandWindowActor*)actor;
-	if (!wactor->cClassExtra) return GLDI_NOTIFICATION_LET_PASS;
-	if (wactor->pExtraData)
+	GldiWfWindowActor *wfactor = (GldiWfWindowActor*)actor;
+	if (!wfactor->wactor.cClassExtra) return GLDI_NOTIFICATION_LET_PASS;
+	if (wfactor->view_id)
 	{
-		// already processed, should not happen
-		cd_warning ("Window already seen!");
+		cd_warning ("View already seen!");
 		return GLDI_NOTIFICATION_LET_PASS;
 	}
 	
-	const char *tmp = strstr (wactor->cClassExtra, "wf-ipc-");
+	const char *tmp = strstr (wfactor->wactor.cClassExtra, "wf-ipc-");
 	if (tmp)
 	{
 		tmp += 7; // strlen ("wf-ipc-")
@@ -545,25 +552,26 @@ static gboolean _wf_on_window_created (G_GNUC_UNUSED gpointer data, GldiWindowAc
 			if (errno == 0 && end != tmp)
 			{
 				// valid ID
-				wf_view_data *pData = g_new0 (wf_view_data, 1);
-				pData->id = id;
-				wactor->pExtraData = pData; // pExtraData should be NULL here
-				g_hash_table_insert (s_pActorMap, GUINT_TO_POINTER (id), wactor); // note: will invalidate any previous value
+				wfactor->view_id = id;
+				g_hash_table_insert (s_pActorMap, GUINT_TO_POINTER (id), wfactor); // note: will invalidate any previous value
 				
 				// check if this view was already seen
 				gpointer tmp;
 				if (g_hash_table_lookup_extended (s_pMissingActors, GUINT_TO_POINTER (id), NULL, &tmp))
 				{
-					WfMissingActorState st = GPOINTER_TO_INT (tmp);
-					gldi_wayland_wm_sticky_changed (wactor, st & MISSING_ACTOR_STATE_STICKY, TRUE);
-					pData->bAbove = st & MISSING_ACTOR_STATE_ABOVE;
+					GldiWaylandWindowActor *wactor = (GldiWaylandWindowActor*)actor;
+					WfMissingActorData *pData = (WfMissingActorData*) (tmp);
+					gldi_wayland_wm_sticky_changed (wactor, pData->bSticky, TRUE);
+					wfactor->bAbove = pData->bAbove;
+					wfactor->output_id = pData->output_id;
+					gldi_wayland_wm_geometry_changed (wactor, &pData->windowGeometry, TRUE);
 					g_hash_table_remove (s_pMissingActors, GUINT_TO_POINTER (id));
 				}
 				
 				if (s_bHaveMenuProps)
 				{
 					_check_menu_props (id);
-					pData->bPropsChecked = TRUE;
+					wfactor->bPropsChecked = TRUE;
 				}
 			}
 			else cd_warning ("Error parsing IPC ID: %s", tmp - 7);
@@ -576,15 +584,16 @@ static gboolean _wf_on_window_created (G_GNUC_UNUSED gpointer data, GldiWindowAc
 static gboolean _wf_on_window_destroyed (G_GNUC_UNUSED gpointer data, GldiWindowActor *actor)
 {
 	if (!(s_bCanAbove || s_bCanSticky || s_bHaveMenuProps)) return GLDI_NOTIFICATION_LET_PASS;
-	if (!GLDI_OBJECT_IS_WAYLAND_WINDOW (actor)) return GLDI_NOTIFICATION_LET_PASS;
+	if (!gldi_object_is_manager_child (GLDI_OBJECT(actor), &myWayfireWindowObjectMgr)) return GLDI_NOTIFICATION_LET_PASS;
 	
-	GldiWaylandWindowActor *wactor = (GldiWaylandWindowActor*)actor;
-	if (!wactor->pExtraData) return GLDI_NOTIFICATION_LET_PASS;
+	GldiWfWindowActor *wfactor = (GldiWfWindowActor*)actor;
+	if (!wfactor->view_id) return GLDI_NOTIFICATION_LET_PASS;
 	
-	wf_view_data *pData = (wf_view_data*)wactor->pExtraData;
-	wactor->pExtraData = NULL;
-	g_hash_table_remove (s_pActorMap, GUINT_TO_POINTER (pData->id));
-	g_free (pData);
+	g_hash_table_remove (s_pActorMap, GUINT_TO_POINTER (wfactor->view_id));
+	
+	wfactor->view_id = 0; // need to reset as we can call function from _wf_on_window_class_changed() below
+	wfactor->bAbove = FALSE;
+	wfactor->bPropsChecked = FALSE;
 	
 	return GLDI_NOTIFICATION_LET_PASS;
 }
@@ -593,27 +602,26 @@ static gboolean _wf_on_window_class_changed (G_GNUC_UNUSED gpointer ptr, GldiWin
 	G_GNUC_UNUSED const gchar *cOldClass, G_GNUC_UNUSED const gchar *cOldWmClass)
 {
 	if (!(s_bCanAbove || s_bCanSticky || s_bHaveMenuProps)) return GLDI_NOTIFICATION_LET_PASS;
-	if (!GLDI_OBJECT_IS_WAYLAND_WINDOW (actor)) return GLDI_NOTIFICATION_LET_PASS;
+	if (!gldi_object_is_manager_child (GLDI_OBJECT(actor), &myWayfireWindowObjectMgr)) return GLDI_NOTIFICATION_LET_PASS;
 	
-	GldiWaylandWindowActor *wactor = (GldiWaylandWindowActor*)actor;
-	gboolean bHaveData = (wactor->pExtraData != NULL);
-	wf_view_data data;
-	if (bHaveData)
+	GldiWfWindowActor *wfactor = (GldiWfWindowActor*)actor;
+	uint32_t old_id = wfactor->view_id;
+	gboolean bAbove, bPropsChecked;
+	if (old_id)
 	{
-		wf_view_data *pData = (wf_view_data*)wactor->pExtraData;
-		data = *pData;
+		bAbove = wfactor->bAbove;
+		bPropsChecked = wfactor->bPropsChecked;
 	}
 	
 	_wf_on_window_destroyed (NULL, actor);
 	_wf_on_window_created (NULL, actor);
 	
-	if (bHaveData && (wactor->pExtraData != NULL))
+	if (old_id && (wfactor->view_id != 0))
 	{
-		wf_view_data *pData = (wf_view_data*)wactor->pExtraData;
-		if (pData->id == data.id) // ID should be the same, but just in case
+		if (old_id == wfactor->view_id)
 		{
-			pData->bAbove = data.bAbove;
-			pData->bPropsChecked = data.bPropsChecked;
+			wfactor->bAbove = bAbove;
+			wfactor->bPropsChecked = bPropsChecked;
 		}
 		else cd_warning ("View ID changed unexpectedly!");
 	}
@@ -635,8 +643,8 @@ static void _init_window_maping (void)
 	if (! (s_bCanAbove || s_bCanSticky || s_bHaveMenuProps)) return;
 	if (s_bWatchWMEvents) return; // already started
 	
-	s_pActorMap = g_hash_table_new_full (NULL, NULL, NULL, _reset_view_data);
-	s_pMissingActors = g_hash_table_new (NULL, NULL);
+	s_pActorMap = g_hash_table_new (NULL, NULL);
+	s_pMissingActors = g_hash_table_new_full (NULL, NULL, NULL, g_free);
 	
 	gldi_object_register_notification (&myWindowObjectMgr,
 		NOTIFICATION_WINDOW_CREATED,
@@ -660,14 +668,14 @@ static void _init_window_maping (void)
 }
 
 
-void gldi_wf_init_sticky_above (void)
+static void _get_supported_actions (gboolean *bCanFullscreen, gboolean *bCanSticky, gboolean *bCanBelow, gboolean *bCanAbove, gboolean *bCanKill)
 {
-	if (s_bCanAbove || s_bCanSticky) _init_window_maping ();
-	else s_bNeedStickyAbove = TRUE;
-}
-
-void gldi_wf_can_sticky_above (gboolean *bCanSticky, gboolean *bCanAbove)
-{
+	// note: there is no capabilities event, we just guess based on the requests that are available
+	if (bCanFullscreen) *bCanFullscreen = TRUE;
+	if (bCanSticky) *bCanSticky = FALSE;
+	if (bCanBelow) *bCanBelow = FALSE;
+	if (bCanAbove) *bCanAbove = FALSE;
+	if (bCanKill) *bCanKill = FALSE;
 	if (bCanSticky) *bCanSticky = s_bCanSticky && s_bWatchWMEvents;
 	if (bCanAbove) *bCanAbove = s_bCanAbove && s_bWatchWMEvents;
 }
@@ -675,11 +683,9 @@ void gldi_wf_can_sticky_above (gboolean *bCanSticky, gboolean *bCanAbove)
 void gldi_wf_set_sticky (GldiWindowActor *actor, gboolean bSticky)
 {
 	if (! (s_bCanSticky && s_bWatchWMEvents)) return;
-	GldiWaylandWindowActor *wactor = (GldiWaylandWindowActor*)actor;
-	if (!wactor->pExtraData) return;
-	
-	wf_view_data *pData = (wf_view_data*)wactor->pExtraData;
-	uint32_t id = pData->id;
+	GldiWfWindowActor *wactor = (GldiWfWindowActor*)actor;
+	uint32_t id = wactor->view_id;
+	if (!id) return;
 	
 	struct json_object *obj = json_object_new_object ();
 	json_object_object_add (obj, "method", json_object_new_string ("wm-actions/set-sticky"));
@@ -691,17 +697,21 @@ void gldi_wf_set_sticky (GldiWindowActor *actor, gboolean bSticky)
 	json_object_put (obj);
 }
 
+typedef struct _WfAboveCbData {
+	uint32_t id;
+	gboolean bAbove;
+} WfAboveCbData;
+
 static void _set_above_cb (gboolean bSuccess, gpointer ptr)
 {
 	if (bSuccess)
 	{
 		// let's try to set the bAbove for this view
-		wf_view_data *pData = (wf_view_data*)ptr;
-		GldiWaylandWindowActor *wactor = g_hash_table_lookup (s_pActorMap, GUINT_TO_POINTER (pData->id));
-		if (wactor && wactor->pExtraData)
+		WfAboveCbData *pData = (WfAboveCbData*)ptr;
+		GldiWfWindowActor *wfactor = g_hash_table_lookup (s_pActorMap, GUINT_TO_POINTER (pData->id));
+		if (wfactor)
 		{
-			wf_view_data *pActorData = (wf_view_data*)wactor->pExtraData;
-			pActorData->bAbove = pData->bAbove;
+			wfactor->bAbove = pData->bAbove;
 		}
 	}
 	g_free (ptr);
@@ -710,11 +720,9 @@ static void _set_above_cb (gboolean bSuccess, gpointer ptr)
 void gldi_wf_set_above (GldiWindowActor *actor, gboolean bAbove)
 {
 	if (! (s_bCanAbove && s_bWatchWMEvents)) return;
-	GldiWaylandWindowActor *wactor = (GldiWaylandWindowActor*)actor;
-	if (!wactor->pExtraData) return;
-	
-	wf_view_data *pData = (wf_view_data*)wactor->pExtraData;
-	uint32_t id = pData->id;
+	GldiWfWindowActor *wactor = (GldiWfWindowActor*)actor;
+	uint32_t id = wactor->view_id;
+	if (!id) return;
 	
 	struct json_object *obj = json_object_new_object ();
 	json_object_object_add (obj, "method", json_object_new_string ("wm-actions/set-always-on-top"));
@@ -723,10 +731,10 @@ void gldi_wf_set_above (GldiWindowActor *actor, gboolean bAbove)
 	json_object_object_add (data, "view-id", json_object_new_uint64 (id));
 	json_object_object_add (obj, "data", data);
 	
-	wf_view_data *cbdata = NULL;
+	WfAboveCbData *cbdata = NULL;
 	if (!s_bHaveAbove)
 	{
-		cbdata = g_new0 (wf_view_data, 1);
+		cbdata = g_new0 (WfAboveCbData, 1);
 		cbdata->id = id;
 		cbdata->bAbove = bAbove;
 	}
@@ -737,308 +745,39 @@ void gldi_wf_set_above (GldiWindowActor *actor, gboolean bAbove)
 void gldi_wf_is_above_or_below (GldiWindowActor *actor, gboolean *bIsAbove, gboolean *bIsBelow)
 {
 	if (bIsBelow) *bIsBelow = FALSE;
-	if (bIsAbove) *bIsAbove = FALSE;
-	else return;
-	
-	GldiWaylandWindowActor *wactor = (GldiWaylandWindowActor*)actor;
-	if (!wactor->pExtraData) return;
-	
-	wf_view_data *pData = (wf_view_data*)wactor->pExtraData;
-	*bIsAbove = pData->bAbove;
+	if (bIsAbove)
+	{
+		GldiWfWindowActor *wfactor = (GldiWfWindowActor*)actor;
+		*bIsAbove = wfactor->bAbove;
+	}
+}
+
+static void _reset_object (GldiObject *obj)
+{
+	GldiWfWindowActor *wfactor = (GldiWfWindowActor*)obj;
+	zwlr_foreign_toplevel_handle_v1_destroy ((struct zwlr_foreign_toplevel_handle_v1*) wfactor->wactor.handle);
 }
 
 /***********************************************************************
- * dock visibility backend
+ * watch views' state
  ***********************************************************************/
 
-// private data
-
-// whether we are watching events for any dock (dock visibility)
-static gboolean s_bWatchVisEvents = FALSE;
 // whether we registered a watch (we can only do this once)
 static gboolean s_bWatchRegistered = FALSE;
 // whether we received Wayfire's configuration
 static gboolean s_bGotConfig = FALSE;
 // whether we received the initial list of views already
 static gboolean s_bListViewsDone = FALSE;
-// hash table tracking window positions (note: we track positions
-// separately, so dock visibility tracking will work even if we
-// don't receive IPC IDs)
-typedef struct _wf_window_pos {
-	GdkRectangle rect;
-	uint32_t output_id;
-} wf_window_pos;
-static GHashTable *s_pWindowPos = NULL; // key: IPC ID, value: wf_window_pos*
-static uint32_t s_last_active = (uint32_t)-1; // last known active view (-1 means none)
-
-// data attached to each dock
-typedef struct _wf_vis_data {
-	gboolean bListening; // whether we are keeping track of this dock's overlaps
-	int x, y; // note: can be negative (although not expected)
-	int w, h;
-	uint32_t output_id; // ID of the output the dock is on
-} wf_vis_data;
-
-static gboolean _free_vis_data_for_dock (G_GNUC_UNUSED gpointer data, GldiObject *pObj)
-{
-	CairoDock *pDock = CAIRO_DOCK (pObj);
-	if (pDock->pVisibilityData) g_free (pDock->pVisibilityData);
-	pDock->pVisibilityData = NULL; // need to set to NULL, since our refresh () function may still be called
-	return GLDI_NOTIFICATION_LET_PASS;
-}
-
-// get the visibility data for this dock, or allocate it if not yet available
-static wf_vis_data *_get_dock_vis_data (CairoDock *pDock)
-{
-	if (pDock->pVisibilityData) return (wf_vis_data*) pDock->pVisibilityData;
-	
-	wf_vis_data *data = g_new0 (wf_vis_data, 1);
-	pDock->pVisibilityData = data;
-	
-	// add a weak ref to free the data when this dock is destroyed
-	gldi_object_register_notification (GLDI_OBJECT (pDock), NOTIFICATION_DESTROY,
-		(GldiNotificationFunc) _free_vis_data_for_dock, FALSE, NULL);
-	
-	return data;
-}
-
-static void _free_vis_data_and_show (CairoDock *pDock, G_GNUC_UNUSED void *ptr)
-{
-	if (pDock->pVisibilityData)
-	{
-		gldi_object_remove_notification (GLDI_OBJECT (pDock), NOTIFICATION_DESTROY,
-			(GldiNotificationFunc) _free_vis_data_for_dock, NULL);
-		g_free (pDock->pVisibilityData);
-		pDock->pVisibilityData = NULL;
-	}
-	if (pDock->iVisibility == CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP ||
-		pDock->iVisibility == CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP_ANY)
-	{
-		// avoid the dock staying hidden in this case
-		if (cairo_dock_is_temporary_hidden (pDock))
-			cairo_dock_deactivate_temporary_auto_hide (pDock);
-	}
-}
-
-static void _reset_dock_vis_data (CairoDock *pDock, G_GNUC_UNUSED void *ptr)
-{
-	if (pDock->pVisibilityData)
-	{
-		wf_vis_data* data = (wf_vis_data*)pDock->pVisibilityData;
-		data->w = -1; // will be ignored if we restart monitoring until
-		data->h = -1; // we get valid coordinates again
-	}
-}
-
-static void _visibility_stop (void)
-{
-	s_bWatchVisEvents = FALSE; // any remaining incoming events will be discarded
-	if (!s_bWatchWMEvents) s_bListViewsDone = FALSE;
-	gldi_docks_foreach_root ((GFunc)_reset_dock_vis_data, NULL);
-	g_hash_table_remove_all (s_pWindowPos);
-}
-
-
-// Check if a dock overlaps with a given rectangle.
-// Caller should ensure that pDock->pVisibilityData != NULL
-static gboolean _check_overlap (CairoDock *pDock, wf_window_pos *pWindowPos)
-{
-	wf_vis_data *dock_rect = (wf_vis_data*) pDock->pVisibilityData;
-	if (dock_rect->w < 0 || dock_rect->h < 0) return FALSE; // we are not monitoring this dock
-	if (dock_rect->output_id != pWindowPos->output_id) return FALSE; // not on the same ouput
-	
-	int dx, dy, dw, dh;
-	if (pDock->container.bIsHorizontal)
-	{
-		dw = pDock->iMinDockWidth;
-		dh = pDock->iMinDockHeight;
-		dx = (pDock->container.iWidth - pDock->iMinDockWidth)/2;
-		dy = (pDock->container.bDirectionUp ? pDock->container.iHeight - pDock->iMinDockHeight : 0);
-	}
-	else
-	{
-		dw = pDock->iMinDockHeight;
-		dh = pDock->iMinDockWidth;
-		dx = (pDock->container.bDirectionUp ? pDock->container.iHeight - pDock->iMinDockHeight : 0);
-		dy = (pDock->container.iWidth - pDock->iMinDockWidth)/2;
-	}
-	
-	dx += dock_rect->x;
-	dy += dock_rect->y;
-	
-	GdkRectangle *pArea = &(pWindowPos->rect);
-	return ((pArea->x < dx + dw) && (pArea->x + pArea->width > dx) &&
-		(pArea->y < dy + dh) && (pArea->y + pArea->height > dy));
-}
-
-static gboolean _check_overlap2 (G_GNUC_UNUSED gpointer key, gpointer value, gpointer user_data)
-{
-	return _check_overlap ((CairoDock*)user_data, (wf_window_pos*)value);
-}
-
-static void _wf_hide_show_if_on_our_way (CairoDock *pDock, wf_window_pos *pRect)
-{
-	if (pDock->iVisibility != CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP)
-		return ;
-	
-	gboolean bShow = TRUE;
-	if (pRect && pDock->pVisibilityData) bShow = ! _check_overlap (pDock, pRect);
-	
-	if (bShow)
-	{
-		if (cairo_dock_is_temporary_hidden (pDock))
-			cairo_dock_deactivate_temporary_auto_hide (pDock);
-	}
-	else if (!cairo_dock_is_temporary_hidden (pDock))
-		cairo_dock_activate_temporary_auto_hide (pDock);
-}
-
-static gboolean _wf_dock_has_overlapping_window (CairoDock *pDock)
-{
-	return g_hash_table_find (s_pWindowPos, _check_overlap2, pDock) != NULL;
-}
-
-static void _wf_hide_if_overlap_or_show_if_no_overlapping_window (CairoDock *pDock, gpointer data)
-{
-	if (pDock->iVisibility != CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP_ANY)
-		return ;
-	
-	wf_window_pos *pRect = (wf_window_pos*)data;
-	
-	if (pRect && _check_overlap (pDock, pRect))
-	{
-		// dock should be hidden
-		if (!cairo_dock_is_temporary_hidden (pDock))
-			cairo_dock_activate_temporary_auto_hide (pDock);
-	}
-	else if (cairo_dock_is_temporary_hidden (pDock))
-	{
-		// dock should be shown if it does not overlap with any other window
-		if (!_wf_dock_has_overlapping_window (pDock))
-			cairo_dock_deactivate_temporary_auto_hide (pDock);
-	}
-}
-
-static void _wf_hide_if_any_overlap_or_show (CairoDock *pDock, G_GNUC_UNUSED gpointer data)
-{
-	if (pDock->iVisibility != CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP_ANY)
-		return ;
-	if (cairo_dock_is_temporary_hidden (pDock))
-	{
-		if (!_wf_dock_has_overlapping_window (pDock))
-		{
-			cairo_dock_deactivate_temporary_auto_hide (pDock);
-		}
-	}
-	else
-	{
-		if (_wf_dock_has_overlapping_window (pDock))
-		{
-			cairo_dock_activate_temporary_auto_hide (pDock);
-		}
-	}
-}
-
-
-static void _check_should_listen_dock (CairoDock *pDock, void *ptr)
-{
-	gboolean *pShouldListen = (gboolean*)ptr;
-	*pShouldListen |= (pDock->iVisibility == CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP ||
-		pDock->iVisibility == CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP_ANY);
-}
-
-static void _vis_handle_broken_socket (void)
-{
-	if (s_bWatchWMEvents)
-	{
-		gldi_object_remove_notification (&myWindowObjectMgr, NOTIFICATION_WINDOW_CREATED,
-			(GldiNotificationFunc) _wf_on_window_created, NULL);
-		gldi_object_remove_notification (&myWindowObjectMgr, NOTIFICATION_WINDOW_DESTROYED,
-			(GldiNotificationFunc) _wf_on_window_destroyed, NULL);
-		gldi_object_remove_notification (&myWindowObjectMgr, NOTIFICATION_WINDOW_CLASS_CHANGED,
-			(GldiNotificationFunc) _wf_on_window_class_changed, NULL);
-	}
-	
-	s_bWatchRegistered = FALSE;
-	s_bWatchVisEvents = FALSE;
-	s_bWatchWMEvents = FALSE;
-	s_bListViewsDone = FALSE;
-	gldi_docks_foreach_root ((GFunc)_free_vis_data_and_show, NULL);
-	g_hash_table_remove_all (s_pWindowPos);
-	g_hash_table_remove_all (s_pActorMap);
-	g_hash_table_remove_all (s_pMissingActors);
-}
 
 static void _add_vis_watch_cb (gboolean bSuccess, G_GNUC_UNUSED gpointer user_data);
 static void _list_views_cb (const struct json_object *arr);
 static void _process_view (const gchar *event, const struct json_object *view);
 static void _got_configuration (struct json_object *conf);
-static void _visibility_refresh (CairoDock *pDock)
-{
-	gboolean bShouldListen = (pDock->iVisibility == CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP ||
-		pDock->iVisibility == CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP_ANY);
-	
-	if (! bShouldListen)
-	{
-		if (pDock->pVisibilityData) ((wf_vis_data*)pDock->pVisibilityData)->bListening = FALSE;
-		
-		// re-check all root docks (can be the case when pDock is being destroyed,
-		// so pVisibilityData == NULL for it already)
-		gldi_docks_foreach_root ((GFunc)_check_should_listen_dock, &bShouldListen);
-		if (! bShouldListen && s_bWatchVisEvents) _visibility_stop ();
-		return;
-	}
-	
-	// in this case, we need to listen to events from this dock
-	wf_vis_data *data = _get_dock_vis_data (pDock);
-	data->bListening = TRUE;
-	if (s_bWatchVisEvents) // already listening, but need to re-check this dock
-	{
-		if (pDock->iVisibility == CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP_ANY)
-			_wf_hide_if_any_overlap_or_show (pDock, NULL);
-		else
-		{
-			// hide if overlap with the active window
-			if (s_last_active == (uint32_t)-1)
-			{
-				if (cairo_dock_is_temporary_hidden (pDock))
-					cairo_dock_deactivate_temporary_auto_hide (pDock);
-			}
-			else
-			{
-				wf_window_pos *pRect = g_hash_table_lookup (s_pWindowPos, GUINT_TO_POINTER (s_last_active));
-				if (!pRect) cd_warning ("Cannot find the active window's coordinates!"); // should not happen
-				else _wf_hide_show_if_on_our_way (pDock, pRect);
-			}
-		}
-		return;
-	}
-	
-	// Start listening to events now
-	// ensure that we have a valid hash table
-	if (! s_pWindowPos)
-	{
-		s_pWindowPos = g_hash_table_new_full (
-			NULL, // hash func -- use g_direct_hash (keys are just integers)
-			NULL, // key equal func -- use direct comparison
-			NULL, // key destroy notify
-			g_free // value destroy notify
-		);
-	}
-	
-	s_bWatchVisEvents = TRUE;
-	_start_watch_events ();
-}
 
 static void _start_watch_events (void)
 {
 	// start listening to Wayfire's events
-	if (s_bWatchRegistered)
-	{
-		if (s_bGotConfig) _add_vis_watch_cb (TRUE, NULL); // otherwise, we'll handle this from _got_configuration ()
-		return;
-	}
-	
+	if (s_bWatchRegistered) return;
 	s_bWatchRegistered = TRUE; // we can only try once
 	
 	// check first whether the view-above event is available
@@ -1066,7 +805,6 @@ static void _got_configuration (struct json_object *conf)
 		s_bHaveAbove = (ver >= 20251226);
 		s_bHaveMenuProps = (ver >= 20260122);
 		s_bCoordsFloat = (ver >= 20260617);
-		if (s_bHaveMenuProps) _init_window_maping (); // no-op if already started
 	}
 	else cd_warning ("Cannot parse Wayfire version!");
 	
@@ -1075,10 +813,10 @@ static void _got_configuration (struct json_object *conf)
 	const gchar *watch_req =
 	s_bHaveAbove ?
 "{\"method\": \"window-rules/events/watch\", \"data\": {"
-"\"events\": [\"view-focused\", \"view-geometry-changed\", \"view-minimized\","
+"\"events\": [\"view-geometry-changed\","
 "\"view-mapped\", \"view-unmapped\", \"view-sticky\", \"view-always-on-top\"] } }" :
 "{\"method\": \"window-rules/events/watch\", \"data\": {"
-"\"events\": [\"view-focused\", \"view-geometry-changed\", \"view-minimized\","
+"\"events\": [\"view-geometry-changed\","
 "\"view-mapped\", \"view-unmapped\", \"view-sticky\"] } }";
 
 	int ret = _send_msg_full (watch_req, strlen (watch_req), s_pIOChannel);
@@ -1103,7 +841,7 @@ static void _add_vis_watch_cb (gboolean bSuccess, G_GNUC_UNUSED gpointer user_da
 		return;
 	}
 	
-	if (! (s_bWatchVisEvents || s_bWatchWMEvents)) return; // if cancelled in the meantime
+	if (!s_bWatchWMEvents) return; // if cancelled in the meantime
 	
 	// now we are watching events, but we need to call list-views, since
 	// we may not get events about all of them
@@ -1124,7 +862,7 @@ static void _add_vis_watch_cb (gboolean bSuccess, G_GNUC_UNUSED gpointer user_da
 
 static void _list_views_cb (const struct json_object *arr)
 {
-	if (! (s_bWatchVisEvents || s_bWatchWMEvents)) return; // if cancelled before getting results
+	if (!s_bWatchWMEvents) return; // if cancelled before getting results
 	
 	size_t i;
 	size_t len = json_object_array_length (arr);
@@ -1134,12 +872,7 @@ static void _list_views_cb (const struct json_object *arr)
 		if (tmp) _process_view (NULL, tmp);
 	}
 	
-	if (s_bWatchVisEvents)
-	{
-		gldi_docks_foreach_root ((GFunc)_wf_hide_if_any_overlap_or_show, NULL);
-		wf_window_pos *pRect = (s_last_active != (uint32_t)-1) ? g_hash_table_lookup (s_pWindowPos, GUINT_TO_POINTER (s_last_active)) : NULL;
-		if (pRect) gldi_docks_foreach_root ((GFunc)_wf_hide_show_if_on_our_way, pRect);
-	}
+	gldi_docks_visibility_start (); // will refresh dock visibility if needed
 	
 	s_bListViewsDone = TRUE;
 }
@@ -1174,13 +907,13 @@ static gboolean _get_float_value (const struct json_object *obj, const gchar *ke
 	return TRUE;
 }
 
-static gboolean _get_view_geometry (const struct json_object *view, wf_window_pos *rect)
+static gboolean _get_view_geometry (const struct json_object *view, GtkAllocation *rect, uint32_t *output_id)
 {
 	const struct json_object *tmp = json_object_object_get (view, "output-id");
 	if (!tmp || !json_object_is_type (tmp, json_type_int)) return FALSE;
 	
 	errno = 0;
-	rect->output_id = (uint32_t)json_object_get_uint64 (tmp); // note: Wayfire IPC IDs are 32-bit
+	*output_id = (uint32_t)json_object_get_uint64 (tmp); // note: Wayfire IPC IDs are 32-bit
 	if (errno) return FALSE;
 	
 	tmp = json_object_object_get (view, "geometry");
@@ -1189,35 +922,29 @@ static gboolean _get_view_geometry (const struct json_object *view, wf_window_po
 	
 	return
 		s_bCoordsFloat ?
-		(_get_float_value (tmp, "x", &rect->rect.x) && _get_float_value (tmp, "y", &rect->rect.y) &&
-			_get_float_value (tmp, "width", &rect->rect.width) && _get_float_value (tmp, "height", &rect->rect.height))
+		(_get_float_value (tmp, "x", &rect->x) && _get_float_value (tmp, "y", &rect->y) &&
+			_get_float_value (tmp, "width", &rect->width) && _get_float_value (tmp, "height", &rect->height))
 		:
-		(_get_int_value (tmp, "x", &rect->rect.x) && _get_int_value (tmp, "y", &rect->rect.y) &&
-			_get_int_value (tmp, "width", &rect->rect.width) && _get_int_value (tmp, "height", &rect->rect.height));
+		(_get_int_value (tmp, "x", &rect->x) && _get_int_value (tmp, "y", &rect->y) &&
+			_get_int_value (tmp, "width", &rect->width) && _get_int_value (tmp, "height", &rect->height));
 }
 
 // Process a view, either because of an event, or from the initial reply to
 // list-views (in this case, event == NULL).
-// Note: view can be NULL for some events (e.g. focus change with no newly focused view)
+// Note: view should not be NULL, but could be for some events (but we should not be listening to those)
 static void _process_view (const gchar *event, const struct json_object *view)
 {
-	if (! (s_bWatchVisEvents || s_bWatchWMEvents)) return; // if we are not listening (cannot unregister watch, so we will keep getting events)
+	if (!s_bWatchWMEvents) return; // if we are not listening (cannot unregister watch, so we will keep getting events)
 	
 	{
 		struct json_object *tmp = view ? json_object_object_get (view, "app-id") : NULL;
 		cd_debug ("event: %s, app-id: %s", event, tmp ? json_object_get_string (tmp) : "(none)");
 	}
 	
-	// check if this is the active view losing focus
+	// check if we actually have a view
 	if (!view)
 	{
-		// in this case event != NULL
-		if (!strcmp (event, "view-focused"))
-		{
-			if (s_bListViewsDone && s_bWatchVisEvents) gldi_docks_foreach_root ((GFunc)_wf_hide_show_if_on_our_way, NULL);
-			s_last_active = (uint32_t)-1;
-		}
-		else cd_warning ("Unexpected event with no view data: %s", event);
+		cd_warning ("Unexpected event with no view data: %s", event);
 		return;
 	}
 	
@@ -1234,28 +961,7 @@ static void _process_view (const gchar *event, const struct json_object *view)
 	}
 	
 	gboolean bDelete = event && ! strcmp (event, "view-unmapped");
-	if (! bDelete)
-	{
-		// also can be true if a view was minimized
-		tmp = json_object_object_get (view, "minimized");
-		if (tmp && json_object_is_type (tmp, json_type_boolean) && json_object_get_boolean (tmp))
-			bDelete = TRUE;
-	}
-	else g_hash_table_remove (s_pMissingActors, GUINT_TO_POINTER (id));
-	
-	if (bDelete)
-	{
-		gboolean bWasActive = (id == s_last_active);
-		if (bWasActive) s_last_active = (uint32_t)-1;
-		
-		if (s_bListViewsDone && s_bWatchVisEvents)
-		{
-			if (bWasActive) gldi_docks_foreach_root ((GFunc)_wf_hide_show_if_on_our_way, NULL);
-			gldi_docks_foreach_root ((GFunc)_wf_hide_if_overlap_or_show_if_no_overlapping_window, NULL);
-		}
-		if (s_bWatchVisEvents) g_hash_table_remove (s_pWindowPos, GUINT_TO_POINTER (id));
-		return;
-	}
+	if (bDelete) g_hash_table_remove (s_pMissingActors, GUINT_TO_POINTER (id));
 	
 	// add or update this view -- only if it is interesting to us
 	// first, check if it is mapped (we don't care about unmapped views)
@@ -1277,109 +983,100 @@ static void _process_view (const gchar *event, const struct json_object *view)
 	if (!strcmp (str, "toplevel"))
 	{
 		// normal toplevel view (including XWayland views as well)
+		// note: s_pActorMap != NULL if s_bWatchWMEvents == TRUE
+		GldiWfWindowActor *wfactor = g_hash_table_lookup (s_pActorMap, GUINT_TO_POINTER (id));
 		
-		if (s_bWatchVisEvents)
+		// get and update the view's geometry
+		GtkAllocation rect;
+		uint32_t output_id;
+		if (! _get_view_geometry (view, &rect, &output_id))
 		{
-			// get and update the view's geometry
-			wf_window_pos rect;
-			gboolean bGeomChanged = FALSE;
-			if (! _get_view_geometry (view, &rect))
-			{
-				cd_warning ("Cannot parse geometry for view %u", id);
-				return;
-			}
-			
-			wf_window_pos *pRect = g_hash_table_lookup (s_pWindowPos, GUINT_TO_POINTER (id));
-			if (!pRect)
-			{
-				pRect = g_new (wf_window_pos, 1);
-				g_hash_table_insert (s_pWindowPos, GUINT_TO_POINTER (id), pRect);
-				bGeomChanged = TRUE;
-			}
-			else bGeomChanged = (pRect->rect.x != rect.rect.x) || (pRect->rect.y != rect.rect.y) ||
-				(pRect->rect.width != rect.rect.width) || (pRect->rect.height != rect.rect.height) ||
-				(pRect->output_id != rect.output_id);
-			if (bGeomChanged)
-			{
-				pRect->rect.x = rect.rect.x;
-				pRect->rect.y = rect.rect.y;
-				pRect->rect.width  = rect.rect.width;
-				pRect->rect.height = rect.rect.height;
-				pRect->output_id   = rect.output_id;
-			}
-			
-			// check if this is the active window
-			tmp = json_object_object_get (view, "activated");
-			if (!tmp || ! json_object_is_type (tmp, json_type_boolean))
-			{
-				cd_warning ("No 'activated' property for view %u", id);
-				return;
-			}
-			gboolean bActive = json_object_get_boolean (tmp);
-			
-			if (bActive && (s_last_active != id || bGeomChanged))
-			{
-				s_last_active = id;
-				if (s_bListViewsDone) gldi_docks_foreach_root ((GFunc)_wf_hide_show_if_on_our_way, pRect);
-			}
-			if (s_bListViewsDone && bGeomChanged)
-				gldi_docks_foreach_root ((GFunc)_wf_hide_if_overlap_or_show_if_no_overlapping_window, pRect);
+			cd_warning ("Cannot parse geometry for view %u", id);
+			return;
 		}
 		
-		if (s_bWatchWMEvents)
+		if (wfactor)
 		{
-			gboolean bInitialState = !event || !strcmp (event, "view-mapped");
-			gboolean bStickyChanged = !bInitialState && event && !strcmp (event, "view-sticky");
-			gboolean bAboveChanged  = !bInitialState && event && !strcmp (event, "view-always-on-top");
-			
-			if (bInitialState || bStickyChanged || bAboveChanged)
+			if (wfactor->output_id != output_id)
 			{
-				// note: s_pActorMap != NULL if s_bWatchWMEvents == TRUE
-				GldiWaylandWindowActor *wactor = g_hash_table_lookup (s_pActorMap, GUINT_TO_POINTER (id));
-				if (wactor)
+				wfactor->output_id = output_id;
+				//!! TODO: do this from idle??
+				gldi_object_notify (&myWindowObjectMgr, NOTIFICATION_WINDOW_SIZE_POSITION_CHANGED, wfactor);
+			}
+			
+			const GtkAllocation *tmp = &wfactor->wactor.pending_window_geometry;
+			
+			if ( (tmp->x != rect.x) || (tmp->y != rect.y) ||
+				(tmp->width != rect.width) || (tmp->height != rect.height) )
+			{
+				gldi_wayland_wm_geometry_changed ((GldiWaylandWindowActor*)wfactor, &rect, TRUE);
+			}
+		}
+		else
+		{
+			WfMissingActorData *pData = NULL;
+			gpointer ptr = g_hash_table_lookup (s_pMissingActors, GUINT_TO_POINTER (id));
+			if (ptr) pData = (WfMissingActorData*)ptr;
+			else pData = g_new0 (WfMissingActorData, 1);
+			
+			pData->output_id = output_id;
+			pData->windowGeometry = rect;
+			
+			if (!ptr) g_hash_table_insert (s_pMissingActors, GUINT_TO_POINTER (id), pData);
+		}
+		
+		gboolean bInitialState = !event || !strcmp (event, "view-mapped");
+		gboolean bStickyChanged = !bInitialState && event && !strcmp (event, "view-sticky");
+		gboolean bAboveChanged  = !bInitialState && event && !strcmp (event, "view-always-on-top");
+		
+		if (bInitialState || bStickyChanged || bAboveChanged)
+		{
+			if (wfactor)
+			{
+				if (bInitialState || bStickyChanged)
 				{
-					wf_view_data *pData = (wf_view_data*)wactor->pExtraData;
-					
-					if (bInitialState || bStickyChanged)
-					{
-						tmp = json_object_object_get (view, "sticky");
-						if (!tmp || ! json_object_is_type (tmp, json_type_boolean))
-							cd_warning ("No 'sticky' property for view %u", id);
-						else gldi_wayland_wm_sticky_changed (wactor, json_object_get_boolean (tmp), TRUE);
-					}
-					if ((bInitialState || bAboveChanged) && wactor->pExtraData && s_bHaveAbove)
-					{
-						tmp = json_object_object_get (view, "always-on-top");
-						if (!tmp || ! json_object_is_type (tmp, json_type_boolean))
-							cd_warning ("No 'always-on-top' property for view %u", id);
-						else pData->bAbove = json_object_get_boolean (tmp);
-					}
-					if (!pData->bPropsChecked)
-					{
-						_check_menu_props (id);
-						pData->bPropsChecked = TRUE;
-					}
+					tmp = json_object_object_get (view, "sticky");
+					if (!tmp || ! json_object_is_type (tmp, json_type_boolean))
+						cd_warning ("No 'sticky' property for view %u", id);
+					else gldi_wayland_wm_sticky_changed ((GldiWaylandWindowActor*)wfactor, !!json_object_get_boolean (tmp), TRUE);
 				}
+				if ((bInitialState || bAboveChanged) && s_bHaveAbove)
+				{
+					tmp = json_object_object_get (view, "always-on-top");
+					if (!tmp || ! json_object_is_type (tmp, json_type_boolean))
+						cd_warning ("No 'always-on-top' property for view %u", id);
+					else wfactor->bAbove = !!json_object_get_boolean (tmp);
+				}
+				if (!wfactor->bPropsChecked)
+				{
+					_check_menu_props (id);
+					wfactor->bPropsChecked = TRUE;
+				}
+			}
+			else
+			{
+				WfMissingActorData *pData = NULL;
+				gpointer ptr = g_hash_table_lookup (s_pMissingActors, GUINT_TO_POINTER (id));
+				if (ptr) pData = (WfMissingActorData*)ptr;
 				else
 				{
-					// note: if id is not in s_pMissingActors, this will return NULL, which corresponds to neither state being set
-					WfMissingActorState st = GPOINTER_TO_INT (g_hash_table_lookup (s_pMissingActors, GUINT_TO_POINTER (id)));
-					if (bInitialState || bStickyChanged)
-					{
-						tmp = json_object_object_get (view, "sticky");
-						if (!tmp || ! json_object_is_type (tmp, json_type_boolean))
-							cd_warning ("No 'sticky' property for view %u", id);
-						else if (json_object_get_boolean (tmp)) st |= MISSING_ACTOR_STATE_STICKY;
-					}
-					if ((bInitialState || bAboveChanged) && s_bHaveAbove)
-					{
-						tmp = json_object_object_get (view, "always-on-top");
-						if (!tmp || ! json_object_is_type (tmp, json_type_boolean))
-							cd_warning ("No 'always-on-top' property for view %u", id);
-						else if (json_object_get_boolean (tmp)) st |= MISSING_ACTOR_STATE_ABOVE;
-					}
-					
-					g_hash_table_insert (s_pMissingActors, GUINT_TO_POINTER (id), GINT_TO_POINTER (st));
+					pData = g_new0 (WfMissingActorData, 1);
+					g_hash_table_insert (s_pMissingActors, GUINT_TO_POINTER (id), pData);
+				}
+				
+				if (bInitialState || bStickyChanged)
+				{
+					tmp = json_object_object_get (view, "sticky");
+					if (!tmp || ! json_object_is_type (tmp, json_type_boolean))
+						cd_warning ("No 'sticky' property for view %u", id);
+					else pData->bSticky = !!json_object_get_boolean (tmp);
+				}
+				if ((bInitialState || bAboveChanged) && s_bHaveAbove)
+				{
+					tmp = json_object_object_get (view, "always-on-top");
+					if (!tmp || ! json_object_is_type (tmp, json_type_boolean))
+						cd_warning ("No 'always-on-top' property for view %u", id);
+					else pData->bAbove = !!json_object_get_boolean (tmp);
 				}
 			}
 		}
@@ -1403,40 +1100,44 @@ static void _process_view (const gchar *event, const struct json_object *view)
 			// (or there could be another Cairo-Dock process running)
 			if (pDock && pDock->iRefCount == 0)
 			{
-				wf_vis_data *data = _get_dock_vis_data (pDock);
-				
-				wf_window_pos rect;
-				if (! _get_view_geometry (view, &rect))
+				GtkAllocation rect;
+				uint32_t output_id;
+				if (! _get_view_geometry (view, &rect, &output_id))
 				{
 					cd_warning ("Cannot parse geometry for view %u", id);
 					return;
 				}
 				
-				data->x = rect.rect.x;
-				data->y = rect.rect.y;
-				data->w = rect.rect.width;
-				data->h = rect.rect.height;
-				data->output_id = rect.output_id;
-				
-				if (data->bListening && s_bListViewsDone)
+				if (pDock->container.bIsHorizontal)
 				{
-					if (pDock->iVisibility == CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP)
-					{
-						// we only need to test if we have an active view
-						wf_window_pos *pRect = (s_last_active != (uint32_t)-1) ?
-							g_hash_table_lookup (s_pWindowPos, GUINT_TO_POINTER (s_last_active)) : NULL;
-						if (pRect) _wf_hide_show_if_on_our_way (pDock, pRect);
-					}
-					else if (pDock->iVisibility == CAIRO_DOCK_VISI_AUTO_HIDE_ON_OVERLAP_ANY)
-					{
-						_wf_hide_if_any_overlap_or_show (pDock, NULL);
-					}
+					pDock->container.iWindowPositionX = rect.x;
+					pDock->container.iWindowPositionY = rect.y;
+					pDock->container.iWidth = rect.width;
+					pDock->container.iHeight = rect.height;
 				}
+				else
+				{
+					pDock->container.iWindowPositionX = rect.y;
+					pDock->container.iWindowPositionY = rect.x;
+					pDock->container.iWidth = rect.height;
+					pDock->container.iHeight = rect.width;
+				}
+				pDock->pVisibilityData = GUINT_TO_POINTER (output_id);
+				
+				gldi_dock_visibility_refresh (pDock);
 			}
 		}
 	}
 }
 
+gboolean _dock_is_same_output (const GldiWindowActor *actor, const CairoDock *pDock)
+{
+	if (!gldi_object_is_manager_child (GLDI_OBJECT(actor), &myWayfireWindowObjectMgr)) return FALSE;
+	
+	GldiWfWindowActor *wfactor = (GldiWfWindowActor*)actor;
+	uint32_t dock_output = GPOINTER_TO_UINT (pDock->pVisibilityData);
+	return (wfactor->output_id == dock_output);
+}
 
 /***********************************************************************
  * parse incoming messages, init
@@ -1599,14 +1300,17 @@ static gboolean _socket_cb (G_GNUC_UNUSED GIOChannel *pSource, GIOCondition cond
 	return TRUE;
 }
 
-void cd_init_wayfire_backend (void) {
+
+static void _init_appid_tracking (void);
+
+gboolean cd_init_wayfire_backend (struct wl_registry *registry) {
 	g_queue_init (&s_cb_queue);
 	
 	const char* wf_socket = getenv("WAYFIRE_SOCKET");
 	if (!wf_socket) wf_socket = default_socket;
 	
 	int wayfire_socket = socket (AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
-	if (wayfire_socket < 0) return;
+	if (wayfire_socket < 0) return FALSE;
 	
 	struct sockaddr_un sa;
 	memset (&sa, 0, sizeof(sa));
@@ -1616,7 +1320,7 @@ void cd_init_wayfire_backend (void) {
 	
 	if (connect (wayfire_socket, (const struct sockaddr*)&sa, sizeof (sa))) {
 		close (wayfire_socket);
-		return;
+		return FALSE;
 	}
 	
 	GIOChannel *pIOChannel = g_io_channel_unix_new (wayfire_socket);
@@ -1624,7 +1328,7 @@ void cd_init_wayfire_backend (void) {
 	{
 		cd_warning ("Cannot create GIOChannel!");
 		close (wayfire_socket);
-		return;
+		return FALSE;
 	}
 	
 	g_io_channel_set_close_on_unref (pIOChannel, TRUE); // take ownership of wayfire_socket
@@ -1640,7 +1344,7 @@ void cd_init_wayfire_backend (void) {
 	{
 		// warning already shown
 		g_io_channel_unref (pIOChannel);
-		return;
+		return FALSE;
 	}
 	uint32_t len = 0;
 	char *ret = _read_msg_full (&len, pIOChannel);
@@ -1648,7 +1352,7 @@ void cd_init_wayfire_backend (void) {
 	{
 		// warning already shown
 		g_io_channel_unref (pIOChannel);
-		return;
+		return FALSE;
 	}
 	
 	struct json_object *res = json_tokener_parse (ret);
@@ -1659,7 +1363,7 @@ void cd_init_wayfire_backend (void) {
 		g_io_channel_unref (pIOChannel);
 		json_object_put (res);
 		g_free (ret);
-		return;
+		return FALSE;
 	}
 	
 	// we have a list of methods, need to check the expected ones
@@ -1711,30 +1415,65 @@ void cd_init_wayfire_backend (void) {
 		s_bCanAbove = FALSE;
 	}
 	
+	gboolean bSuccess = FALSE;
 	if (any_found || (watch_found && list_found))
 	{
 		s_sidIO = g_io_add_watch (pIOChannel, G_IO_IN | G_IO_HUP | G_IO_ERR, _socket_cb, NULL);
 		if (s_sidIO)
 		{
 			s_pIOChannel = pIOChannel;
-			if (any_found) gldi_desktop_manager_register_backend (&p, "Wayfire");
 			if (watch_found && list_found)
 			{
-				GldiDockVisibilityBackend dvb = {0};
-				dvb.refresh = _visibility_refresh;
-				dvb.has_overlapping_window = _wf_dock_has_overlapping_window;
-				dvb.name = "Wayfire IPC";
-				gldi_dock_visibility_register_backend (&dvb);
+				GldiWindowManagerBackend wmb;
+				memset (&wmb, 0, sizeof (GldiWindowManagerBackend));
 				
-				if ((s_bCanAbove || s_bCanSticky) && s_bNeedStickyAbove)
+				if (!gldi_wlr_foreign_toplevel_try_init_custom (registry, &wmb))
+				{
+					cd_warning ("Found Wayfire IPC socket, but no wlr-foreign-toplevel interface. Are you running in a nested session or have a stale WAYFIRE_SOCKET environment variable set?");
+					g_source_remove (s_sidIO);
+					g_io_channel_unref (pIOChannel);
+					s_sidIO = 0;
+					s_pIOChannel = NULL;
+					return FALSE;
+				}
+				
+				if (s_bCanAbove) wmb.set_above = gldi_wf_set_above;
+				if (s_bCanSticky) wmb.set_sticky = gldi_wf_set_sticky;
+				if (s_bCanAbove || s_bCanSticky)
+				{
+					wmb.is_above_or_below = gldi_wf_is_above_or_below;
 					_init_window_maping ();
+				}
+				_init_appid_tracking ();
+				wmb.get_supported_actions = _get_supported_actions;
+				wmb.is_same_output = _dock_is_same_output;
+				wmb.name = "Wayfire / wlr";
+				
+				gldi_windows_manager_register_backend (&wmb);
+				gldi_wayland_wm_init (NULL, &myWayfireWindowObjectMgr);
+				
+				// extend the generic Wayland toplevel object manager
+				memset (&myWayfireWindowObjectMgr, 0, sizeof (GldiObjectManager));
+				myWayfireWindowObjectMgr.cName        = "wayfire-window-manager";
+				myWayfireWindowObjectMgr.iObjectSize  = sizeof (GldiWfWindowActor);
+				// interface
+				myWayfireWindowObjectMgr.init_object  = NULL;
+				myWayfireWindowObjectMgr.reset_object = _reset_object;
+				// signals
+				gldi_object_install_notifications (&myWayfireWindowObjectMgr, NB_NOTIFICATIONS_WAYFIRE_WINDOW_MANAGER);
+				// parent object
+				gldi_object_set_manager (GLDI_OBJECT (&myWayfireWindowObjectMgr), &myWaylandWMObjectMgr);
 			}
+			
+			if (any_found) gldi_desktop_manager_register_backend (&p, "Wayfire");
+			bSuccess = TRUE;
 		}
 		else cd_warning ("Cannot add socket IO event source!");
 	}
 	else cd_message ("Connected to Wayfire socket, but no methods available, not registering");
 	
 	g_io_channel_unref (pIOChannel); // note: ref taken by g_io_add_watch () if succesful
+	return bSuccess;
 }
 
 #else // HAVE_JSON
@@ -1772,14 +1511,12 @@ static gboolean _wf_appid_changed (G_GNUC_UNUSED gpointer ptr, GldiWaylandWindow
 	return GLDI_NOTIFICATION_LET_PASS;
 }
 
-void gldi_wf_backend_init_appid_tracking (void)
+static void _init_appid_tracking (void)
 {
-	GldiWaylandCompositorType type = gldi_wayland_get_compositor_type ();
-	if (type == WAYLAND_COMPOSITOR_WAYFIRE || type == WAYLAND_COMPOSITOR_UNKNOWN)
-		gldi_object_register_notification (&myWaylandWMObjectMgr,
-			NOTIFICATION_WAYLAND_APP_ID,
-			(GldiNotificationFunc) _wf_appid_changed,
-			GLDI_RUN_FIRST, NULL);
+	gldi_object_register_notification (&myWaylandWMObjectMgr,
+		NOTIFICATION_WAYLAND_APP_ID,
+		(GldiNotificationFunc) _wf_appid_changed,
+		GLDI_RUN_FIRST, NULL);
 }
 
 #else // HAVE_WAYLAND_PROTOCOLS

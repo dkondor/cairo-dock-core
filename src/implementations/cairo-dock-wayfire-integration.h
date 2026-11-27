@@ -21,7 +21,10 @@
 #ifndef __CAIRO_DOCK_WAYFIRE_INTEGRATION__
 #define  __CAIRO_DOCK_WAYFIRE_INTEGRATION__
 
+#ifdef HAVE_WAYLAND_PROTOCOLS
+
 #include <gtk/gtk.h>
+#include <wayland-client.h>
 #include "cairo-dock-struct.h"
 G_BEGIN_DECLS
 
@@ -30,31 +33,15 @@ G_BEGIN_DECLS
 */
 
 /** Init the Wayfire integration backend. Will try to connect Wayfire's IPC
- * socket and query the available functions. */
-void cd_init_wayfire_backend (void);
-
-#ifdef HAVE_WAYLAND_PROTOCOLS
-/** Init setting and tracking the sticky and always on top states if available.
- * Can be called either before or after cd_init_wayfire_backend (). */
-void gldi_wf_init_sticky_above (void);
-/** Return if setting the sticky or always on top states on windows is possible.
- * Should call gldi_wf_init_sticky_above () before this function. */
-void gldi_wf_can_sticky_above (gboolean *bCanSticky, gboolean *bCanAbove);
-/** Set or unset the sticky state for the given window actor. */
-void gldi_wf_set_sticky (GldiWindowActor *actor, gboolean bSticky);
-/** Set or unset the always on top state for the given window actor. */
-void gldi_wf_set_above (GldiWindowActor *actor, gboolean bAbove);
-/** Check whether a window is kept above or below of other windows.
- * Note:
- *  - bIsBelow will always be set to FALSE (not supported)
- *  - bIsAbove only reflects the state set by us, not by other methods (e.g. keybindings)
- */
-void gldi_wf_is_above_or_below (GldiWindowActor *actor, gboolean *bIsAbove, gboolean *bIsBelow);
-
-/** Set up extra tracking of app-id changes so that the GTK application-id can be extracted. */
-void gldi_wf_backend_init_appid_tracking (void);
-#endif
+* socket and query the available functions. If successful, it will also
+* start the foreign-toplevel-manager (so it should not be started separately).
+*
+*@param registry the Wayland registry to use for the wlr-foreign-toplevel-management interface
+*@return Whether we could successfully connect to both the IPC interface and the toplevel-manager interface.
+*/
+gboolean cd_init_wayfire_backend (struct wl_registry *registry);
 
 G_END_DECLS
+#endif
 #endif
 
