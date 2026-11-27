@@ -668,7 +668,7 @@ static void gldi_plasma_window_manager_init ()
 	dmb.show_hide_desktop = _show_hide_desktop;
 	gldi_desktop_manager_register_backend (&dmb, "plasma-window-management");
 	
-	gldi_wayland_wm_init (NULL);
+	gldi_wayland_wm_init (NULL, NULL);
 	
 	// extend the generic Wayland toplevel object manager
 	memset (&myPlasmaWindowObjectMgr, 0, sizeof (GldiObjectManager));

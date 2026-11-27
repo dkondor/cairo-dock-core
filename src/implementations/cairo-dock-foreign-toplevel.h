@@ -27,6 +27,7 @@
 #include <wayland-client.h>
 #include <stdint.h>
 
+gboolean gldi_wlr_foreign_toplevel_try_init_custom (struct wl_registry *registry, GldiWindowManagerBackend *wmb);
 gboolean gldi_wlr_foreign_toplevel_try_init (struct wl_registry *registry);
 
 #endif

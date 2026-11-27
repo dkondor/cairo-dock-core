@@ -122,7 +122,8 @@ static void _get_supported_actions (gboolean *bCanFullscreen, gboolean *bCanStic
 	if (bCanBelow) *bCanBelow = FALSE;
 	if (bCanAbove) *bCanAbove = FALSE;
 	if (bCanKill) *bCanKill = FALSE;
-	gldi_wf_can_sticky_above (bCanSticky, bCanAbove);
+	if (bCanSticky) *bCanSticky = FALSE;
+	if (bCanAbove) *bCanAbove = FALSE;
 }
 
 
@@ -240,48 +241,8 @@ static void _destroy (gpointer handle)
 	zwlr_foreign_toplevel_handle_v1_destroy ((wfthandle*)handle);
 }
 
-static void gldi_zwlr_foreign_toplevel_manager_init ()
-{
-	if (!s_ptoplevel_manager) return;
-	
-	zwlr_foreign_toplevel_manager_v1_add_listener(s_ptoplevel_manager, &gldi_toplevel_manager, NULL);
-	
-	gldi_wf_init_sticky_above (); // optional functionality to set these states on Wayfire
-	
-	// register window manager
-	GldiWindowManagerBackend wmb;
-	memset (&wmb, 0, sizeof (GldiWindowManagerBackend));
-	wmb.get_active_window = gldi_wayland_wm_get_active_window;
-	// wmb.move_to_nth_desktop = _move_to_nth_desktop;
-	wmb.show = _show;
-	wmb.close = _close;
-	// wmb.kill = _kill;
-	wmb.minimize = _minimize;
-	// wmb.lower = _lower;
-	wmb.maximize = _maximize;
-	wmb.set_fullscreen = _set_fullscreen;
-	wmb.set_above = gldi_wf_set_above;
-	wmb.set_thumbnail_area = _set_thumbnail_area;
-	// wmb.set_window_border = _set_window_border;
-	// wmb.get_icon_surface = _get_icon_surface;
-	// wmb.get_thumbnail_surface = _get_thumbnail_surface;
-	// wmb.get_texture = _get_texture;
-	wmb.get_transient_for = _get_transient_for;
-	wmb.is_above_or_below = gldi_wf_is_above_or_below;
-	wmb.set_sticky = gldi_wf_set_sticky;
-	wmb.can_minimize_maximize_close = _can_minimize_maximize_close;
-	// wmb.get_id = _get_id;
-	wmb.pick_window = gldi_wayland_wm_pick_window;
-	wmb.get_supported_actions = _get_supported_actions;
-	wmb.name = "wlr";
-	gldi_windows_manager_register_backend (&wmb);
-	
-	gldi_wayland_wm_init(_destroy);
-	gldi_wf_backend_init_appid_tracking (); // optional functionality to get the GTK application-id supplied by Wayfire
-}
 
-
-gboolean gldi_wlr_foreign_toplevel_try_init (struct wl_registry *registry)
+gboolean gldi_wlr_foreign_toplevel_try_init_custom (struct wl_registry *registry, GldiWindowManagerBackend *wmb)
 {
 	const GldiWaylandProtocolInfo *info = gldi_wayland_get_global (zwlr_foreign_toplevel_manager_v1_interface.name);
 	if (!info) return FALSE;
@@ -297,12 +258,52 @@ gboolean gldi_wlr_foreign_toplevel_try_init (struct wl_registry *registry)
 	s_ptoplevel_manager = wl_registry_bind (registry, protocol_id, &zwlr_foreign_toplevel_manager_v1_interface, protocol_version);
 	if (s_ptoplevel_manager)
 	{
-		gldi_zwlr_foreign_toplevel_manager_init ();
+		zwlr_foreign_toplevel_manager_v1_add_listener(s_ptoplevel_manager, &gldi_toplevel_manager, NULL);
+	
+		// fill out the window management function provided by us
+		wmb->get_active_window = gldi_wayland_wm_get_active_window;
+		// wmb.move_to_nth_desktop = _move_to_nth_desktop;
+		wmb->show = _show;
+		wmb->close = _close;
+		// wmb.kill = _kill;
+		wmb->minimize = _minimize;
+		// wmb.lower = _lower;
+		wmb->maximize = _maximize;
+		wmb->set_fullscreen = _set_fullscreen;
+		// wmb.set_above = gldi_wf_set_above;
+		wmb->set_thumbnail_area = _set_thumbnail_area;
+		// wmb.set_window_border = _set_window_border;
+		// wmb.get_icon_surface = _get_icon_surface;
+		// wmb.get_thumbnail_surface = _get_thumbnail_surface;
+		// wmb.get_texture = _get_texture;
+		wmb->get_transient_for = _get_transient_for;
+		// wmb.is_above_or_below = gldi_wf_is_above_or_below;
+		// wmb.set_sticky = gldi_wf_set_sticky;
+		wmb->can_minimize_maximize_close = _can_minimize_maximize_close;
+		// wmb.get_id = _get_id;
+		wmb->pick_window = gldi_wayland_wm_pick_window;
+		
 		return TRUE;
 	}
 	
 	cd_error ("Could not bind wlr-foreign-toplevel-manager!");
     return FALSE;
+}
+
+gboolean gldi_wlr_foreign_toplevel_try_init (struct wl_registry *registry)
+{
+	GldiWindowManagerBackend wmb;
+	memset (&wmb, 0, sizeof (GldiWindowManagerBackend));
+	
+	if (!gldi_wlr_foreign_toplevel_try_init_custom (registry, &wmb)) return FALSE;
+	
+	// remaining functions and register
+	wmb.get_supported_actions = _get_supported_actions;
+	wmb.name = "wlr";
+	gldi_windows_manager_register_backend (&wmb);
+	
+	gldi_wayland_wm_init (_destroy, NULL);
+	return TRUE;
 }
 
 #endif

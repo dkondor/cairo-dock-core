@@ -31,6 +31,7 @@
 extern CairoDock* g_pMainDock;
 
 GldiObjectManager myWaylandWMObjectMgr;
+GldiObjectManager *s_pObjectManager = NULL; // possible override for the above for creating new objects
 
 enum NextChange {
 	NC_GEOMETRY,
@@ -686,7 +687,7 @@ GldiWindowActor* gldi_wayland_wm_get_last_active_window ()
 
 GldiWaylandWindowActor* gldi_wayland_wm_new_toplevel (gpointer handle)
 {
-	return (GldiWaylandWindowActor*)gldi_object_new (&myWaylandWMObjectMgr, handle);
+	return (GldiWaylandWindowActor*)gldi_object_new (s_pObjectManager, handle);
 }
 
 void gldi_wayland_wm_set_pre_notify_function (void (*func)(void))
@@ -719,9 +720,10 @@ static void _reset_object (GldiObject* obj)
 }
 
 
-void gldi_wayland_wm_init (GldiWaylandWMHandleDestroyFunc destroy_cb)
+void gldi_wayland_wm_init (GldiWaylandWMHandleDestroyFunc destroy_cb, GldiObjectManager *pObjectManager)
 {
 	s_handle_destroy_cb = destroy_cb;
+	s_pObjectManager = pObjectManager ? pObjectManager : &myWaylandWMObjectMgr;
 	
 	// register toplevel object manager
 	// Object Manager

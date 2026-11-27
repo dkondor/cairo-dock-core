@@ -898,7 +898,7 @@ gboolean gldi_cosmic_toplevel_try_init (struct wl_registry *registry)
 	wmb.name = "Cosmic";
 	gldi_windows_manager_register_backend (&wmb);
 	
-	gldi_wayland_wm_init (NULL);
+	gldi_wayland_wm_init (NULL, NULL);
 	s_hPendingActivate = g_hash_table_new (NULL, NULL);
 	
 	// extend the generic Wayland toplevel object manager

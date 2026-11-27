@@ -113,7 +113,7 @@ void gldi_wayland_wm_stack_on_top (GldiWindowActor *actor);
 void gldi_wayland_wm_notify_stack_change (void);
 
 typedef void (*GldiWaylandWMHandleDestroyFunc)(gpointer handle);
-void gldi_wayland_wm_init (GldiWaylandWMHandleDestroyFunc destroy_cb);
+void gldi_wayland_wm_init (GldiWaylandWMHandleDestroyFunc destroy_cb, GldiObjectManager *pObjectManager);
 
 GldiWaylandWindowActor* gldi_wayland_wm_new_toplevel (gpointer handle);
 
