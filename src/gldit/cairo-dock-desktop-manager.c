@@ -25,7 +25,6 @@
 #include "cairo-dock-compiz-integration.h"
 #include "cairo-dock-kwin-integration.h"
 #include "cairo-dock-cinnamon-integration.h"
-#include "cairo-dock-wayfire-integration.h"
 #include "cairo-dock-niri-integration.h"
 #include "cairo-dock-wayland-manager.h" // gldi_wayland_release_keyboard (needed on Wayfire)
 #define _MANAGER_DEF_
@@ -609,7 +608,7 @@ static void init (void)
 	cd_init_compiz_backend ();
 	cd_init_kwin_backend ();
 	cd_init_cinnamon_backend ();
-	cd_init_wayfire_backend ();
+	// note: Wayfire backend will be initialized by the wayland-manager
 	cd_init_niri_backend ();
 }
 

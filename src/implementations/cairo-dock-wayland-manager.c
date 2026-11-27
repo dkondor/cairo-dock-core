@@ -50,6 +50,7 @@
 #include "cairo-dock-cosmic-toplevel.h"
 #include "cairo-dock-plasma-virtual-desktop.h"
 #include "cairo-dock-ext-workspaces.h"
+#include "cairo-dock-wayfire-integration.h"
 #include "cairo-dock-wayland-wm.h"
 #include "wayland-xdg-output-client-protocol.h"
 #endif
@@ -706,26 +707,35 @@ static void init (void)
 			s_CompositorType = WAYLAND_COMPOSITOR_WAYFIRE;
 	}
 #ifdef HAVE_WAYLAND_PROTOCOLS
-	gboolean bCosmic = gldi_cosmic_toplevel_try_init (registry);
-	if (bCosmic)
+	gboolean bWayfire = cd_init_wayfire_backend (registry);
+	if (bWayfire)
 	{
-		if (s_CompositorType != WAYLAND_COMPOSITOR_UNKNOWN)
-			cd_warning ("inconsistent compositor types detected!");
-		s_CompositorType = WAYLAND_COMPOSITOR_COSMIC;
-		if (!gldi_ext_workspaces_try_init (registry))
-			gldi_plasma_virtual_desktop_try_init (registry);
+		s_CompositorType = WAYLAND_COMPOSITOR_WAYFIRE;
+		gldi_ext_workspaces_try_init (registry);
 	}
 	else
 	{
-		if (gldi_plasma_window_manager_try_init (registry))
+		gboolean bCosmic = gldi_cosmic_toplevel_try_init (registry);
+		if (bCosmic)
 		{
 			if (s_CompositorType != WAYLAND_COMPOSITOR_UNKNOWN)
 				cd_warning ("inconsistent compositor types detected!");
-			s_CompositorType = WAYLAND_COMPOSITOR_KWIN;
+			s_CompositorType = WAYLAND_COMPOSITOR_COSMIC;
+			if (!gldi_ext_workspaces_try_init (registry))
+				gldi_plasma_virtual_desktop_try_init (registry);
 		}
-		else gldi_wlr_foreign_toplevel_try_init (registry);
-		if (!gldi_plasma_virtual_desktop_try_init (registry))
-			gldi_ext_workspaces_try_init (registry);
+		else
+		{
+			if (gldi_plasma_window_manager_try_init (registry))
+			{
+				if (s_CompositorType != WAYLAND_COMPOSITOR_UNKNOWN)
+					cd_warning ("inconsistent compositor types detected!");
+				s_CompositorType = WAYLAND_COMPOSITOR_KWIN;
+			}
+			else gldi_wlr_foreign_toplevel_try_init (registry);
+			if (!gldi_plasma_virtual_desktop_try_init (registry))
+				gldi_ext_workspaces_try_init (registry);
+		}
 	}
 #endif	
 	cmb.set_input_shape = _set_input_shape;
